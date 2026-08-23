@@ -69,6 +69,61 @@ export const THEME_PRESETS: ThemePreset[] = [
       accent: '#DEC488',
     },
   },
+  {
+    id: 'eco-verde',
+    name: 'Eco Verde',
+    description: 'Verdes naturais com aparência sustentável',
+    theme: {
+      primary: '#244E3A',
+      secondary: '#4F8A68',
+      background: '#F3F7F1',
+      accent: '#B8C88A',
+    },
+  },
+  {
+    id: 'deluxe',
+    name: 'Deluxe',
+    description: 'Azul escuro com acabamento dourado',
+    theme: {
+      primary: '#111827',
+      secondary: '#C6A15B',
+      background: '#0B1220',
+      accent: '#E7C77D',
+    },
+  },
+  {
+    id: 'sofisticado',
+    name: 'Sofisticado',
+    description: 'Tons profundos e neutros com contraste elegante',
+    theme: {
+      primary: '#2D3142',
+      secondary: '#6B7280',
+      background: '#ECE9E2',
+      accent: '#A88F70',
+    },
+  },
+  {
+    id: 'clean',
+    name: 'Clean',
+    description: 'Interface clara, leve e minimalista',
+    theme: {
+      primary: '#334155',
+      secondary: '#0EA5E9',
+      background: '#FFFFFF',
+      accent: '#A7F3D0',
+    },
+  },
+  {
+    id: 'dark',
+    name: 'Dark',
+    description: 'Tema escuro moderno com azul de destaque',
+    theme: {
+      primary: '#0F172A',
+      secondary: '#2563EB',
+      background: '#020617',
+      accent: '#38BDF8',
+    },
+  },
 ];
 
 export const DEFAULT_PDF_SETTINGS: PdfSettingsConfig = {
