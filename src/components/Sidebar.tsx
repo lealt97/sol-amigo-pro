@@ -105,11 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     sidebarIsDark ? '#FFFFFF' : '#000000',
     sidebarIsDark ? 0.08 : 0.05
   );
-  const borderColor = mixHex(
-    sidebarBg,
-    sidebarIsDark ? '#FFFFFF' : '#000000',
-    sidebarIsDark ? 0.18 : 0.14
-  );
+  const borderColor = theme.border;
   const activeFg = getContrastFg(theme.secondary);
   const mutedOpacity = sidebarIsDark ? 0.68 : 0.72;
   const hoverClass = sidebarIsDark ? 'hover:bg-white/10' : 'hover:bg-black/5';
@@ -210,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       ? {
                           backgroundColor: theme.secondary,
                           color: activeFg,
-                          boxShadow: `inset 0 0 0 1px ${mixHex(theme.secondary, activeFg, 0.16)}`,
+                          boxShadow: `inset 0 0 0 1px ${borderColor}`,
                         }
                       : { color: sidebarFg, opacity: mutedOpacity }
                   }
