@@ -11,6 +11,7 @@ export const DEFAULT_THEME: ThemeConfig = {
   background: '#0E2337',
   accent: '#B4BF8A',
   border: '#35536E',
+  text: '#FFFFFF',
 };
 
 export interface ThemePreset {
@@ -31,6 +32,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#183956',
       accent: '#FACB5C',
       border: '#35536E',
+      text: '#FFFFFF',
     },
   },
   {
@@ -43,6 +45,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#C9DDEA',
       accent: '#FACB5C',
       border: '#9FB9CC',
+      text: '#183956',
     },
   },
   {
@@ -55,6 +58,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#CAD9C5',
       accent: '#0076DD',
       border: '#8DA785',
+      text: '#183956',
     },
   },
   {
@@ -67,6 +71,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#C8DCEB',
       accent: '#DEC488',
       border: '#8DB7D4',
+      text: '#183956',
     },
   },
   {
@@ -79,6 +84,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#97C08C',
       accent: '#B8C88A',
       border: '#557C50',
+      text: '#18392B',
     },
   },
   {
@@ -91,6 +97,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#0B1220',
       accent: '#E7C77D',
       border: '#4B5563',
+      text: '#F8FAFC',
     },
   },
   {
@@ -103,6 +110,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#CEC5B8',
       accent: '#A88F70',
       border: '#9C9182',
+      text: '#2D3142',
     },
   },
   {
@@ -115,6 +123,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#CDD8DE',
       accent: '#A7F3D0',
       border: '#A8B6C0',
+      text: '#334155',
     },
   },
   {
@@ -127,6 +136,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#020617',
       accent: '#38BDF8',
       border: '#334155',
+      text: '#E2E8F0',
     },
   },
   {
@@ -139,6 +149,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: '#BFC6CD',
       accent: '#AAB2BC',
       border: '#7B848E',
+      text: '#2F343B',
     },
   },
 ];
@@ -178,6 +189,7 @@ export function loadSavedTheme(): ThemeConfig {
         background: parsed.background || DEFAULT_THEME.background,
         accent: parsed.accent || DEFAULT_THEME.accent,
         border: parsed.border || DEFAULT_THEME.border,
+        text: parsed.text || DEFAULT_THEME.text,
       };
     }
   } catch (e) {
@@ -208,7 +220,6 @@ export function loadSavedPdfSettings(): PdfSettingsConfig {
 
 export function applyThemeToDOM(theme: ThemeConfig) {
   const root = document.documentElement;
-  const disabledColor = getContrastFg(theme.background);
 
   root.style.setProperty('--primary', theme.primary);
   root.style.setProperty('--primary-fg', getContrastFg(theme.primary));
@@ -217,13 +228,14 @@ export function applyThemeToDOM(theme: ThemeConfig) {
   root.style.setProperty('--secondary-fg', getContrastFg(theme.secondary));
 
   root.style.setProperty('--neutral', theme.background);
-  root.style.setProperty('--neutral-fg', getContrastFg(theme.background));
+  root.style.setProperty('--neutral-fg', theme.text);
 
   root.style.setProperty('--auxiliary', theme.accent);
   root.style.setProperty('--auxiliary-fg', getContrastFg(theme.accent));
 
   root.style.setProperty('--border', theme.border);
-  root.style.setProperty('--disabled-color', disabledColor);
+  root.style.setProperty('--text', theme.text);
+  root.style.setProperty('--disabled-color', theme.text);
   root.style.setProperty('--disabled-opacity', String(DISABLED_OPACITY));
 
   // Aliases mantidos para compatibilidade com componentes existentes.
@@ -231,5 +243,5 @@ export function applyThemeToDOM(theme: ThemeConfig) {
   root.style.setProperty('--accent', theme.accent);
 
   document.body.style.backgroundColor = theme.background;
-  document.body.style.color = getContrastFg(theme.background);
+  document.body.style.color = theme.text;
 }
