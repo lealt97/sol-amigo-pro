@@ -96,6 +96,10 @@ export const Topbar: React.FC<TopbarProps> = ({
     subtitle: 'SaaS Fotovoltaico',
   };
 
+  const handleSidebarToggle = () => {
+    document.getElementById('sidebar-toggle-btn')?.click();
+  };
+
   return (
     <header
       id="app-topbar"
@@ -111,9 +115,15 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Menu className="w-4 h-4" />
         </button>
 
-        <div className="bg-[#21262D] border border-[#30363D] p-1.5 rounded hidden sm:flex items-center justify-center text-[#8B949E]">
-          <Sun className="w-4 h-4 text-amber-400" />
-        </div>
+        <button
+          id="topbar-sidebar-toggle-btn"
+          onClick={handleSidebarToggle}
+          className="hidden md:flex relative left-1 w-8 h-8 items-center justify-center rounded bg-[#21262D] border border-[#30363D] text-[#C9D1D9] hover:text-white hover:bg-[#30363D] transition-colors"
+          title="Abrir/fechar menu"
+          aria-label="Abrir/fechar menu"
+        >
+          <Menu className="w-[18px] h-[18px]" />
+        </button>
 
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-white font-semibold text-xs md:text-sm truncate">
