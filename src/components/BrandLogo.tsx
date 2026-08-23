@@ -33,7 +33,10 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   alt = 'Sol Amigo Pro',
 }) => {
   const background = isDarkBackground(backgroundColor) ? 'escuro' : 'claro';
-  const fileName = `SA_pro_bg_${background}_${orientation}.svg`;
+  const fileName =
+    orientation === 'vertical'
+      ? `SA_PRO_icon_bg_${background}.svg`
+      : `SA_pro_bg_${background}_horizontal.svg`;
   const src = `${import.meta.env.BASE_URL}brand/${fileName}`;
 
   return (
