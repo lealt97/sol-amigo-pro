@@ -1,6 +1,7 @@
 import { ThemeConfig, PdfSettingsConfig } from '../types';
 
 export const THEME_STORAGE_KEY = 'solamigo.theme.v2';
+export const DISABLED_OPACITY = 0.38;
 
 // Paleta padrão do sistema Sol Amigo Pro.
 // Internamente, background = Cor Neutra e accent = Cor Auxiliar.
@@ -9,6 +10,7 @@ export const DEFAULT_THEME: ThemeConfig = {
   secondary: '#0076DD',
   background: '#0E2337',
   accent: '#B4BF8A',
+  border: '#35536E',
 };
 
 export interface ThemePreset {
@@ -28,6 +30,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#64B0F3',
       background: '#183956',
       accent: '#FACB5C',
+      border: '#35536E',
     },
   },
   {
@@ -39,6 +42,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#64B0F3',
       background: '#C9DDEA',
       accent: '#FACB5C',
+      border: '#9FB9CC',
     },
   },
   {
@@ -50,6 +54,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#B4BF8A',
       background: '#CAD9C5',
       accent: '#0076DD',
+      border: '#8DA785',
     },
   },
   {
@@ -61,6 +66,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#183956',
       background: '#C8DCEB',
       accent: '#DEC488',
+      border: '#8DB7D4',
     },
   },
   {
@@ -72,6 +78,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#4F8A68',
       background: '#97C08C',
       accent: '#B8C88A',
+      border: '#557C50',
     },
   },
   {
@@ -83,6 +90,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#C6A15B',
       background: '#0B1220',
       accent: '#E7C77D',
+      border: '#4B5563',
     },
   },
   {
@@ -94,6 +102,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#6B7280',
       background: '#CEC5B8',
       accent: '#A88F70',
+      border: '#9C9182',
     },
   },
   {
@@ -105,6 +114,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#0EA5E9',
       background: '#CDD8DE',
       accent: '#A7F3D0',
+      border: '#A8B6C0',
     },
   },
   {
@@ -116,6 +126,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#2563EB',
       background: '#020617',
       accent: '#38BDF8',
+      border: '#334155',
     },
   },
   {
@@ -127,6 +138,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#6F7882',
       background: '#BFC6CD',
       accent: '#AAB2BC',
+      border: '#7B848E',
     },
   },
 ];
@@ -165,6 +177,7 @@ export function loadSavedTheme(): ThemeConfig {
         secondary: parsed.secondary || DEFAULT_THEME.secondary,
         background: parsed.background || DEFAULT_THEME.background,
         accent: parsed.accent || DEFAULT_THEME.accent,
+        border: parsed.border || DEFAULT_THEME.border,
       };
     }
   } catch (e) {
@@ -195,6 +208,7 @@ export function loadSavedPdfSettings(): PdfSettingsConfig {
 
 export function applyThemeToDOM(theme: ThemeConfig) {
   const root = document.documentElement;
+  const disabledColor = getContrastFg(theme.background);
 
   root.style.setProperty('--primary', theme.primary);
   root.style.setProperty('--primary-fg', getContrastFg(theme.primary));
@@ -207,6 +221,10 @@ export function applyThemeToDOM(theme: ThemeConfig) {
 
   root.style.setProperty('--auxiliary', theme.accent);
   root.style.setProperty('--auxiliary-fg', getContrastFg(theme.accent));
+
+  root.style.setProperty('--border', theme.border);
+  root.style.setProperty('--disabled-color', disabledColor);
+  root.style.setProperty('--disabled-opacity', String(DISABLED_OPACITY));
 
   // Aliases mantidos para compatibilidade com componentes existentes.
   root.style.setProperty('--bg', theme.background);
