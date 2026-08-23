@@ -4,6 +4,7 @@ export interface ThemeConfig {
   accent: string;
   background: string;
   border: string;
+  text: string;
 }
 
 export interface PdfSettingsConfig {
