@@ -15,7 +15,7 @@ interface PersonalizacaoViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type ThemeField = 'primary' | 'secondary' | 'background' | 'accent' | 'border';
+type ThemeField = 'primary' | 'secondary' | 'background' | 'accent' | 'border' | 'text';
 
 const COLOR_FIELDS: Array<{
   key: ThemeField;
@@ -47,6 +47,11 @@ const COLOR_FIELDS: Array<{
     label: 'Cor das Bordas',
     description: 'Contornos de cards, divisores, campos, painéis e separadores da interface.',
   },
+  {
+    key: 'text',
+    label: 'Cor das Fontes',
+    description: 'Textos, títulos, descrições e informações exibidas sobre o fundo do sistema.',
+  },
 ];
 
 function normalizeHex(value: string, fallback: string) {
@@ -60,7 +65,8 @@ function sameTheme(a: ThemeConfig, b: ThemeConfig) {
     a.secondary.toUpperCase() === b.secondary.toUpperCase() &&
     a.background.toUpperCase() === b.background.toUpperCase() &&
     a.accent.toUpperCase() === b.accent.toUpperCase() &&
-    a.border.toUpperCase() === b.border.toUpperCase()
+    a.border.toUpperCase() === b.border.toUpperCase() &&
+    a.text.toUpperCase() === b.text.toUpperCase()
   );
 }
 
@@ -118,6 +124,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
       background: normalizeHex(draft.background, DEFAULT_THEME.background),
       accent: normalizeHex(draft.accent, DEFAULT_THEME.accent),
       border: normalizeHex(draft.border, DEFAULT_THEME.border),
+      text: normalizeHex(draft.text, DEFAULT_THEME.text),
     };
 
     applyDraft(normalized);
@@ -125,7 +132,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
     onShowToast('Motor de cores salvo com sucesso');
   };
 
-  const neutralFg = getContrastFg(draft.background);
+  const neutralFg = draft.text;
   const primaryFg = getContrastFg(draft.primary);
   const secondaryFg = getContrastFg(draft.secondary);
   const auxiliaryFg = getContrastFg(draft.accent);
@@ -157,7 +164,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
             </div>
             <h2 className="mt-2 text-2xl font-bold">Personalização do Sistema</h2>
             <p className="mt-1 max-w-2xl text-sm opacity-70">
-              Configure as cinco cores estruturais da interface ou aplique um tema predefinido.
+              Configure as seis cores estruturais da interface ou aplique um tema predefinido.
             </p>
           </div>
 
@@ -165,7 +172,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
             <button
               onClick={handleReset}
               className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ borderColor: draft.border }}
+              style={{ borderColor: draft.border, color: draft.text }}
             >
               <RotateCcw className="h-4 w-4" />
               Restaurar padrão
@@ -192,10 +199,10 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="font-bold">Cores do sistema</h3>
-            <p className="text-xs opacity-60">5 variáveis ativas</p>
+            <p className="text-xs opacity-60">6 variáveis ativas</p>
           </div>
           <div className="flex gap-1.5">
-            {[draft.primary, draft.secondary, draft.background, draft.accent, draft.border].map((color, index) => (
+            {[draft.primary, draft.secondary, draft.background, draft.accent, draft.border, draft.text].map((color, index) => (
               <span
                 key={`${color}-${index}`}
                 className="h-7 w-7 rounded-full border shadow-sm"
@@ -250,7 +257,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
                 onChange={(e) => handleColorChange(field.key, e.target.value)}
                 onBlur={() => handleColorBlur(field.key)}
                 className="mt-3 h-9 w-full rounded-lg border bg-transparent px-3 font-mono text-xs uppercase outline-none"
-                style={{ borderColor: draft.border, color: neutralFg }}
+                style={{ borderColor: draft.border, color: draft.text }}
                 aria-label={`Código hexadecimal de ${field.label}`}
               />
             </div>
@@ -280,7 +287,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
                 className="relative rounded-xl border p-3 text-left transition-transform hover:-translate-y-0.5"
                 style={{
                   backgroundColor: preset.theme.background,
-                  color: getContrastFg(preset.theme.background),
+                  color: preset.theme.text,
                   borderColor: selected ? preset.theme.secondary : preset.theme.border,
                   boxShadow: selected ? `0 0 0 2px ${preset.theme.secondary}25` : undefined,
                 }}
@@ -304,6 +311,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
                     preset.theme.background,
                     preset.theme.accent,
                     preset.theme.border,
+                    preset.theme.text,
                   ].map((color, index) => (
                     <span
                       key={`${preset.id}-${index}`}
@@ -340,11 +348,11 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5" style={{ backgroundColor: draft.background, color: neutralFg }}>
+        <div className="p-5" style={{ backgroundColor: draft.background, color: draft.text }}>
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-sm font-bold">Pré-visualização</div>
-              <div className="text-[11px] opacity-60">Aplicação das cinco cores</div>
+              <div className="text-[11px] opacity-60">Aplicação das seis cores</div>
             </div>
             <button
               className="rounded-lg px-3 py-2 text-xs font-semibold"
@@ -354,7 +362,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
             </button>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg border p-3" style={{ borderColor: draft.border }}>
               <div className="text-[10px] opacity-60">Primária</div>
               <div className="mt-1 font-mono text-xs font-bold">{draft.primary}</div>
@@ -371,8 +379,16 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
               <div className="mt-1 font-mono text-xs font-bold">{draft.accent}</div>
             </div>
             <div className="rounded-lg border p-3" style={{ borderColor: draft.border }}>
+              <div className="text-[10px] opacity-60">Neutra</div>
+              <div className="mt-1 font-mono text-xs font-bold">{draft.background}</div>
+            </div>
+            <div className="rounded-lg border p-3" style={{ borderColor: draft.border }}>
               <div className="text-[10px] opacity-60">Bordas</div>
               <div className="mt-1 font-mono text-xs font-bold">{draft.border}</div>
+            </div>
+            <div className="rounded-lg border p-3" style={{ borderColor: draft.border, color: draft.text }}>
+              <div className="text-[10px] opacity-60">Fontes</div>
+              <div className="mt-1 font-mono text-xs font-bold">{draft.text}</div>
             </div>
           </div>
         </div>
