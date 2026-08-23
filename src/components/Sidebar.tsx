@@ -11,7 +11,6 @@ import {
   BarChart3,
   DollarSign,
   Settings,
-  HelpCircle,
   ChevronRight,
   Sun,
   PanelLeftClose,
@@ -91,7 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           id="mobile-backdrop"
@@ -108,7 +106,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Toggle button on sidebar edge */}
         <button
           id="sidebar-toggle-btn"
           onClick={onToggleCollapsed}
@@ -123,7 +120,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </button>
 
-        {/* Brand Header */}
         <div
           id="sidebar-brand"
           className={`h-14 flex items-center gap-3 px-4 border-b border-[#30363D] bg-[#161B22] overflow-hidden ${
@@ -146,80 +142,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Repository Files / Main Navigation */}
-        <div className="flex-1 px-3 py-3 overflow-y-auto overflow-x-hidden space-y-4">
-          <div>
-            {!collapsed && (
-              <div className="flex items-center justify-between text-[10px] font-bold text-[#8B949E] tracking-widest uppercase px-2 mb-2">
-                <span>Repository Modules</span>
-                <span className="font-mono text-[9px] text-[#484F58]">10 MODS</span>
-              </div>
-            )}
-            <nav id="sidebar-nav" className="space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = activePage === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    id={`nav-item-${item.key}`}
-                    onClick={() => handleNavClick(item.key)}
-                    title={collapsed ? item.label : undefined}
-                    className={`w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium transition-all group ${
-                      isActive
-                        ? 'bg-[#161B22] text-white border border-[#30363D] font-semibold'
-                        : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#161B22]'
-                    } ${collapsed ? 'justify-center px-0' : ''}`}
-                  >
-                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive
-                            ? 'text-blue-400'
-                            : 'text-[#8B949E] group-hover:text-[#C9D1D9]'
-                        }`}
-                      />
-                    </div>
-                    {!collapsed && (
-                      <span className="truncate text-left">{item.label}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Active Branch Section */}
-          {!collapsed && (
-            <div className="pt-2 border-t border-[#30363D]/60">
-              <h3 className="text-[10px] font-bold text-[#484F58] tracking-widest mb-2 uppercase px-2">
-                Active Branches
-              </h3>
-              <div className="space-y-1.5 px-2">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center text-blue-400 font-mono text-[11px]">
-                    <span className="mr-1.5 font-sans">⌥</span> main
+        <div className="flex-1 px-3 py-3 overflow-y-auto overflow-x-hidden">
+          <nav id="sidebar-nav" className="space-y-1">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.key;
+              return (
+                <button
+                  key={item.key}
+                  id={`nav-item-${item.key}`}
+                  onClick={() => handleNavClick(item.key)}
+                  title={collapsed ? item.label : undefined}
+                  className={`w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium transition-all group ${
+                    isActive
+                      ? 'bg-[#161B22] text-white border border-[#30363D] font-semibold'
+                      : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#161B22]'
+                  } ${collapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isActive
+                          ? 'text-blue-400'
+                          : 'text-[#8B949E] group-hover:text-[#C9D1D9]'
+                      }`}
+                    />
                   </div>
-                  <span className="text-[#8B949E] bg-[#21262D] px-1.5 py-0.5 rounded text-[9px] font-mono border border-[#30363D]">
-                    Default
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-[#8B949E] opacity-60">
-                  <div className="flex items-center font-mono text-[11px]">
-                    <span className="mr-1.5 font-sans">⌥</span> feature/inverter-telemetry
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+                  {!collapsed && (
+                    <span className="truncate text-left">{item.label}</span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Bottom Section: Settings & Profile */}
         <div
           id="sidebar-bottom-panel"
           className="p-3 border-t border-[#30363D] bg-[#161B22] space-y-1 shrink-0"
         >
-          {/* Settings Group */}
           <div>
             <button
               id="nav-item-settings-toggle"
@@ -240,9 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               {!collapsed && (
                 <>
-                  <span className="truncate text-left flex-1">
-                    Configurações
-                  </span>
+                  <span className="truncate text-left flex-1">Configurações</span>
                   <ChevronRight
                     className={`w-3.5 h-3.5 text-[#8B949E] transition-transform duration-200 ${
                       settingsOpen ? 'rotate-90' : ''
@@ -252,7 +211,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </button>
 
-            {/* Submenu */}
             {!collapsed && settingsOpen && (
               <div
                 id="settings-submenu"
@@ -284,7 +242,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* User Profile */}
           <div
             id="sidebar-profile-card"
             className={`mt-2 p-2 rounded-md bg-[#0D1117] border border-[#30363D] flex items-center gap-2 ${
