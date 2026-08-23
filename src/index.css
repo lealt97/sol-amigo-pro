@@ -10,6 +10,7 @@
   --auxiliary: #B4BF8A;
   --auxiliary-fg: #0F172A;
   --border: #35536E;
+  --text: #ffffff;
   --disabled-color: #ffffff;
   --disabled-opacity: 0.38;
 
@@ -19,7 +20,6 @@
   --surface: #183956;
   --surface-alt: #213F5D;
   --elevated: #294866;
-  --text: #ffffff;
   --muted: #B8C5D1;
   --dim: #7F95A8;
   --sidebar: 258px;
@@ -28,7 +28,7 @@
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: var(--neutral-fg);
+  color: var(--text);
   background-color: var(--neutral);
   -webkit-font-smoothing: antialiased;
 }
@@ -48,7 +48,7 @@ body {
 
 main {
   background-color: var(--neutral) !important;
-  color: var(--neutral-fg) !important;
+  color: var(--text) !important;
 }
 
 footer {
