@@ -70,7 +70,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#244E3A',
       secondary: '#4F8A68',
-      background: '#C7D9C5',
+      background: '#97C08C',
       accent: '#B8C88A',
     },
   },
