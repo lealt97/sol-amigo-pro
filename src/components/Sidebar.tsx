@@ -12,11 +12,12 @@ import {
   DollarSign,
   Settings,
   ChevronRight,
-  Sun,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
+import { getContrastFg } from '../utils/themeEngine';
+import { BrandLogo } from './BrandLogo';
 
 interface SidebarProps {
   activePage: PageKey;
@@ -50,6 +51,26 @@ const NAV_ITEMS: NavItemDef[] = [
   { key: 'financeiro', label: 'Financeiro', icon: DollarSign },
 ];
 
+function mixHex(base: string, target: string, amount: number): string {
+  const normalize = (hex: string) => hex.replace('#', '');
+  const a = normalize(base);
+  const b = normalize(target);
+  if (!/^[0-9a-fA-F]{6}$/.test(a) || !/^[0-9a-fA-F]{6}$/.test(b)) return base;
+
+  const mixChannel = (start: number, end: number) =>
+    Math.round(start + (end - start) * amount);
+
+  const result = [0, 2, 4]
+    .map((index) => {
+      const start = parseInt(a.slice(index, index + 2), 16);
+      const end = parseInt(b.slice(index, index + 2), 16);
+      return mixChannel(start, end).toString(16).padStart(2, '0');
+    })
+    .join('');
+
+  return `#${result}`;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activePage,
   onSelectPage,
@@ -58,7 +79,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapsed,
   onToggleCollapse,
   theme,
-  onOpenHelp,
   mobileOpen,
   onCloseMobile,
 }) => {
@@ -72,11 +92,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigateFn = onSelectPage || onNavigate || (() => {});
   const toggleCollapseFn = onToggleCollapsed || onToggleCollapse || (() => {});
 
+  const sidebarBg = theme.primary;
+  const sidebarFg = getContrastFg(sidebarBg);
+  const sidebarIsDark = sidebarFg === '#FFFFFF';
+  const panelBg = mixHex(
+    sidebarBg,
+    sidebarIsDark ? '#000000' : '#FFFFFF',
+    sidebarIsDark ? 0.14 : 0.18
+  );
+  const subtleBg = mixHex(
+    sidebarBg,
+    sidebarIsDark ? '#FFFFFF' : '#000000',
+    sidebarIsDark ? 0.08 : 0.05
+  );
+  const borderColor = mixHex(
+    sidebarBg,
+    sidebarIsDark ? '#FFFFFF' : '#000000',
+    sidebarIsDark ? 0.18 : 0.14
+  );
+  const activeFg = getContrastFg(theme.secondary);
+  const mutedOpacity = sidebarIsDark ? 0.68 : 0.72;
+  const hoverClass = sidebarIsDark ? 'hover:bg-white/10' : 'hover:bg-black/5';
+
   const handleNavClick = (key: PageKey) => {
     navigateFn(key);
-    if (window.innerWidth < 768) {
-      onCloseMobile();
-    }
+    if (window.innerWidth < 768) onCloseMobile();
   };
 
   const handleSettingsToggle = () => {
@@ -100,16 +140,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside
         id="app-sidebar"
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col text-[#C9D1D9] bg-[#0D1117] transition-all duration-200 ease-in-out select-none border-r border-[#30363D] ${
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col transition-all duration-200 ease-in-out select-none border-r ${
           collapsed ? 'w-[64px]' : 'w-64'
-        } ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
+        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        style={{
+          backgroundColor: sidebarBg,
+          color: sidebarFg,
+          borderColor,
+        }}
       >
         <button
           id="sidebar-toggle-btn"
-          onClick={onToggleCollapsed}
-          className="absolute -right-3 top-4 z-60 hidden md:flex items-center justify-center w-6 h-6 rounded-md bg-[#21262D] text-[#C9D1D9] border border-[#30363D] hover:bg-[#30363D] hover:text-white transition-all shadow-sm"
+          onClick={toggleCollapseFn}
+          className="absolute -right-3 top-4 z-60 hidden md:flex items-center justify-center w-6 h-6 rounded-md transition-all shadow-sm"
+          style={{
+            backgroundColor: panelBg,
+            color: sidebarFg,
+            border: `1px solid ${borderColor}`,
+          }}
           title={collapsed ? 'Expandir menu' : 'Recolher menu'}
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
@@ -122,23 +170,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div
           id="sidebar-brand"
-          className={`h-14 flex items-center gap-3 px-4 border-b border-[#30363D] bg-[#161B22] overflow-hidden ${
-            collapsed ? 'justify-center px-2' : ''
+          className={`h-16 flex items-center overflow-hidden border-b ${
+            collapsed ? 'justify-center px-1' : 'px-4'
           }`}
+          style={{ backgroundColor: panelBg, borderColor }}
         >
-          <div className="w-8 h-8 rounded-md bg-[#21262D] border border-[#30363D] flex items-center justify-center shrink-0">
-            <Sun className="w-4 h-4 text-amber-400" />
-          </div>
-
-          {!collapsed && (
-            <div className="flex flex-col truncate">
-              <span className="font-bold text-sm tracking-tight text-white leading-tight">
-                Sol Amigo Pro
-              </span>
-              <span className="text-[9px] uppercase tracking-wider font-mono text-[#8B949E]">
-                v2.4.1 :: PRODUCTION
-              </span>
-            </div>
+          {collapsed ? (
+            <BrandLogo
+              orientation="vertical"
+              backgroundColor={panelBg}
+              className="w-[46px] h-[46px] object-contain"
+            />
+          ) : (
+            <BrandLogo
+              orientation="horizontal"
+              backgroundColor={panelBg}
+              className="w-[184px] max-h-[46px] object-contain object-left"
+            />
           )}
         </div>
 
@@ -147,6 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.key;
+
               return (
                 <button
                   key={item.key}
@@ -154,19 +203,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => handleNavClick(item.key)}
                   title={collapsed ? item.label : undefined}
                   className={`w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium transition-all group ${
+                    collapsed ? 'justify-center px-0' : ''
+                  } ${isActive ? 'font-semibold' : hoverClass}`}
+                  style={
                     isActive
-                      ? 'bg-[#161B22] text-white border border-[#30363D] font-semibold'
-                      : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#161B22]'
-                  } ${collapsed ? 'justify-center px-0' : ''}`}
+                      ? {
+                          backgroundColor: theme.secondary,
+                          color: activeFg,
+                          boxShadow: `inset 0 0 0 1px ${mixHex(theme.secondary, activeFg, 0.16)}`,
+                        }
+                      : { color: sidebarFg, opacity: mutedOpacity }
+                  }
                 >
                   <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                    <Icon
-                      className={`w-4 h-4 ${
-                        isActive
-                          ? 'text-blue-400'
-                          : 'text-[#8B949E] group-hover:text-[#C9D1D9]'
-                      }`}
-                    />
+                    <Icon className="w-4 h-4" />
                   </div>
                   {!collapsed && (
                     <span className="truncate text-left">{item.label}</span>
@@ -179,7 +229,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div
           id="sidebar-bottom-panel"
-          className="p-3 border-t border-[#30363D] bg-[#161B22] space-y-1 shrink-0"
+          className="p-3 border-t space-y-1 shrink-0"
+          style={{ backgroundColor: panelBg, borderColor }}
         >
           <div>
             <button
@@ -187,23 +238,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={handleSettingsToggle}
               title={collapsed ? 'Configurações' : undefined}
               className={`w-full h-8 flex items-center gap-2.5 px-2 rounded-md text-xs font-medium transition-all ${
+                collapsed ? 'justify-center px-0' : ''
+              } ${!isSettingsActive ? hoverClass : ''}`}
+              style={
                 isSettingsActive
-                  ? 'bg-[#21262D] text-white border border-[#30363D]'
-                  : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
-              } ${collapsed ? 'justify-center px-0' : ''}`}
+                  ? { backgroundColor: theme.secondary, color: activeFg }
+                  : { color: sidebarFg, opacity: mutedOpacity }
+              }
             >
               <div className="w-4 h-4 flex items-center justify-center shrink-0">
                 <Settings
-                  className={`w-4 h-4 ${
-                    settingsOpen ? 'rotate-45' : ''
-                  } transition-transform duration-200`}
+                  className={`w-4 h-4 ${settingsOpen ? 'rotate-45' : ''} transition-transform duration-200`}
                 />
               </div>
               {!collapsed && (
                 <>
                   <span className="truncate text-left flex-1">Configurações</span>
                   <ChevronRight
-                    className={`w-3.5 h-3.5 text-[#8B949E] transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
                       settingsOpen ? 'rotate-90' : ''
                     }`}
                   />
@@ -214,52 +266,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!collapsed && settingsOpen && (
               <div
                 id="settings-submenu"
-                className="mt-1 ml-4 pl-2 border-l border-[#30363D] space-y-1"
+                className="mt-1 ml-4 pl-2 border-l space-y-1"
+                style={{ borderColor }}
               >
-                <button
-                  id="subnav-personalizacao"
-                  onClick={() => handleNavClick('personalizacao')}
-                  className={`w-full text-left py-1 px-2 rounded text-[11px] font-medium transition-colors ${
-                    activePage === 'personalizacao'
-                      ? 'bg-[#21262D] text-blue-400 font-semibold'
-                      : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
-                  }`}
-                >
-                  Personalização da conta
-                </button>
-                <button
-                  id="subnav-pdf-customizacoes"
-                  onClick={() => handleNavClick('pdf-customizacoes')}
-                  className={`w-full text-left py-1 px-2 rounded text-[11px] font-medium transition-colors ${
-                    activePage === 'pdf-customizacoes'
-                      ? 'bg-[#21262D] text-blue-400 font-semibold'
-                      : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
-                  }`}
-                >
-                  Customizações do PDF
-                </button>
+                {[
+                  ['personalizacao', 'Personalização da conta'],
+                  ['pdf-customizacoes', 'Customizações do PDF'],
+                ].map(([key, label]) => {
+                  const isActive = activePage === key;
+                  return (
+                    <button
+                      key={key}
+                      id={`subnav-${key}`}
+                      onClick={() => handleNavClick(key as PageKey)}
+                      className={`w-full text-left py-1.5 px-2 rounded text-[11px] font-medium transition-colors ${
+                        !isActive ? hoverClass : ''
+                      }`}
+                      style={
+                        isActive
+                          ? { backgroundColor: subtleBg, color: sidebarFg }
+                          : { color: sidebarFg, opacity: mutedOpacity }
+                      }
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
           <div
             id="sidebar-profile-card"
-            className={`mt-2 p-2 rounded-md bg-[#0D1117] border border-[#30363D] flex items-center gap-2 ${
+            className={`mt-2 p-2 rounded-md border flex items-center gap-2 ${
               collapsed ? 'justify-center p-1.5' : ''
             }`}
+            style={{ backgroundColor: subtleBg, borderColor }}
           >
             <div
-              className="w-6 h-6 rounded bg-orange-900/60 border border-orange-500 flex items-center justify-center text-[10px] font-bold text-orange-200 shrink-0"
+              className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
+              style={{
+                backgroundColor: theme.accent,
+                color: getContrastFg(theme.accent),
+              }}
               title="Rodrigo Leal (Admin)"
             >
               RL
             </div>
             {!collapsed && (
               <div className="flex flex-col truncate min-w-0 flex-1">
-                <span className="text-[11px] font-semibold text-[#C9D1D9] leading-tight truncate">
+                <span className="text-[11px] font-semibold leading-tight truncate">
                   Rodrigo Leal
                 </span>
-                <span className="text-[9px] font-mono text-[#8B949E] truncate">
+                <span className="text-[9px] font-mono truncate" style={{ opacity: 0.6 }}>
                   solar-admin (Write)
                 </span>
               </div>
