@@ -30,6 +30,11 @@ main > * {
   display: none !important;
 }
 
+/* O controle visual de abrir/fechar o menu fica na barra superior. */
+#sidebar-toggle-btn {
+  display: none !important;
+}
+
 /* High Density Dark Console Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
