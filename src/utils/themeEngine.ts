@@ -7,7 +7,7 @@ export const THEME_STORAGE_KEY = 'solamigo.theme.v2';
 export const DEFAULT_THEME: ThemeConfig = {
   primary: '#183956',
   secondary: '#0076DD',
-  background: '#F6F8FB',
+  background: '#0E2337',
   accent: '#B4BF8A',
 };
 
@@ -32,7 +32,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#0E2337',
       secondary: '#64B0F3',
-      background: '#101820',
+      background: '#183956',
       accent: '#FACB5C',
     },
   },
@@ -43,7 +43,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#183956',
       secondary: '#64B0F3',
-      background: '#FFFFFF',
+      background: '#F6F8FB',
       accent: '#FACB5C',
     },
   },
