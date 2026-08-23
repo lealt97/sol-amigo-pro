@@ -33,11 +33,11 @@ export const THEME_PRESETS: ThemePreset[] = [
   {
     id: 'solar-claro',
     name: 'Solar Claro',
-    description: 'Interface clara e luminosa',
+    description: 'Interface clara com navegação branca e fundo azul suave',
     theme: {
-      primary: '#183956',
+      primary: '#FFFFFF',
       secondary: '#64B0F3',
-      background: '#F6F8FB',
+      background: '#EAF2F8',
       accent: '#FACB5C',
     },
   },
@@ -48,7 +48,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#183956',
       secondary: '#B4BF8A',
-      background: '#F4F6F0',
+      background: '#E8EFE4',
       accent: '#0076DD',
     },
   },
@@ -59,7 +59,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#0076DD',
       secondary: '#183956',
-      background: '#F6F8FB',
+      background: '#EAF1F7',
       accent: '#DEC488',
     },
   },
@@ -70,7 +70,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#244E3A',
       secondary: '#4F8A68',
-      background: '#F3F7F1',
+      background: '#E6EEE5',
       accent: '#B8C88A',
     },
   },
@@ -92,18 +92,18 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#2D3142',
       secondary: '#6B7280',
-      background: '#ECE9E2',
+      background: '#E3DED4',
       accent: '#A88F70',
     },
   },
   {
     id: 'clean',
     name: 'Clean',
-    description: 'Interface clara, leve e minimalista',
+    description: 'Interface leve com navegação branca e fundo cinza azulado',
     theme: {
-      primary: '#334155',
+      primary: '#FFFFFF',
       secondary: '#0EA5E9',
-      background: '#FFFFFF',
+      background: '#EEF2F4',
       accent: '#A7F3D0',
     },
   },
@@ -125,7 +125,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       primary: '#2F343B',
       secondary: '#6F7882',
-      background: '#E5E7EB',
+      background: '#D6DADE',
       accent: '#AAB2BC',
     },
   },
