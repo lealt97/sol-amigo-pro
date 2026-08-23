@@ -20,12 +20,6 @@ export interface ThemePreset {
 
 export const THEME_PRESETS: ThemePreset[] = [
   {
-    id: 'sol-amigo',
-    name: 'Sol Amigo',
-    description: 'Paleta oficial padrão',
-    theme: { ...DEFAULT_THEME },
-  },
-  {
     id: 'sol-amigo-noite',
     name: 'Sol Amigo Noite',
     description: 'Azul profundo com destaque solar',
@@ -122,6 +116,17 @@ export const THEME_PRESETS: ThemePreset[] = [
       secondary: '#2563EB',
       background: '#020617',
       accent: '#38BDF8',
+    },
+  },
+  {
+    id: 'cinza-metalico',
+    name: 'Cinza Metálico',
+    description: 'Tons de grafite, aço e prata com aparência tecnológica',
+    theme: {
+      primary: '#2F343B',
+      secondary: '#6F7882',
+      background: '#E5E7EB',
+      accent: '#AAB2BC',
     },
   },
 ];
