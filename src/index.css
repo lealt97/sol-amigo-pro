@@ -9,6 +9,9 @@
   --neutral-fg: #ffffff;
   --auxiliary: #B4BF8A;
   --auxiliary-fg: #0F172A;
+  --border: #35536E;
+  --disabled-color: #ffffff;
+  --disabled-opacity: 0.38;
 
   /* aliases de compatibilidade */
   --accent: var(--auxiliary);
@@ -16,7 +19,6 @@
   --surface: #183956;
   --surface-alt: #213F5D;
   --elevated: #294866;
-  --border: #35536E;
   --text: #ffffff;
   --muted: #B8C5D1;
   --dim: #7F95A8;
@@ -35,13 +37,13 @@ body {
 #app-topbar {
   background-color: var(--primary) !important;
   color: var(--primary-fg) !important;
-  border-color: color-mix(in srgb, var(--primary-fg) 18%, transparent) !important;
+  border-color: var(--border) !important;
 }
 
 #app-topbar #topbar-sidebar-toggle-btn {
   color: var(--primary-fg) !important;
   background-color: color-mix(in srgb, var(--primary-fg) 10%, transparent) !important;
-  border-color: color-mix(in srgb, var(--primary-fg) 20%, transparent) !important;
+  border-color: var(--border) !important;
 }
 
 main {
@@ -52,7 +54,18 @@ main {
 footer {
   background-color: var(--primary) !important;
   color: var(--primary-fg) !important;
-  border-color: color-mix(in srgb, var(--primary-fg) 18%, transparent) !important;
+  border-color: var(--border) !important;
+}
+
+/* Estados desativados são automáticos e não fazem parte dos controles do motor. */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  color: var(--disabled-color) !important;
+  opacity: var(--disabled-opacity) !important;
+  cursor: not-allowed !important;
 }
 
 /* Todas as abas continuam vazias, exceto Personalização, que contém o motor de cores. */
