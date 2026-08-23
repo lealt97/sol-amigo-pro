@@ -1,0 +1,6 @@
+{
+  "name": "Sol Amigo Pro",
+  "description": "Plataforma SaaS para gestão de propostas fotovoltaicas, CRM de energia solar, motor de cores e personalização de relatórios e PDFs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
