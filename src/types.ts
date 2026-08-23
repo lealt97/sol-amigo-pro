@@ -3,6 +3,7 @@ export interface ThemeConfig {
   secondary: string;
   accent: string;
   background: string;
+  border: string;
 }
 
 export interface PdfSettingsConfig {
