@@ -1,11 +1,1 @@
-/* Usa o ícone dedicado somente quando a barra lateral está recolhida. */
-#app-sidebar.w-\[64px\] #sidebar-brand {
-  background-image: url('../brand/SA_PRO_icon_bg_escuro.svg');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 38px auto;
-}
-
-#app-sidebar.w-\[64px\] #sidebar-brand img {
-  opacity: 0;
-}
+/* O ícone da navbar recolhida é escolhido automaticamente pelo BrandLogo conforme o fundo claro ou escuro. */
