@@ -25,6 +25,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Todas as abas ficam vazias; o shell (menu/topbar/footer) permanece visível. */
+main > * {
+  display: none !important;
+}
+
 /* High Density Dark Console Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
