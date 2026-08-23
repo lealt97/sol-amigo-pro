@@ -5,11 +5,8 @@ import {
   Bell,
   Menu,
   Sun,
-  Github,
   CheckCircle2,
   Sparkles,
-  GitBranch,
-  Settings,
   HelpCircle,
 } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
@@ -104,7 +101,6 @@ export const Topbar: React.FC<TopbarProps> = ({
       id="app-topbar"
       className="h-14 border-b border-[#30363D] flex items-center justify-between px-4 md:px-6 bg-[#161B22] text-[#C9D1D9] shrink-0 select-none z-30 sticky top-0"
     >
-      {/* Left: Hamburger & Breadcrumb Repo Hierarchy */}
       <div className="flex items-center space-x-3 md:space-x-4 min-w-0">
         <button
           id="topbar-mobile-menu-btn"
@@ -119,41 +115,14 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Sun className="w-4 h-4 text-amber-400" />
         </div>
 
-        {/* GitHub breadcrumb layout */}
-        <div className="flex items-center text-xs md:text-sm font-medium truncate">
-          <span
-            onClick={handleGitHubClick}
-            className="text-[#8B949E] hover:text-blue-400 cursor-pointer hidden lg:inline"
-          >
-            github.com
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-white font-semibold text-xs md:text-sm truncate">
+            {info.title}
           </span>
-          <span className="mx-2 text-[#484F58] hidden lg:inline">/</span>
-          <span
-            onClick={handleGitHubClick}
-            className="text-[#8B949E] hover:text-blue-400 cursor-pointer hidden sm:inline"
-          >
-            solar-tech-inc
-          </span>
-          <span className="mx-2 text-[#484F58] hidden sm:inline">/</span>
-          <span className="text-white font-semibold truncate flex items-center gap-1.5">
-            sol-amigo-pro
-          </span>
-        </div>
-
-        <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full border border-[#30363D] text-[10px] uppercase font-bold text-[#8B949E] tracking-wider">
-          Public
-        </span>
-
-        {/* Page Context Badge */}
-        <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-[#30363D] text-xs text-[#8B949E]">
-          <span className="text-[#484F58]">::</span>
-          <span className="text-white font-medium">{info.title}</span>
         </div>
       </div>
 
-      {/* Right: Actions, Search, Status & Notifications */}
       <div className="flex items-center space-x-2 md:space-x-3 shrink-0">
-        {/* Live Syncing status pill */}
         <button
           onClick={handleGitHubClick}
           className="bg-[#238636] hover:bg-[#2EA043] text-white px-2.5 md:px-3 py-1.5 rounded-md text-xs font-semibold flex items-center cursor-pointer transition-colors shadow-xs"
@@ -163,7 +132,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
         </button>
 
-        {/* Quick New Proposal action */}
         <button
           id="topbar-new-proposal-btn"
           onClick={onOpenNewProposal || onOpenQuickAdd}
@@ -173,7 +141,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           <span>Nova Proposta</span>
         </button>
 
-        {/* Global Search */}
         <div className="relative hidden md:flex items-center">
           <Search className="w-3.5 h-3.5 text-[#8B949E] absolute left-2.5 pointer-events-none" />
           <input
@@ -191,7 +158,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           </kbd>
         </div>
 
-        {/* Notifications */}
         <div className="relative">
           <button
             id="topbar-notifications-btn"
@@ -205,7 +171,6 @@ export const Topbar: React.FC<TopbarProps> = ({
             </span>
           </button>
 
-          {/* Notifications Dropdown */}
           {notificationsOpen && (
             <div
               id="notifications-popover"
@@ -223,9 +188,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">
-                      Proposta Aprovada!
-                    </p>
+                    <p className="font-semibold text-white">Proposta Aprovada!</p>
                     <p className="text-[11px] text-[#8B949E]">
                       Fazenda Santa Rita aprovou o projeto de 28.08 kWp (R$ 98.500).
                     </p>
@@ -238,9 +201,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-start gap-2.5">
                   <Sun className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">
-                      Homologação CPFL Protocolada
-                    </p>
+                    <p className="font-semibold text-white">Homologação CPFL Protocolada</p>
                     <p className="text-[11px] text-[#8B949E]">
                       Parecer de acesso solicitado para Auto Posto Alvorada.
                     </p>
@@ -253,9 +214,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-start gap-2.5">
                   <Sparkles className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">
-                      Repositório Sincronizado
-                    </p>
+                    <p className="font-semibold text-white">Repositório Sincronizado</p>
                     <p className="text-[11px] text-[#8B949E]">
                       Connected to github.com/lealt97/sol-amigo-pro (main).
                     </p>
@@ -269,7 +228,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           )}
         </div>
 
-        {/* Quick Help Modal Trigger */}
         {onOpenHelp && (
           <button
             onClick={onOpenHelp}
