@@ -5,9 +5,10 @@ import { BrandLogo } from './BrandLogo';
 
 interface LoginViewProps {
   onLogin: (remember: boolean) => void;
+  onOpenRegister: () => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onOpenRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
@@ -168,7 +169,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               </button>
             </form>
 
-            <div className="mt-8 flex items-center gap-3 text-[12px] text-[#7A8C9C]">
+            <div className="mt-6 text-center text-[13px] text-[#607386]">
+              Ainda não tem uma conta?{' '}
+              <button
+                type="button"
+                onClick={onOpenRegister}
+                className="font-bold text-[#0076DD] transition hover:text-[#005EAF]"
+              >
+                Criar conta
+              </button>
+            </div>
+
+            <div className="mt-7 flex items-center gap-3 text-[12px] text-[#7A8C9C]">
               <ShieldCheck className="h-[18px] w-[18px] shrink-0 text-[#6E8B55]" />
               <span>Seus dados e sua conta são protegidos com segurança.</span>
             </div>
