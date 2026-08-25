@@ -84,13 +84,43 @@ textarea:disabled,
   cursor: not-allowed !important;
 }
 
-/* Todas as abas continuam vazias, exceto Personalização, que contém o motor de cores. */
+/* Mantém os módulos ainda não desenvolvidos vazios. */
 main > * {
   display: none !important;
 }
 
-main > #personalizacao-page {
+main > #personalizacao-page,
+main > #clientes-page {
   display: block !important;
+}
+
+/* Campos padronizados do CRM de clientes. */
+.crm-input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.crm-input:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 16%, transparent);
+}
+
+.crm-input::placeholder {
+  color: color-mix(in srgb, var(--text) 42%, transparent);
+}
+
+#clientes-page select option,
+.crm-input option {
+  background-color: var(--neutral);
+  color: var(--text);
 }
 
 /* O controle visual de abrir/fechar o menu fica na barra superior. */
