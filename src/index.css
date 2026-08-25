@@ -73,6 +73,11 @@ footer {
   border-color: var(--border) !important;
 }
 
+/* A barra técnica inferior do shell não faz parte da interface do usuário. */
+#app-topbar ~ footer {
+  display: none !important;
+}
+
 /* Estados desativados são automáticos e não fazem parte dos controles do motor. */
 button:disabled,
 input:disabled,
