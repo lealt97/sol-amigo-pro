@@ -72,6 +72,15 @@ export interface SolarProposal {
   treesPlanted?: number;
 }
 
+export type ClientCrmStatus =
+  | 'Novo lead'
+  | 'Em contato'
+  | 'Qualificado'
+  | 'Proposta enviada'
+  | 'Negociação'
+  | 'Cliente'
+  | 'Perdido';
+
 export interface Client {
   id: string;
   name: string;
@@ -85,6 +94,17 @@ export interface Client {
   avgConsumptionKWh: number;
   proposalsCount: number;
   activeStatus: 'Ativo' | 'Em atendimento' | 'Inativo';
+
+  // Campos operacionais do CRM. Opcionais para manter compatibilidade com cadastros existentes.
+  crmStatus?: ClientCrmStatus;
+  responsible?: string;
+  source?: string;
+  lastInteraction?: string;
+  createdAt?: string;
+  avgMonthlyBill?: number;
+  connectionType?: 'Monofásica' | 'Bifásica' | 'Trifásica';
+  consumerUnit?: string;
+  tags?: string[];
 }
 
 export interface Opportunity {
