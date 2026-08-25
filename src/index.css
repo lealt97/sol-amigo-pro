@@ -13,8 +13,6 @@
   --text: #ffffff;
   --disabled-color: #ffffff;
   --disabled-opacity: 0.38;
-
-  /* aliases de compatibilidade */
   --accent: var(--auxiliary);
   --bg: var(--neutral);
   --surface: #183956;
@@ -33,7 +31,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Elementos interativos usam cursor de ação. */
 button:not(:disabled),
 a[href],
 select:not(:disabled),
@@ -49,7 +46,6 @@ summary,
   cursor: pointer;
 }
 
-/* O shell acompanha o motor de cores. */
 #app-topbar {
   background-color: var(--primary) !important;
   color: var(--primary-fg) !important;
@@ -73,12 +69,10 @@ footer {
   border-color: var(--border) !important;
 }
 
-/* A barra técnica inferior do shell não faz parte da interface do usuário. */
 #app-topbar ~ footer {
   display: none !important;
 }
 
-/* Estados desativados são automáticos e não fazem parte dos controles do motor. */
 button:disabled,
 input:disabled,
 select:disabled,
@@ -89,18 +83,17 @@ textarea:disabled,
   cursor: not-allowed !important;
 }
 
-/* Mantém os módulos ainda não desenvolvidos vazios. */
 main > * {
   display: none !important;
 }
 
 main > #dashboard-view,
 main > #personalizacao-page,
-main > #clientes-page {
+main > #clientes-page,
+main > #seguranca-page {
   display: block !important;
 }
 
-/* Campos padronizados do CRM de clientes. */
 .crm-input {
   width: 100%;
   height: 42px;
@@ -129,12 +122,10 @@ main > #clientes-page {
   color: var(--text);
 }
 
-/* O controle visual de abrir/fechar o menu fica na barra superior. */
 #sidebar-toggle-btn {
   display: none !important;
 }
 
-/* Scrollbar acompanha o tema. */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
