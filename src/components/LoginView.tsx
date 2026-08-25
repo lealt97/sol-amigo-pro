@@ -1,4 +1,5 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
@@ -7,9 +8,9 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState(() => localStorage.getItem('solamigo.login.email') || '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(Boolean(localStorage.getItem('solamigo.login.email')));
+  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [imageSrc, setImageSrc] = useState('');
@@ -23,7 +24,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         return response.text();
       })
       .then((base64) => {
-        if (active) setImageSrc(`data:image/jpeg;base64,${base64.trim()}`);
+        if (active && base64.trim()) {
+          setImageSrc(`data:image/jpeg;base64,${base64.trim()}`);
+        }
       })
       .catch(() => {
         if (active) setImageSrc('');
@@ -48,12 +51,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     if (password.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.');
       return;
-    }
-
-    if (remember) {
-      localStorage.setItem('solamigo.login.email', normalizedEmail);
-    } else {
-      localStorage.removeItem('solamigo.login.email');
     }
 
     onLogin(remember);
@@ -96,7 +93,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="seu@email.com"
                     autoComplete="email"
-                    className="h-13 w-full rounded-xl border border-[#CFD9E2] bg-white pl-12 pr-4 text-[14px] text-[#0E2337] outline-none transition focus:border-[#0076DD] focus:ring-4 focus:ring-[#64B0F3]/15"
+                    className="h-[52px] w-full rounded-xl border border-[#CFD9E2] bg-white pl-12 pr-4 text-[14px] text-[#0E2337] outline-none transition focus:border-[#0076DD] focus:ring-4 focus:ring-[#64B0F3]/15"
                   />
                 </div>
               </div>
@@ -114,7 +111,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Digite sua senha"
                     autoComplete="current-password"
-                    className="h-13 w-full rounded-xl border border-[#CFD9E2] bg-white pl-12 pr-12 text-[14px] text-[#0E2337] outline-none transition focus:border-[#0076DD] focus:ring-4 focus:ring-[#64B0F3]/15"
+                    className="h-[52px] w-full rounded-xl border border-[#CFD9E2] bg-white pl-12 pr-12 text-[14px] text-[#0E2337] outline-none transition focus:border-[#0076DD] focus:ring-4 focus:ring-[#64B0F3]/15"
                   />
                   <button
                     type="button"
@@ -155,7 +152,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
               <button
                 type="submit"
-                className="flex h-13 w-full items-center justify-center rounded-xl bg-[#183956] px-5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(24,57,86,0.20)] transition hover:bg-[#0E2337] active:translate-y-px"
+                className="flex h-[52px] w-full items-center justify-center rounded-xl bg-[#183956] px-5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(24,57,86,0.20)] transition hover:bg-[#0E2337] active:translate-y-px"
               >
                 Entrar
               </button>
@@ -196,7 +193,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               <h2 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] xl:text-[38px]">
                 Gestão solar profissional em um só lugar.
               </h2>
-              <p className="mt-4 max-w-[500px] text-sm leading-6 text-white/78">
+              <p className="mt-4 max-w-[500px] text-sm leading-6 text-white/80">
                 Organize oportunidades, clientes e propostas comerciais com uma experiência criada para o mercado fotovoltaico.
               </p>
             </div>
