@@ -72,6 +72,10 @@ const PAGE_TITLES: Record<PageKey, { title: string; subtitle: string }> = {
     title: 'Customizações do PDF',
     subtitle: 'Templates de capa, cabeçalhos, logos e layout dos relatórios',
   },
+  seguranca: {
+    title: 'Segurança',
+    subtitle: 'Autenticação, MFA e sessões da conta',
+  },
 };
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -153,24 +157,16 @@ export const Topbar: React.FC<TopbarProps> = ({
               className="absolute right-0 mt-2 w-80 bg-[#161B22] border border-[#30363D] rounded-lg shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 text-[#C9D1D9]"
             >
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#30363D]">
-                <span className="font-semibold text-xs text-white">
-                  Telemetry & Notifications
-                </span>
-                <span className="text-[10px] text-blue-400 hover:underline font-medium cursor-pointer">
-                  Marcar lidas
-                </span>
+                <span className="font-semibold text-xs text-white">Telemetry & Notifications</span>
+                <span className="text-[10px] text-blue-400 hover:underline font-medium cursor-pointer">Marcar lidas</span>
               </div>
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-white">Proposta Aprovada!</p>
-                    <p className="text-[11px] text-[#8B949E]">
-                      Fazenda Santa Rita aprovou o projeto de 28.08 kWp (R$ 98.500).
-                    </p>
-                    <span className="text-[9px] font-mono text-emerald-400 mt-1 block">
-                      há 15 min
-                    </span>
+                    <p className="text-[11px] text-[#8B949E]">Fazenda Santa Rita aprovou o projeto de 28.08 kWp (R$ 98.500).</p>
+                    <span className="text-[9px] font-mono text-emerald-400 mt-1 block">há 15 min</span>
                   </div>
                 </div>
 
@@ -178,25 +174,17 @@ export const Topbar: React.FC<TopbarProps> = ({
                   <Sun className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-white">Homologação CPFL Protocolada</p>
-                    <p className="text-[11px] text-[#8B949E]">
-                      Parecer de acesso solicitado para Auto Posto Alvorada.
-                    </p>
-                    <span className="text-[9px] font-mono text-blue-400 mt-1 block">
-                      há 2 horas
-                    </span>
+                    <p className="text-[11px] text-[#8B949E]">Parecer de acesso solicitado para Auto Posto Alvorada.</p>
+                    <span className="text-[9px] font-mono text-blue-400 mt-1 block">há 2 horas</span>
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-start gap-2.5">
                   <Sparkles className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white">Repositório Sincronizado</p>
-                    <p className="text-[11px] text-[#8B949E]">
-                      Connected to github.com/lealt97/sol-amigo-pro (main).
-                    </p>
-                    <span className="text-[9px] font-mono text-[#8B949E] mt-1 block">
-                      hoje às 07:15
-                    </span>
+                    <p className="font-semibold text-white">Sistema atualizado</p>
+                    <p className="text-[11px] text-[#8B949E]">Sua conta está conectada ao Sol Amigo Pro.</p>
+                    <span className="text-[9px] font-mono text-[#8B949E] mt-1 block">hoje</span>
                   </div>
                 </div>
               </div>
