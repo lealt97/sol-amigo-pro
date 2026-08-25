@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Search,
   Plus,
   Bell,
   Menu,
@@ -77,20 +76,13 @@ const PAGE_TITLES: Record<PageKey, { title: string; subtitle: string }> = {
 
 export const Topbar: React.FC<TopbarProps> = ({
   activePage,
-  theme,
   onOpenMobileMenu,
   onOpenQuickAdd,
-  onOpenGitHub,
-  onOpenGitHubModal,
   onOpenHelp,
   onOpenNewProposal,
-  searchQuery = '',
-  onSearchChange,
 }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [internalQuery, setInternalQuery] = useState(searchQuery);
 
-  const handleGitHubClick = onOpenGitHub || onOpenGitHubModal;
   const info = PAGE_TITLES[activePage] || {
     title: 'Sol Amigo Pro',
     subtitle: 'SaaS Fotovoltaico',
@@ -134,15 +126,6 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       <div className="flex items-center space-x-2 md:space-x-3 shrink-0">
         <button
-          onClick={handleGitHubClick}
-          className="bg-[#238636] hover:bg-[#2EA043] text-white px-2.5 md:px-3 py-1.5 rounded-md text-xs font-semibold flex items-center cursor-pointer transition-colors shadow-xs"
-          title="Sincronização em tempo real do repositório"
-        >
-          <span className="mr-2 hidden sm:inline">Syncing...</span>
-          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-        </button>
-
-        <button
           id="topbar-new-proposal-btn"
           onClick={onOpenNewProposal || onOpenQuickAdd}
           className="hidden sm:flex items-center gap-1.5 bg-[#21262D] border border-[#30363D] text-[#C9D1D9] hover:text-white hover:bg-[#30363D] px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
@@ -150,23 +133,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Plus className="w-3.5 h-3.5 text-emerald-400" />
           <span>Nova Proposta</span>
         </button>
-
-        <div className="relative hidden md:flex items-center">
-          <Search className="w-3.5 h-3.5 text-[#8B949E] absolute left-2.5 pointer-events-none" />
-          <input
-            type="search"
-            value={searchQuery || internalQuery}
-            onChange={(e) => {
-              setInternalQuery(e.target.value);
-              if (onSearchChange) onSearchChange(e.target.value);
-            }}
-            placeholder="Buscar..."
-            className="w-36 lg:w-48 h-8 pl-8 pr-7 text-xs bg-[#0D1117] border border-[#30363D] rounded-md text-[#C9D1D9] placeholder:text-[#8B949E] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
-          />
-          <kbd className="absolute right-2 text-[9px] font-mono text-[#8B949E] bg-[#161B22] border border-[#30363D] px-1 py-0.2 rounded">
-            /
-          </kbd>
-        </div>
 
         <div className="relative">
           <button
