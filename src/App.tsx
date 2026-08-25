@@ -30,6 +30,7 @@ import {
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { LoginView } from './components/LoginView';
+import { RegisterView } from './components/RegisterView';
 import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
@@ -50,8 +51,11 @@ import { GitHubModal } from './components/GitHubModal';
 import { HelpModal } from './components/HelpModal';
 import { CheckCircle2 } from 'lucide-react';
 
+type AuthScreen = 'login' | 'register';
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
 
   // Navigation
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
@@ -97,7 +101,11 @@ export default function App() {
     applyThemeToDOM(currentTheme);
   }, [currentTheme]);
 
-  const handleLogin = () => {
+  const handleLogin = (_remember?: boolean) => {
+    setIsAuthenticated(true);
+  };
+
+  const handleRegister = () => {
     setIsAuthenticated(true);
   };
 
@@ -110,7 +118,21 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    return <LoginView onLogin={handleLogin} />;
+    if (authScreen === 'register') {
+      return (
+        <RegisterView
+          onRegister={handleRegister}
+          onBackToLogin={() => setAuthScreen('login')}
+        />
+      );
+    }
+
+    return (
+      <LoginView
+        onLogin={handleLogin}
+        onOpenRegister={() => setAuthScreen('register')}
+      />
+    );
   }
 
   // Proposal handlers
