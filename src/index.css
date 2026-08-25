@@ -89,6 +89,7 @@ main > * {
   display: none !important;
 }
 
+main > #dashboard-view,
 main > #personalizacao-page,
 main > #clientes-page {
   display: block !important;
