@@ -18,14 +18,24 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   useEffect(() => {
     let active = true;
 
-    fetch(`${import.meta.env.BASE_URL}brand/login-aframe.b64.txt`)
-      .then((response) => {
-        if (!response.ok) throw new Error('Imagem de login indisponível');
-        return response.text();
-      })
-      .then((base64) => {
-        if (active && base64.trim()) {
-          setImageSrc(`data:image/jpeg;base64,${base64.trim()}`);
+    const imageParts = [
+      'brand/login-aframe.b64.txt',
+      'brand/login-aframe.b64.part2.txt',
+      'brand/login-aframe.b64.part3.txt',
+    ];
+
+    Promise.all(
+      imageParts.map((file) =>
+        fetch(`${import.meta.env.BASE_URL}${file}`).then((response) => {
+          if (!response.ok) throw new Error('Imagem de login indisponível');
+          return response.text();
+        })
+      )
+    )
+      .then((parts) => {
+        const base64 = parts.map((part) => part.trim()).join('');
+        if (active && base64) {
+          setImageSrc(`data:image/jpeg;base64,${base64}`);
         }
       })
       .catch(() => {
