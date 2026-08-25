@@ -14,9 +14,11 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  LogOut,
 } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
+import { supabase } from '../lib/supabase';
 import { BrandLogo } from './BrandLogo';
 
 interface SidebarProps {
@@ -81,6 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const settingsPages: PageKey[] = ['personalizacao', 'pdf-customizacoes', 'seguranca'];
   const [settingsOpen, setSettingsOpen] = useState(settingsPages.includes(activePage));
+  const [signingOut, setSigningOut] = useState(false);
   const isSettingsActive = settingsPages.includes(activePage);
 
   const navigateFn = onSelectPage || onNavigate || (() => {});
@@ -107,6 +110,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setSettingsOpen(true);
     } else {
       setSettingsOpen(!settingsOpen);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setSigningOut(false);
+      window.alert('Não foi possível sair da conta. Tente novamente.');
     }
   };
 
@@ -211,6 +224,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
+
+          <button
+            id="sidebar-signout-btn"
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            title={collapsed ? 'Sair da conta' : undefined}
+            className={`w-full h-8 flex items-center gap-2.5 px-2 rounded-md text-xs font-medium transition-all ${collapsed ? 'justify-center px-0' : ''} ${hoverClass}`}
+            style={{ color: sidebarFg, opacity: signingOut ? 0.45 : mutedOpacity }}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>{signingOut ? 'Saindo...' : 'Sair da conta'}</span>}
+          </button>
         </div>
       </aside>
     </>
