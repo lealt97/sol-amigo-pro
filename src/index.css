@@ -33,6 +33,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Elementos interativos usam cursor de ação. */
+button:not(:disabled),
+a[href],
+select:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="color"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+label[for],
+summary,
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 /* O shell acompanha o motor de cores. */
 #app-topbar {
   background-color: var(--primary) !important;
