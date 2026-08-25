@@ -8,7 +8,6 @@ import {
   Plus,
   FileDown,
   Activity,
-  GitCommit,
 } from 'lucide-react';
 import { SolarProposal, ThemeConfig, PageKey } from '../types';
 
@@ -41,27 +40,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .reduce((acc, p) => acc + p.systemPowerKWp, 0)
     .toFixed(1);
 
+  const approvedCount = proposals.filter((p) => p.status === 'Aprovada').length;
+  const negotiationCount = proposals.filter((p) => p.status === 'Em negociação').length;
+  const pendingCount = proposals.filter((p) => p.status === 'Pendente').length;
+  const rejectedCount = proposals.filter((p) => p.status === 'Recusada').length;
+  const approvalRate = proposals.length
+    ? Math.round((approvedCount / proposals.length) * 100)
+    : 0;
+
   const proposalStatus = [
-    {
-      label: 'Aprovadas',
-      value: proposals.filter((p) => p.status === 'Aprovada').length,
-      color: '#34D399',
-    },
-    {
-      label: 'Em negociação',
-      value: proposals.filter((p) => p.status === 'Em negociação').length,
-      color: '#60A5FA',
-    },
-    {
-      label: 'Pendentes',
-      value: proposals.filter((p) => p.status === 'Pendente').length,
-      color: '#FBBF24',
-    },
-    {
-      label: 'Recusadas',
-      value: proposals.filter((p) => p.status === 'Recusada').length,
-      color: '#F87171',
-    },
+    { label: 'Aprovadas', value: approvedCount, color: '#34D399' },
+    { label: 'Em negociação', value: negotiationCount, color: '#60A5FA' },
+    { label: 'Pendentes', value: pendingCount, color: '#FBBF24' },
+    { label: 'Recusadas', value: rejectedCount, color: '#F87171' },
   ];
 
   const totalStatus = proposalStatus.reduce((acc, item) => acc + item.value, 0);
@@ -76,6 +67,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         })
         .join(', ')})`
     : 'conic-gradient(#30363D 0deg 360deg)';
+
+  const statusClasses: Record<SolarProposal['status'], string> = {
+    Aprovada: 'text-emerald-400 border-emerald-800/60 bg-emerald-950/50',
+    'Em negociação': 'text-blue-400 border-blue-800/60 bg-blue-950/50',
+    Pendente: 'text-amber-400 border-amber-800/60 bg-amber-950/50',
+    Recusada: 'text-red-400 border-red-800/60 bg-red-950/50',
+  };
 
   return (
     <div id="dashboard-view" className="space-y-4 max-w-7xl mx-auto text-[#C9D1D9]">
@@ -168,105 +166,87 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-8 flex flex-col space-y-4">
-          <div className="bg-[#161B22] border border-[#30363D] rounded-lg flex flex-col overflow-hidden">
-            <div className="p-3.5 border-b border-[#30363D] flex justify-between items-center bg-[#1C2128]">
-              <div className="flex items-center gap-2">
-                <GitCommit className="w-4 h-4 text-blue-400" />
-                <h3 className="text-xs font-semibold text-white">
-                  Latest Activity & Dimensioning: <span className="text-blue-400 font-mono">main</span>
-                </h3>
+          <div className="bg-[#161B22] border border-[#30363D] rounded-lg overflow-hidden">
+            <div className="p-3.5 border-b border-[#30363D] flex items-center justify-between bg-[#1C2128]">
+              <div>
+                <h3 className="text-xs font-semibold text-white">Atividades Comerciais Recentes</h3>
+                <p className="text-[11px] text-[#8B949E] mt-0.5">
+                  Últimas movimentações das propostas e clientes
+                </p>
               </div>
-              <span className="text-[10px] font-mono text-[#8B949E]">
-                24 Events this week
-              </span>
+              <button
+                onClick={() => onNavigate('propostas')}
+                className="text-[10px] font-mono text-blue-400 hover:text-blue-300"
+              >
+                Ver todas →
+              </button>
             </div>
 
-            <div className="p-3.5 space-y-3">
-              <div className="flex space-x-3">
-                <div className="w-7 h-7 rounded-full bg-orange-950/80 border border-orange-500 flex items-center justify-center text-[10px] font-bold text-orange-200 shrink-0">
-                  DS
-                </div>
-                <div className="flex-1 border-b border-[#30363D]/80 pb-2.5">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-xs font-semibold text-[#C9D1D9]">
-                      feat: add real-time inverter telemetry parsing
-                    </h4>
-                    <span className="text-[10px] font-mono text-[#8B949E] bg-[#21262D] px-1.5 py-0.5 rounded border border-[#30363D]">
-                      a7f2d91
-                    </span>
+            <div className="divide-y divide-[#30363D]">
+              {proposals.slice(0, 3).map((proposal) => (
+                <button
+                  key={proposal.id}
+                  onClick={() => onViewProposal(proposal)}
+                  className="w-full p-3.5 flex items-center gap-3 text-left hover:bg-[#1C2128] transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-md bg-[#21262D] border border-[#30363D] flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-blue-400" />
                   </div>
-                  <p className="text-[11px] text-[#8B949E] mt-0.5">
-                    dev-sun committed 2 hours ago
-                  </p>
-                </div>
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-semibold text-white truncate">
+                        {proposal.clientName}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#8B949E] shrink-0">
+                        {proposal.code}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#8B949E] mt-0.5 truncate">
+                      {proposal.systemPowerKWp} kWp · R$ {proposal.totalValue.toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono border shrink-0 ${statusClasses[proposal.status]}`}
+                  >
+                    {proposal.status}
+                  </span>
+                </button>
+              ))}
 
-              <div className="flex space-x-3">
-                <div className="w-7 h-7 rounded-full bg-blue-950/80 border border-blue-500 flex items-center justify-center text-[10px] font-bold text-blue-200 shrink-0">
-                  EM
+              {proposals.length === 0 && (
+                <div className="p-6 text-center text-xs text-[#8B949E]">
+                  Nenhuma atividade comercial registrada ainda.
                 </div>
-                <div className="flex-1 border-b border-[#30363D]/80 pb-2.5">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-xs font-semibold text-[#C9D1D9]">
-                      fix: resolve socket timeout on low-bandwidth networks
-                    </h4>
-                    <span className="text-[10px] font-mono text-[#8B949E] bg-[#21262D] px-1.5 py-0.5 rounded border border-[#30363D]">
-                      cc94b2a
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#8B949E] mt-0.5">
-                    e-moon committed 5 hours ago
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
-                <div className="w-7 h-7 rounded-full bg-emerald-950/80 border border-emerald-500 flex items-center justify-center text-[10px] font-bold text-emerald-200 shrink-0">
-                  CI
-                </div>
-                <div className="flex-1 pb-1">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-xs font-semibold text-[#C9D1D9]">
-                      build: bump version to v2.4.1 for production rollout
-                    </h4>
-                    <span className="text-[10px] font-mono text-[#8B949E] bg-[#21262D] px-1.5 py-0.5 rounded border border-[#30363D]">
-                      99e31d4
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#8B949E] mt-0.5">
-                    github-actions committed yesterday
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
-          <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-3.5 flex flex-col">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-3.5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#8B949E]">
-                Infrastructure Status
-              </h3>
-              <span className="flex items-center text-xs text-emerald-400 font-mono">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-1.5 animate-pulse"></span>
-                Healthy
-              </span>
+              <div>
+                <h3 className="text-xs font-semibold text-white">Resumo Comercial</h3>
+                <p className="text-[11px] text-[#8B949E] mt-0.5">
+                  Situação atual das propostas comerciais
+                </p>
+              </div>
             </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="border-l-2 border-blue-500 pl-3 py-1.5 bg-[#1C2128] border border-[#30363D] border-l-0 rounded-r">
-                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Deployment</p>
-                <p className="text-base font-mono text-white">v2.4.1</p>
+              <div className="p-3 bg-[#1C2128] border border-[#30363D] rounded-md">
+                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Aprovadas</p>
+                <p className="text-lg font-mono font-bold text-emerald-400 mt-1">{approvedCount}</p>
               </div>
-              <div className="border-l-2 border-[#30363D] pl-3 py-1.5 bg-[#1C2128] border border-[#30363D] border-l-0 rounded-r">
-                <p className="text-[9px] text-[#8B949E] uppercase font-bold">CPU Load</p>
-                <p className="text-base font-mono text-white">14.2%</p>
+              <div className="p-3 bg-[#1C2128] border border-[#30363D] rounded-md">
+                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Em negociação</p>
+                <p className="text-lg font-mono font-bold text-blue-400 mt-1">{negotiationCount}</p>
               </div>
-              <div className="border-l-2 border-[#30363D] pl-3 py-1.5 bg-[#1C2128] border border-[#30363D] border-l-0 rounded-r">
-                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Memory</p>
-                <p className="text-base font-mono text-white">1.2GB</p>
+              <div className="p-3 bg-[#1C2128] border border-[#30363D] rounded-md">
+                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Pendentes</p>
+                <p className="text-lg font-mono font-bold text-amber-400 mt-1">{pendingCount}</p>
               </div>
-              <div className="border-l-2 border-orange-500 pl-3 py-1.5 bg-[#1C2128] border border-[#30363D] border-l-0 rounded-r">
-                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Errors (24h)</p>
-                <p className="text-base font-mono text-white">0</p>
+              <div className="p-3 bg-[#1C2128] border border-[#30363D] rounded-md">
+                <p className="text-[9px] text-[#8B949E] uppercase font-bold">Taxa de aprovação</p>
+                <p className="text-lg font-mono font-bold text-white mt-1">{approvalRate}%</p>
               </div>
             </div>
           </div>
@@ -275,9 +255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="lg:col-span-4">
           <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-4 h-full flex flex-col">
             <div>
-              <h3 className="text-xs font-semibold text-white">
-                Distribuição das Propostas
-              </h3>
+              <h3 className="text-xs font-semibold text-white">Distribuição das Propostas</h3>
               <p className="text-[11px] text-[#8B949E] mt-1">
                 Status atual das propostas comerciais
               </p>
@@ -290,9 +268,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 aria-label="Gráfico de rosca com a distribuição das propostas por status"
               >
                 <div className="absolute inset-[24px] rounded-full bg-[#161B22] border border-[#30363D] flex flex-col items-center justify-center">
-                  <span className="text-3xl font-mono font-bold text-white">
-                    {totalStatus}
-                  </span>
+                  <span className="text-3xl font-mono font-bold text-white">{totalStatus}</span>
                   <span className="text-[10px] uppercase tracking-wider text-[#8B949E] mt-0.5">
                     Propostas
                   </span>
@@ -316,17 +292,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="text-[10px] text-[#8B949E] truncate">
-                        {item.label}
-                      </span>
+                      <span className="text-[10px] text-[#8B949E] truncate">{item.label}</span>
                     </div>
                     <div className="flex items-end justify-between mt-1.5">
-                      <span className="text-base font-mono font-bold text-white">
-                        {item.value}
-                      </span>
-                      <span className="text-[10px] font-mono text-[#8B949E]">
-                        {percentage}%
-                      </span>
+                      <span className="text-base font-mono font-bold text-white">{item.value}</span>
+                      <span className="text-[10px] font-mono text-[#8B949E]">{percentage}%</span>
                     </div>
                   </div>
                 );
@@ -340,9 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="lg:col-span-7 bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-white text-xs">
-                Propostas nos Últimos 7 Dias
-              </h3>
+              <h3 className="font-semibold text-white text-xs">Propostas nos Últimos 7 Dias</h3>
               <p className="text-[11px] text-[#8B949E]">
                 Volume diário de orçamentos e dimensionamentos FV
               </p>
@@ -367,9 +335,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     style={{ height: `${item.val}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-mono text-[#8B949E]">
-                  {item.day}
-                </span>
+                <span className="text-[10px] font-mono text-[#8B949E]">{item.day}</span>
               </div>
             ))}
           </div>
@@ -377,12 +343,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="lg:col-span-5 bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
           <div>
-            <h3 className="font-semibold text-white text-xs">
-              Status do Pipeline Fotovoltaico
-            </h3>
-            <p className="text-[11px] text-[#8B949E]">
-              Distribuição do funil comercial solar
-            </p>
+            <h3 className="font-semibold text-white text-xs">Status do Pipeline Fotovoltaico</h3>
+            <p className="text-[11px] text-[#8B949E]">Distribuição do funil comercial solar</p>
           </div>
 
           <div className="space-y-2 pt-1">
@@ -424,12 +386,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <section className="bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
         <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
           <div>
-            <h3 className="font-semibold text-white text-xs">
-              Últimas Propostas Fotovoltaicas
-            </h3>
-            <p className="text-[11px] text-[#8B949E]">
-              Propostas mais recentes dimensionadas no SaaS
-            </p>
+            <h3 className="font-semibold text-white text-xs">Últimas Propostas Fotovoltaicas</h3>
+            <p className="text-[11px] text-[#8B949E]">Propostas mais recentes dimensionadas no SaaS</p>
           </div>
           <button
             onClick={() => onNavigate('propostas')}
@@ -456,39 +414,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <tbody className="divide-y divide-[#30363D] text-[#C9D1D9]">
               {proposals.slice(0, 5).map((prop) => (
                 <tr key={prop.id} className="hover:bg-[#1C2128] transition-colors">
-                  <td className="py-2.5 font-mono font-bold text-white">
-                    {prop.code}
-                  </td>
+                  <td className="py-2.5 font-mono font-bold text-white">{prop.code}</td>
                   <td className="py-2.5">
-                    <span className="font-medium text-white block">
-                      {prop.clientName}
-                    </span>
+                    <span className="font-medium text-white block">{prop.clientName}</span>
                     <span className="text-[10px] text-[#8B949E]">
                       {prop.clientCity}/{prop.clientState} · {prop.concessionaria}
                     </span>
                   </td>
-                  <td className="py-2.5 font-mono text-white">
-                    {prop.systemPowerKWp} kWp
-                  </td>
+                  <td className="py-2.5 font-mono text-white">{prop.systemPowerKWp} kWp</td>
                   <td className="py-2.5 font-mono text-emerald-400">
                     R$ {prop.estimatedMonthlySavings.toLocaleString('pt-BR')}
                   </td>
                   <td className="py-2.5 font-mono text-white">
                     R$ {prop.totalValue.toLocaleString('pt-BR')}
                   </td>
-                  <td className="py-2.5 font-mono text-[#8B949E]">
-                    {prop.paybackYears} anos
-                  </td>
+                  <td className="py-2.5 font-mono text-[#8B949E]">{prop.paybackYears} anos</td>
                   <td className="py-2.5">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                        prop.status === 'Aprovada'
-                          ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
-                          : prop.status === 'Em negociação'
-                          ? 'bg-blue-950/60 text-blue-400 border-blue-800/60'
-                          : prop.status === 'Pendente'
-                          ? 'bg-amber-950/60 text-amber-400 border-amber-800/60'
-                          : 'bg-red-950/60 text-red-400 border-red-800/60'
+                        statusClasses[prop.status]
                       }`}
                     >
                       {prop.status}
