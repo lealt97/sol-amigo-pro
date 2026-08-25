@@ -29,6 +29,7 @@ import {
 
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
+import { LoginView } from './components/LoginView';
 import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
@@ -50,6 +51,13 @@ import { HelpModal } from './components/HelpModal';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return (
+      localStorage.getItem('solamigo.auth') === 'true' ||
+      sessionStorage.getItem('solamigo.auth') === 'true'
+    );
+  });
+
   // Navigation
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -96,6 +104,18 @@ export default function App() {
     applyThemeToDOM(currentTheme);
   }, [currentTheme]);
 
+  const handleLogin = (remember: boolean) => {
+    if (remember) {
+      localStorage.setItem('solamigo.auth', 'true');
+      sessionStorage.removeItem('solamigo.auth');
+    } else {
+      sessionStorage.setItem('solamigo.auth', 'true');
+      localStorage.removeItem('solamigo.auth');
+    }
+
+    setIsAuthenticated(true);
+  };
+
   const handleApplyTheme = (newTheme: ThemeConfig) => {
     setCurrentTheme(newTheme);
   };
@@ -103,6 +123,10 @@ export default function App() {
   const handleSavePdfSettings = (newSettings: PdfSettingsConfig) => {
     setCurrentPdfSettings(newSettings);
   };
+
+  if (!isAuthenticated) {
+    return <LoginView onLogin={handleLogin} />;
+  }
 
   // Proposal handlers
   const handleSaveNewProposal = (newProposal: SolarProposal) => {
