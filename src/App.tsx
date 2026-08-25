@@ -26,11 +26,14 @@ import {
   INITIAL_CONTRACTS,
   INITIAL_FINANCIAL,
 } from './data/initialData';
+import { supabase } from './lib/supabase';
 
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
+import { MfaChallengeView } from './components/MfaChallengeView';
+import { SecurityView } from './components/SecurityView';
 import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
@@ -51,42 +54,38 @@ import { GitHubModal } from './components/GitHubModal';
 import { HelpModal } from './components/HelpModal';
 import { CheckCircle2 } from 'lucide-react';
 
-type AuthScreen = 'login' | 'register';
+type AuthScreen = 'login' | 'register' | 'mfa';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaError, setMfaError] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
 
-  // Navigation
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Theme & PDF configuration
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(loadSavedTheme);
   const [currentPdfSettings, setCurrentPdfSettings] = useState<PdfSettingsConfig>(
     loadSavedPdfSettings
   );
 
-  // Data Collections (initialized from initialData and kept in local state)
   const [proposals, setProposals] = useState<SolarProposal[]>(INITIAL_PROPOSALS);
   const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(
-    INITIAL_OPPORTUNITIES
-  );
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(INITIAL_OPPORTUNITIES);
   const [products, setProducts] = useState<SolarProduct[]>(INITIAL_PRODUCTS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
-  const [contracts, setContracts] = useState<ContractItem[]>(INITIAL_CONTRACTS);
-  const [financial, setFinancial] = useState<FinancialRecord[]>(INITIAL_FINANCIAL);
+  const [contracts] = useState<ContractItem[]>(INITIAL_CONTRACTS);
+  const [financial] = useState<FinancialRecord[]>(INITIAL_FINANCIAL);
 
-  // Modals state
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
   const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
-
-  // Global Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -96,17 +95,183 @@ export default function App() {
     }, 4000);
   };
 
-  // Sync DOM with current theme whenever it changes
   useEffect(() => {
     applyThemeToDOM(currentTheme);
   }, [currentTheme]);
 
-  const handleLogin = (_remember?: boolean) => {
-    setIsAuthenticated(true);
+  const resolveMfaRequirement = async (): Promise<boolean> => {
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance?.currentLevel === 'aal1' && assurance?.nextLevel === 'aal2') {
+      const { data: factorData, error } = await supabase.auth.mfa.listFactors();
+      if (error) return false;
+      const factor = factorData?.totp?.find((item) => item.status === 'verified') ??
+        factorData?.all?.find((item: any) => item.factor_type === 'totp' && item.status === 'verified');
+      if (factor) {
+        setMfaFactorId(factor.id);
+        setMfaError('');
+        setAuthScreen('mfa');
+        setIsAuthenticated(false);
+        return true;
+      }
+    }
+    return false;
   };
 
-  const handleRegister = () => {
+  useEffect(() => {
+    let mounted = true;
+
+    const restoreSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (!data.session) {
+        setIsAuthenticated(false);
+        setAuthLoading(false);
+        return;
+      }
+
+      const needsMfa = await resolveMfaRequirement();
+      if (!mounted) return;
+      if (!needsMfa) setIsAuthenticated(true);
+      setAuthLoading(false);
+    };
+
+    void restoreSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setIsAuthenticated(false);
+        setMfaFactorId(null);
+        setAuthScreen('login');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogin = async ({
+    email,
+    password,
+    remember,
+  }: {
+    email: string;
+    password: string;
+    remember: boolean;
+  }): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (error.message.toLowerCase().includes('invalid login')) {
+        return 'E-mail ou senha incorretos.';
+      }
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        return 'Confirme seu e-mail antes de entrar.';
+      }
+      return error.message;
+    }
+
+    if (remember) localStorage.setItem('solamigo.login.email', email);
+    else localStorage.removeItem('solamigo.login.email');
+
+    const needsMfa = await resolveMfaRequirement();
+    if (!needsMfa) {
+      setIsAuthenticated(true);
+      setAuthScreen('login');
+    }
+    return null;
+  };
+
+  const handleRegister = async ({
+    name,
+    company,
+    email,
+    password,
+  }: {
+    name: string;
+    company: string;
+    email: string;
+    password: string;
+  }): Promise<{ error?: string; message?: string }> => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          company,
+        },
+      },
+    });
+
+    if (error) {
+      if (error.message.toLowerCase().includes('already registered')) {
+        return { error: 'Já existe uma conta cadastrada com este e-mail.' };
+      }
+      return { error: error.message };
+    }
+
+    if (data.session) {
+      setIsAuthenticated(true);
+      setAuthScreen('login');
+      return {};
+    }
+
+    return {
+      message: 'Conta criada. Verifique sua caixa de e-mail para confirmar o cadastro antes de entrar.',
+    };
+  };
+
+  const handleForgotPassword = async (email: string): Promise<string> => {
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return `Não foi possível enviar o e-mail: ${error.message}`;
+    return 'Enviamos as instruções de recuperação para o seu e-mail.';
+  };
+
+  const handleVerifyMfa = async (code: string) => {
+    if (!mfaFactorId) {
+      setMfaError('Fator MFA não encontrado. Faça login novamente.');
+      return;
+    }
+    if (code.length !== 6) {
+      setMfaError('Digite o código de 6 dígitos.');
+      return;
+    }
+
+    setMfaLoading(true);
+    setMfaError('');
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaFactorId,
+      code,
+    });
+
+    if (error) {
+      setMfaError('Código inválido ou expirado. Tente novamente.');
+      setMfaLoading(false);
+      return;
+    }
+
+    setMfaFactorId(null);
     setIsAuthenticated(true);
+    setAuthScreen('login');
+    setMfaLoading(false);
+  };
+
+  const handleCancelMfa = async () => {
+    await supabase.auth.signOut();
+    setMfaFactorId(null);
+    setMfaError('');
+    setAuthScreen('login');
+    setIsAuthenticated(false);
+  };
+
+  const handleSignedOut = () => {
+    setIsAuthenticated(false);
+    setMfaFactorId(null);
+    setAuthScreen('login');
+    setActivePage('dashboard');
   };
 
   const handleApplyTheme = (newTheme: ThemeConfig) => {
@@ -116,6 +281,17 @@ export default function App() {
   const handleSavePdfSettings = (newSettings: PdfSettingsConfig) => {
     setCurrentPdfSettings(newSettings);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          <p className="text-sm font-semibold">Carregando sua conta...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     if (authScreen === 'register') {
@@ -127,15 +303,26 @@ export default function App() {
       );
     }
 
+    if (authScreen === 'mfa') {
+      return (
+        <MfaChallengeView
+          error={mfaError}
+          loading={mfaLoading}
+          onVerify={handleVerifyMfa}
+          onCancel={handleCancelMfa}
+        />
+      );
+    }
+
     return (
       <LoginView
         onLogin={handleLogin}
+        onForgotPassword={handleForgotPassword}
         onOpenRegister={() => setAuthScreen('register')}
       />
     );
   }
 
-  // Proposal handlers
   const handleSaveNewProposal = (newProposal: SolarProposal) => {
     setProposals((prev) => [newProposal, ...prev]);
     const newOpp: Opportunity = {
@@ -144,7 +331,7 @@ export default function App() {
       clientName: newProposal.clientName,
       value: newProposal.totalValue,
       stage: 'proposta_enviada',
-      expectedCloseDate: newProposal.validUntil,
+      expectedCloseDate: newProposal.validUntil || '',
       systemPowerKWp: newProposal.systemPowerKWp,
       assignedTo: 'Rodrigo Leal',
     };
@@ -158,13 +345,8 @@ export default function App() {
     );
   };
 
-  const handleUpdateProposalStatus = (
-    id: string,
-    newStatus: SolarProposal['status']
-  ) => {
-    setProposals((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
-    );
+  const handleUpdateProposalStatus = (id: string, newStatus: SolarProposal['status']) => {
+    setProposals((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
     showToast(`Status da proposta alterado para "${newStatus}"`);
   };
 
@@ -173,38 +355,21 @@ export default function App() {
     showToast('Proposta excluída');
   };
 
-  const handleUpdateOpportunityStage = (
-    id: string,
-    newStage: OpportunityStage
-  ) => {
-    setOpportunities((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o))
-    );
+  const handleUpdateOpportunityStage = (id: string, newStage: OpportunityStage) => {
+    setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o)));
     showToast('Etapa da oportunidade atualizada!');
   };
 
-  const handleAddOpportunity = (opp: Opportunity) => {
-    setOpportunities((prev) => [opp, ...prev]);
-  };
-
-  const handleAddClient = (client: Client) => {
-    setClients((prev) => [client, ...prev]);
-  };
+  const handleAddOpportunity = (opp: Opportunity) => setOpportunities((prev) => [opp, ...prev]);
+  const handleAddClient = (client: Client) => setClients((prev) => [client, ...prev]);
 
   const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-    );
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
     showToast(`Status da tarefa atualizado para "${newStatus}"`);
   };
 
-  const handleAddTask = (task: TaskItem) => {
-    setTasks((prev) => [task, ...prev]);
-  };
-
-  const handleAddProduct = (prod: SolarProduct) => {
-    setProducts((prev) => [prod, ...prev]);
-  };
+  const handleAddTask = (task: TaskItem) => setTasks((prev) => [task, ...prev]);
+  const handleAddProduct = (prod: SolarProduct) => setProducts((prev) => [prod, ...prev]);
 
   const renderCurrentView = () => {
     switch (activePage) {
@@ -235,6 +400,14 @@ export default function App() {
             onShowToast={showToast}
           />
         );
+      case 'seguranca':
+        return (
+          <SecurityView
+            theme={currentTheme}
+            onShowToast={showToast}
+            onSignedOut={handleSignedOut}
+          />
+        );
       case 'propostas':
         return (
           <PropostasView
@@ -248,88 +421,33 @@ export default function App() {
           />
         );
       case 'clientes':
-        return (
-          <ClientesView
-            clients={clients}
-            theme={currentTheme}
-            onAddClient={handleAddClient}
-            onShowToast={showToast}
-          />
-        );
+        return <ClientesView clients={clients} theme={currentTheme} onAddClient={handleAddClient} onShowToast={showToast} />;
       case 'oportunidades':
-        return (
-          <OportunidadesView
-            opportunities={opportunities}
-            theme={currentTheme}
-            onUpdateStage={handleUpdateOpportunityStage}
-            onAddOpportunity={handleAddOpportunity}
-            onShowToast={showToast}
-          />
-        );
+        return <OportunidadesView opportunities={opportunities} theme={currentTheme} onUpdateStage={handleUpdateOpportunityStage} onAddOpportunity={handleAddOpportunity} onShowToast={showToast} />;
       case 'produtos':
-        return (
-          <ProdutosView
-            products={products}
-            theme={currentTheme}
-            onAddProduct={handleAddProduct}
-            onShowToast={showToast}
-          />
-        );
+        return <ProdutosView products={products} theme={currentTheme} onAddProduct={handleAddProduct} onShowToast={showToast} />;
       case 'tarefas':
-        return (
-          <TarefasView
-            tasks={tasks}
-            theme={currentTheme}
-            onUpdateStatus={handleUpdateTaskStatus}
-            onAddTask={handleAddTask}
-            onShowToast={showToast}
-          />
-        );
+        return <TarefasView tasks={tasks} theme={currentTheme} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onShowToast={showToast} />;
       case 'contratos':
-        return (
-          <ContratosView
-            contracts={contracts}
-            theme={currentTheme}
-            onShowToast={showToast}
-          />
-        );
+        return <ContratosView contracts={contracts} theme={currentTheme} onShowToast={showToast} />;
       case 'financeiro':
-        return (
-          <FinanceiroView
-            records={financial}
-            theme={currentTheme}
-            onShowToast={showToast}
-          />
-        );
+        return <FinanceiroView records={financial} theme={currentTheme} onShowToast={showToast} />;
       case 'empresas':
         return <EmpresasView theme={currentTheme} onShowToast={showToast} />;
       case 'relatorios':
         return <RelatoriosView theme={currentTheme} onShowToast={showToast} />;
       default:
-        return (
-          <DashboardView
-            proposals={proposals}
-            theme={currentTheme}
-            onNavigate={(page) => setActivePage(page)}
-            onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
-            onViewProposal={(prop) => setViewingProposal(prop)}
-          />
-        );
+        return <DashboardView proposals={proposals} theme={currentTheme} onNavigate={(page) => setActivePage(page)} onOpenNewProposal={() => setIsNewProposalModalOpen(true)} onViewProposal={(prop) => setViewingProposal(prop)} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-[#C9D1D9] flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
       {toastMessage && (
-        <div className="fixed bottom-12 right-6 z-50 bg-[#161B22] text-[#C9D1D9] px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-[#30363D] animate-in fade-in slide-in-from-bottom-5 font-mono text-xs">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#161B22] text-[#C9D1D9] px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-[#30363D] animate-in fade-in slide-in-from-bottom-5 font-mono text-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="font-medium text-white">{toastMessage}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-[#8B949E] hover:text-white text-xs ml-2 cursor-pointer"
-          >
-            ✕
-          </button>
+          <button onClick={() => setToastMessage(null)} className="text-[#8B949E] hover:text-white text-xs ml-2 cursor-pointer">✕</button>
         </div>
       )}
 
@@ -344,11 +462,7 @@ export default function App() {
         onOpenHelp={() => setIsHelpModalOpen(true)}
       />
 
-      <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
-          sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'
-        }`}
-      >
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
         <Topbar
           activePage={activePage}
           theme={currentTheme}
@@ -360,25 +474,7 @@ export default function App() {
           onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">
-          {renderCurrentView()}
-        </main>
-
-        <footer className="h-8 bg-[#161B22] border-t border-[#30363D] flex items-center justify-between px-4 md:px-6 shrink-0 select-none">
-          <div className="flex items-center space-x-3 text-[10px] text-[#8B949E] uppercase tracking-wider font-bold">
-            <span className="flex items-center text-emerald-400">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1.5 animate-pulse"></span>
-              System OK
-            </span>
-            <span className="w-1 h-1 bg-[#484F58] rounded-full"></span>
-            <span className="font-mono text-[#8B949E]">Latency: 24ms</span>
-            <span className="w-1 h-1 bg-[#484F58] rounded-full hidden sm:inline-block"></span>
-            <span className="hidden sm:inline-block text-[#8B949E]">Region: US-EAST-1</span>
-          </div>
-          <div className="text-[10px] text-[#484F58] font-mono">
-            BUILD_ID: 2024.11.02_RELEASE
-          </div>
-        </footer>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">{renderCurrentView()}</main>
       </div>
 
       <NewProposalModal
@@ -406,15 +502,8 @@ export default function App() {
         onShowToast={showToast}
       />
 
-      <GitHubModal
-        isOpen={isGitHubModalOpen}
-        onClose={() => setIsGitHubModalOpen(false)}
-      />
-
-      <HelpModal
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
-      />
+      <GitHubModal isOpen={isGitHubModalOpen} onClose={() => setIsGitHubModalOpen(false)} />
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
 }
