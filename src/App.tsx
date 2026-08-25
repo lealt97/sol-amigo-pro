@@ -48,15 +48,10 @@ import { ProposalViewerModal } from './components/ProposalViewerModal';
 import { QuickAddModal } from './components/QuickAddModal';
 import { GitHubModal } from './components/GitHubModal';
 import { HelpModal } from './components/HelpModal';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return (
-      localStorage.getItem('solamigo.auth') === 'true' ||
-      sessionStorage.getItem('solamigo.auth') === 'true'
-    );
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Navigation
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
@@ -82,9 +77,7 @@ export default function App() {
 
   // Modals state
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
-  const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(
-    null
-  );
+  const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -104,15 +97,7 @@ export default function App() {
     applyThemeToDOM(currentTheme);
   }, [currentTheme]);
 
-  const handleLogin = (remember: boolean) => {
-    if (remember) {
-      localStorage.setItem('solamigo.auth', 'true');
-      sessionStorage.removeItem('solamigo.auth');
-    } else {
-      sessionStorage.setItem('solamigo.auth', 'true');
-      localStorage.removeItem('solamigo.auth');
-    }
-
+  const handleLogin = () => {
     setIsAuthenticated(true);
   };
 
@@ -131,7 +116,6 @@ export default function App() {
   // Proposal handlers
   const handleSaveNewProposal = (newProposal: SolarProposal) => {
     setProposals((prev) => [newProposal, ...prev]);
-    // Also create opportunity
     const newOpp: Opportunity = {
       id: `opp-${Date.now()}`,
       title: `Proposta ${newProposal.code} - ${newProposal.clientName}`,
@@ -143,7 +127,6 @@ export default function App() {
       assignedTo: 'Rodrigo Leal',
     };
     setOpportunities((prev) => [newOpp, ...prev]);
-    // Increment proposalsCount for client
     setClients((prev) =>
       prev.map((c) =>
         c.name === newProposal.clientName
@@ -168,7 +151,6 @@ export default function App() {
     showToast('Proposta excluída');
   };
 
-  // Opportunity handlers
   const handleUpdateOpportunityStage = (
     id: string,
     newStage: OpportunityStage
@@ -176,19 +158,17 @@ export default function App() {
     setOpportunities((prev) =>
       prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o))
     );
-    showToast(`Etapa da oportunidade atualizada!`);
+    showToast('Etapa da oportunidade atualizada!');
   };
 
   const handleAddOpportunity = (opp: Opportunity) => {
     setOpportunities((prev) => [opp, ...prev]);
   };
 
-  // Client handlers
   const handleAddClient = (client: Client) => {
     setClients((prev) => [client, ...prev]);
   };
 
-  // Task handlers
   const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
@@ -200,12 +180,10 @@ export default function App() {
     setTasks((prev) => [task, ...prev]);
   };
 
-  // Product handlers
   const handleAddProduct = (prod: SolarProduct) => {
     setProducts((prev) => [prod, ...prev]);
   };
 
-  // Render view router
   const renderCurrentView = () => {
     switch (activePage) {
       case 'dashboard':
@@ -302,13 +280,9 @@ export default function App() {
           />
         );
       case 'empresas':
-        return (
-          <EmpresasView theme={currentTheme} onShowToast={showToast} />
-        );
+        return <EmpresasView theme={currentTheme} onShowToast={showToast} />;
       case 'relatorios':
-        return (
-          <RelatoriosView theme={currentTheme} onShowToast={showToast} />
-        );
+        return <RelatoriosView theme={currentTheme} onShowToast={showToast} />;
       default:
         return (
           <DashboardView
@@ -324,7 +298,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-[#C9D1D9] flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-12 right-6 z-50 bg-[#161B22] text-[#C9D1D9] px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-[#30363D] animate-in fade-in slide-in-from-bottom-5 font-mono text-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -338,7 +311,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Sidebar Shell */}
       <Sidebar
         activePage={activePage}
         onNavigate={(page) => setActivePage(page)}
@@ -350,7 +322,6 @@ export default function App() {
         onOpenHelp={() => setIsHelpModalOpen(true)}
       />
 
-      {/* Main Content Area */}
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
           sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'
@@ -371,7 +342,6 @@ export default function App() {
           {renderCurrentView()}
         </main>
 
-        {/* High Density Status Footer */}
         <footer className="h-8 bg-[#161B22] border-t border-[#30363D] flex items-center justify-between px-4 md:px-6 shrink-0 select-none">
           <div className="flex items-center space-x-3 text-[10px] text-[#8B949E] uppercase tracking-wider font-bold">
             <span className="flex items-center text-emerald-400">
@@ -389,7 +359,6 @@ export default function App() {
         </footer>
       </div>
 
-      {/* Interactive Modals */}
       <NewProposalModal
         isOpen={isNewProposalModalOpen}
         onClose={() => setIsNewProposalModalOpen(false)}
