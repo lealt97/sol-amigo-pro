@@ -3,24 +3,12 @@ import {
   Users,
   FileText,
   DollarSign,
-  TrendingUp,
-  Sun,
   Zap,
   ArrowUpRight,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle,
   Plus,
   FileDown,
-  Sparkles,
   Activity,
-  Cpu,
-  Database,
   GitCommit,
-  Layers,
-  Terminal,
 } from 'lucide-react';
 import { SolarProposal, ThemeConfig, PageKey } from '../types';
 
@@ -53,11 +41,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .reduce((acc, p) => acc + p.systemPowerKWp, 0)
     .toFixed(1);
 
-  const totalValor = proposals.reduce((acc, p) => acc + p.totalValue, 0);
+  const proposalStatus = [
+    {
+      label: 'Aprovadas',
+      value: proposals.filter((p) => p.status === 'Aprovada').length,
+      color: '#34D399',
+    },
+    {
+      label: 'Em negociação',
+      value: proposals.filter((p) => p.status === 'Em negociação').length,
+      color: '#60A5FA',
+    },
+    {
+      label: 'Pendentes',
+      value: proposals.filter((p) => p.status === 'Pendente').length,
+      color: '#FBBF24',
+    },
+    {
+      label: 'Recusadas',
+      value: proposals.filter((p) => p.status === 'Recusada').length,
+      color: '#F87171',
+    },
+  ];
+
+  const totalStatus = proposalStatus.reduce((acc, item) => acc + item.value, 0);
+  let statusAngle = 0;
+  const donutGradient = totalStatus
+    ? `conic-gradient(${proposalStatus
+        .map((item) => {
+          const start = (statusAngle / totalStatus) * 360;
+          statusAngle += item.value;
+          const end = (statusAngle / totalStatus) * 360;
+          return `${item.color} ${start}deg ${end}deg`;
+        })
+        .join(', ')})`
+    : 'conic-gradient(#30363D 0deg 360deg)';
 
   return (
     <div id="dashboard-view" className="space-y-4 max-w-7xl mx-auto text-[#C9D1D9]">
-      {/* High Density Header Bar */}
       <section className="bg-[#161B22] p-4 md:p-5 rounded-lg border border-[#30363D] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -91,7 +112,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
-      {/* 4 High Density Metric Blocks */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="border-l-2 border-blue-500 pl-3 py-2.5 bg-[#1C2128] border border-[#30363D] border-l-0 rounded-r">
           <div className="flex items-center justify-between pr-2">
@@ -146,11 +166,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
-      {/* Main 12-col High Density Telemetry & Overview Grid */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column (8 cols): Activity + Infrastructure Status */}
         <div className="lg:col-span-8 flex flex-col space-y-4">
-          {/* Latest Activity Card */}
           <div className="bg-[#161B22] border border-[#30363D] rounded-lg flex flex-col overflow-hidden">
             <div className="p-3.5 border-b border-[#30363D] flex justify-between items-center bg-[#1C2128]">
               <div className="flex items-center gap-2">
@@ -224,7 +241,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Infrastructure Status */}
           <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-3.5 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#8B949E]">
@@ -256,82 +272,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column (4 cols): Repository Overview & Stack */}
-        <div className="lg:col-span-4 flex flex-col space-y-4">
-          {/* Repository Overview */}
-          <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-3.5">
-            <h3 className="text-xs font-semibold text-white mb-3">
-              Repository Overview
-            </h3>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[#8B949E]">Language</span>
-                <div className="flex items-center space-x-1.5">
-                  <span className="w-2.5 h-2.5 bg-[#3178c6] rounded-full"></span>
-                  <span className="text-white font-medium">TypeScript</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8B949E]">Package Manager</span>
-                <span className="font-mono text-white">pnpm@8.10</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8B949E]">License</span>
-                <span className="text-white font-mono">MIT</span>
-              </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-[#30363D]">
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="p-2 bg-[#1C2128] rounded border border-[#30363D]">
-                  <p className="text-base font-mono font-bold text-white">32</p>
-                  <p className="text-[9px] text-[#8B949E] uppercase font-bold">Stars</p>
-                </div>
-                <div className="p-2 bg-[#1C2128] rounded border border-[#30363D]">
-                  <p className="text-base font-mono font-bold text-white">12</p>
-                  <p className="text-[9px] text-[#8B949E] uppercase font-bold">Forks</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stack Configuration */}
-          <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-3.5 flex-1 flex flex-col">
-            <h3 className="text-xs font-semibold text-white mb-2.5">
-              Stack Configuration
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                REACT@19.0
-              </span>
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                TAILWIND@4.0
-              </span>
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                NODE@20.1
-              </span>
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                MQTT@5.0
-              </span>
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                DOCKER
-              </span>
-              <span className="px-2 py-0.5 bg-[#21262D] border border-[#30363D] rounded text-[10px] font-mono text-[#8B949E]">
-                POSTGRESQL
-              </span>
+        <div className="lg:col-span-4">
+          <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-4 h-full flex flex-col">
+            <div>
+              <h3 className="text-xs font-semibold text-white">
+                Distribuição das Propostas
+              </h3>
+              <p className="text-[11px] text-[#8B949E] mt-1">
+                Status atual das propostas comerciais
+              </p>
             </div>
 
-            <div className="mt-auto pt-3">
-              <div className="p-2.5 bg-[#1C2128] rounded border border-[#30363D] text-[10px] font-mono text-[#8B949E] leading-relaxed">
-                <span className="text-emerald-400">➜</span> Connecting to sol-amigo-pro... Verification successful. Access granted for user: <span className="text-white">solar-admin</span>. Full read/write capability enabled.
+            <div className="flex-1 flex items-center justify-center py-5">
+              <div
+                className="relative w-44 h-44 rounded-full shadow-inner"
+                style={{ background: donutGradient }}
+                aria-label="Gráfico de rosca com a distribuição das propostas por status"
+              >
+                <div className="absolute inset-[24px] rounded-full bg-[#161B22] border border-[#30363D] flex flex-col items-center justify-center">
+                  <span className="text-3xl font-mono font-bold text-white">
+                    {totalStatus}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[#8B949E] mt-0.5">
+                    Propostas
+                  </span>
+                </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {proposalStatus.map((item) => {
+                const percentage = totalStatus
+                  ? Math.round((item.value / totalStatus) * 100)
+                  : 0;
+
+                return (
+                  <div
+                    key={item.label}
+                    className="bg-[#1C2128] border border-[#30363D] rounded-md p-2.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-[10px] text-[#8B949E] truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className="flex items-end justify-between mt-1.5">
+                      <span className="text-base font-mono font-bold text-white">
+                        {item.value}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#8B949E]">
+                        {percentage}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Grid 2: 7-day Bar Chart & Proposal Status Funnel */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Proposals Chart */}
         <div className="lg:col-span-7 bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -359,9 +364,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="w-full bg-[#1C2128] rounded-t h-32 flex items-end overflow-hidden border-t border-x border-[#30363D]">
                   <div
                     className="w-full rounded-t transition-all duration-300 bg-gradient-to-t from-blue-600 to-blue-400 group-hover:from-blue-500 group-hover:to-blue-300"
-                    style={{
-                      height: `${item.val}%`,
-                    }}
+                    style={{ height: `${item.val}%` }}
                   />
                 </div>
                 <span className="text-[10px] font-mono text-[#8B949E]">
@@ -372,7 +375,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Funnel Status */}
         <div className="lg:col-span-5 bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
           <div>
             <h3 className="font-semibold text-white text-xs">
@@ -387,9 +389,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-xs text-[#C9D1D9]">
-                  Aprovadas (Fechadas)
-                </span>
+                <span className="text-xs text-[#C9D1D9]">Aprovadas (Fechadas)</span>
               </div>
               <b className="text-xs font-mono text-emerald-400">32</b>
             </div>
@@ -397,9 +397,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-400" />
-                <span className="text-xs text-[#C9D1D9]">
-                  Em Negociação Ativa
-                </span>
+                <span className="text-xs text-[#C9D1D9]">Em Negociação Ativa</span>
               </div>
               <b className="text-xs font-mono text-blue-400">18</b>
             </div>
@@ -407,9 +405,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs text-[#C9D1D9]">
-                  Pendentes de Análise
-                </span>
+                <span className="text-xs text-[#C9D1D9]">Pendentes de Análise</span>
               </div>
               <b className="text-xs font-mono text-amber-400">11</b>
             </div>
@@ -417,9 +413,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-2.5 rounded bg-[#1C2128] border border-[#30363D] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-400" />
-                <span className="text-xs text-[#C9D1D9]">
-                  Recusadas / Canceladas
-                </span>
+                <span className="text-xs text-[#C9D1D9]">Recusadas / Canceladas</span>
               </div>
               <b className="text-xs font-mono text-red-400">5</b>
             </div>
@@ -427,7 +421,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
-      {/* Recent Proposals Table */}
       <section className="bg-[#161B22] p-4 rounded-lg border border-[#30363D] space-y-3">
         <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
           <div>
