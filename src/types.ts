@@ -35,7 +35,8 @@ export type PageKey =
   | 'relatorios'
   | 'financeiro'
   | 'personalizacao'
-  | 'pdf-customizacoes';
+  | 'pdf-customizacoes'
+  | 'seguranca';
 
 export type OpportunityStage =
   | 'prospeccao'
