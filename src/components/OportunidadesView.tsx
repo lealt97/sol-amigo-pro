@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowRight,
   BadgeDollarSign,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock3,
   Filter,
+  GripVertical,
   Handshake,
   Plus,
   Search,
@@ -25,6 +28,8 @@ interface OportunidadesViewProps {
   onShowToast: (msg: string) => void;
 }
 
+type DragDirection = 'previous' | 'next' | null;
+
 const STAGES: Array<{ key: OpportunityStage; label: string }> = [
   { key: 'prospeccao', label: 'Prospecção inicial' },
   { key: 'visita_tecnica', label: 'Visita técnica / análise' },
@@ -35,6 +40,16 @@ const STAGES: Array<{ key: OpportunityStage; label: string }> = [
 
 const getStageLabel = (stage: OpportunityStage) =>
   STAGES.find((item) => item.key === stage)?.label ?? stage;
+
+const getAdjacentStage = (
+  stage: OpportunityStage,
+  direction: Exclude<DragDirection, null>
+): OpportunityStage => {
+  const index = STAGES.findIndex((item) => item.key === stage);
+  if (index < 0) return stage;
+  const targetIndex = direction === 'next' ? index + 1 : index - 1;
+  return STAGES[targetIndex]?.key ?? stage;
+};
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -62,6 +77,12 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<'Todas' | OpportunityStage>('Todas');
+  const [dragState, setDragState] = useState<{
+    id: string;
+    offset: number;
+    direction: DragDirection;
+  } | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; pointerId: number } | null>(null);
 
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
@@ -167,6 +188,81 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
     }
   };
 
+  const handlePointerDown = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('button, select, input, textarea, a, label')) return;
+
+    dragRef.current = {
+      id: opp.id,
+      startX: event.clientX,
+      pointerId: event.pointerId,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragState({ id: opp.id, offset: 0, direction: null });
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
+
+    const rawOffset = event.clientX - drag.startX;
+    const offset = Math.max(-120, Math.min(120, rawOffset));
+    const hasPrevious = getAdjacentStage(opp.stage, 'previous') !== opp.stage;
+    const hasNext = getAdjacentStage(opp.stage, 'next') !== opp.stage;
+
+    let direction: DragDirection = null;
+    if (offset <= -45 && hasPrevious) direction = 'previous';
+    if (offset >= 45 && hasNext) direction = 'next';
+
+    setDragState({ id: opp.id, offset, direction });
+  };
+
+  const finishCardDrag = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
+
+    const rawOffset = event.clientX - drag.startX;
+    let direction: DragDirection = null;
+    if (rawOffset <= -80) direction = 'previous';
+    if (rawOffset >= 80) direction = 'next';
+
+    if (direction) {
+      const nextStage = getAdjacentStage(opp.stage, direction);
+      if (nextStage !== opp.stage) {
+        onUpdateStage(opp.id, nextStage);
+        onShowToast(`Oportunidade movida para “${getStageLabel(nextStage)}”`);
+      }
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+    setDragState(null);
+  };
+
+  const cancelCardDrag = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+    setDragState(null);
+  };
+
+  const moveStageByButton = (
+    opp: Opportunity,
+    direction: Exclude<DragDirection, null>
+  ) => {
+    const nextStage = getAdjacentStage(opp.stage, direction);
+    if (nextStage === opp.stage) return;
+    onUpdateStage(opp.id, nextStage);
+    onShowToast(`Oportunidade movida para “${getStageLabel(nextStage)}”`);
+  };
+
   return (
     <div id="oportunidades-page" className="mx-auto max-w-[1480px] space-y-5" style={{ color: theme.text }}>
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -259,26 +355,83 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
         </div>
       </section>
 
+      <div
+        className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border px-4 py-3 text-xs"
+        style={{ ...panelStyle, color: mutedText }}
+      >
+        <span className="flex items-center gap-2 font-semibold" style={{ color: theme.text }}>
+          <GripVertical className="h-4 w-4" style={{ color: theme.secondary }} />
+          Arraste o card para mudar a etapa
+        </span>
+        <span className="flex items-center gap-1.5"><ArrowLeft className="h-3.5 w-3.5" /> etapa anterior</span>
+        <span className="flex items-center gap-1.5">próxima etapa <ArrowRight className="h-3.5 w-3.5" /></span>
+      </div>
+
       <section>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((opp) => {
             const expanded = expandedIds.has(opp.id);
             const tone = stageColor(opp.stage);
+            const isDragging = dragState?.id === opp.id;
+            const previousStage = getAdjacentStage(opp.stage, 'previous');
+            const nextStage = getAdjacentStage(opp.stage, 'next');
+            const hasPrevious = previousStage !== opp.stage;
+            const hasNext = nextStage !== opp.stage;
 
             return (
               <article
                 key={opp.id}
-                className={`relative overflow-hidden rounded-xl border transition-all duration-200 ${expanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
+                onPointerDown={(event) => handlePointerDown(event, opp)}
+                onPointerMove={(event) => handlePointerMove(event, opp)}
+                onPointerUp={(event) => finishCardDrag(event, opp)}
+                onPointerCancel={(event) => cancelCardDrag(event, opp)}
+                className={`relative overflow-hidden rounded-xl border ${expanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
                 style={{
                   borderColor: expanded
                     ? `color-mix(in srgb, ${theme.secondary} 58%, ${theme.border})`
                     : theme.border,
                   backgroundColor: expanded ? panelAltBg : panelBg,
-                  boxShadow: expanded
-                    ? `0 12px 30px color-mix(in srgb, ${theme.primary} 18%, transparent)`
-                    : `0 4px 14px color-mix(in srgb, ${theme.primary} 8%, transparent)`,
+                  boxShadow: isDragging
+                    ? `0 16px 34px color-mix(in srgb, ${theme.secondary} 24%, transparent)`
+                    : expanded
+                      ? `0 12px 30px color-mix(in srgb, ${theme.primary} 18%, transparent)`
+                      : `0 4px 14px color-mix(in srgb, ${theme.primary} 8%, transparent)`,
+                  transform: isDragging ? `translate3d(${dragState.offset}px, 0, 0) scale(1.01)` : 'translate3d(0, 0, 0)',
+                  transition: isDragging ? 'box-shadow 120ms ease' : 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+                  zIndex: isDragging ? 20 : undefined,
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  touchAction: 'pan-y',
+                  userSelect: isDragging ? 'none' : undefined,
                 }}
               >
+                {isDragging && dragState.direction === 'previous' && hasPrevious && (
+                  <div
+                    className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold shadow-sm"
+                    style={{
+                      backgroundColor: theme.secondary,
+                      borderColor: theme.secondary,
+                      color: getContrastFg(theme.secondary),
+                    }}
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    {getStageLabel(previousStage)}
+                  </div>
+                )}
+
+                {isDragging && dragState.direction === 'next' && hasNext && (
+                  <div
+                    className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold shadow-sm"
+                    style={{
+                      backgroundColor: theme.secondary,
+                      borderColor: theme.secondary,
+                      color: getContrastFg(theme.secondary),
+                    }}
+                  >
+                    {getStageLabel(nextStage)}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
+                )}
+
                 <div className="h-1 w-full" style={{ backgroundColor: tone }} />
 
                 <div className="p-4">
@@ -387,7 +540,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                     </div>
 
                     <div
-                      className="mt-4 flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
+                      className="mt-4 flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center lg:justify-between"
                       style={{ borderColor: theme.border, backgroundColor: panelBg }}
                     >
                       <div>
@@ -396,20 +549,44 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                           Etapa comercial
                         </div>
                         <p className="mt-1 text-xs" style={{ color: mutedText }}>
-                          Atualize a oportunidade conforme o avanço da negociação.
+                          Arraste o card ou use os controles abaixo para avançar e voltar no funil.
                         </p>
                       </div>
 
-                      <select
-                        value={opp.stage}
-                        onChange={(event) => onUpdateStage(opp.id, event.target.value as OpportunityStage)}
-                        className="h-10 min-w-[220px] rounded-lg border bg-transparent px-3 text-sm font-semibold outline-none"
-                        style={{ borderColor: theme.border, color: theme.text }}
-                      >
-                        {STAGES.map((stage) => (
-                          <option key={stage.key} value={stage.key}>{stage.label}</option>
-                        ))}
-                      </select>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={!hasPrevious}
+                          onClick={() => moveStageByButton(opp, 'previous')}
+                          className="btn-outline inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                          style={{ borderColor: theme.border }}
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                          Anterior
+                        </button>
+
+                        <select
+                          value={opp.stage}
+                          onChange={(event) => onUpdateStage(opp.id, event.target.value as OpportunityStage)}
+                          className="h-10 min-w-[220px] rounded-lg border bg-transparent px-3 text-sm font-semibold outline-none"
+                          style={{ borderColor: theme.border, color: theme.text }}
+                        >
+                          {STAGES.map((stage) => (
+                            <option key={stage.key} value={stage.key}>{stage.label}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          disabled={!hasNext}
+                          onClick={() => moveStageByButton(opp, 'next')}
+                          className="btn-outline inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                          style={{ borderColor: theme.border }}
+                        >
+                          Próxima
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
