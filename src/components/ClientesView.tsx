@@ -13,6 +13,7 @@ import {
   Phone,
   Plus,
   Search,
+  Trash2,
   UserRound,
   Users,
   X,
@@ -25,6 +26,7 @@ interface ClientesViewProps {
   clients: Client[];
   theme: ThemeConfig;
   onAddClient: (client: Client) => void;
+  onDeleteClient: (id: string) => void;
   onShowToast: (msg: string) => void;
 }
 
@@ -61,6 +63,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({
   clients,
   theme,
   onAddClient,
+  onDeleteClient,
   onShowToast,
 }) => {
   const [search, setSearch] = useState('');
@@ -178,6 +181,19 @@ export const ClientesView: React.FC<ClientesViewProps> = ({
   const openClient = (client: Client) => {
     setSelectedClient(client);
     setSelectedTab('visao');
+  };
+
+  const handleDeleteSelectedClient = () => {
+    if (!selectedClient) return;
+    const confirmed = window.confirm(
+      `Excluir o cliente "${selectedClient.name}"? Esta ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    const deletedName = selectedClient.name;
+    onDeleteClient(selectedClient.id);
+    setSelectedClient(null);
+    onShowToast(`Cliente ${deletedName} excluído`);
   };
 
   const panelStyle = {
@@ -399,6 +415,13 @@ export const ClientesView: React.FC<ClientesViewProps> = ({
                   style={{ borderColor: theme.border }}
                 >
                   <MessageCircle className="h-4 w-4" /> Registrar interação
+                </button>
+                <button
+                  onClick={handleDeleteSelectedClient}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-bold transition hover:bg-red-500/10"
+                  style={{ borderColor: 'rgba(239,68,68,.45)', color: '#ef4444' }}
+                >
+                  <Trash2 className="h-4 w-4" /> Excluir cliente
                 </button>
               </div>
             </div>
