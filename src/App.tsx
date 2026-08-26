@@ -446,6 +446,7 @@ export default function App() {
         return (
           <OportunidadesView
             opportunities={opportunities}
+            products={products}
             theme={currentTheme}
             onUpdateStage={handleUpdateOpportunityStage}
             onUpdateOpportunity={handleUpdateOpportunity}
