@@ -20,10 +20,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { Opportunity, OpportunityStage, ThemeConfig } from '../types';
+import { INITIAL_PRODUCTS } from '../data/initialData';
 import { getContrastFg } from '../utils/themeEngine';
 import { OpportunityQualificationPanel } from './OpportunityQualificationPanel';
 import { OpportunityEnergySurveyPanel } from './OpportunityEnergySurveyPanel';
 import { OpportunitySizingPanel } from './OpportunitySizingPanel';
+import { OpportunityKitCostsPanel } from './OpportunityKitCostsPanel';
 
 interface OportunidadesViewProps {
   opportunities: Opportunity[];
@@ -48,7 +50,7 @@ const FLOW: Array<{
 }> = [
   { key: 'lead', label: 'Cliente / Lead', short: 'Lead', description: 'Contato e origem da oportunidade.', icon: UserRound },
   { key: 'qualificacao', label: 'Qualificação', short: 'Qualificação', description: 'Entender necessidade, interesse e potencial da venda.', icon: ClipboardCheck },
-  { key: 'levantamento', label: 'Levantamento', short: 'Levantamento', description: 'Conta de energia, unidade consumidora e consumo.', icon: WalletCards },
+  { key: 'levantamento', label: 'Levantamento', short: 'Levantamento', description: 'Conta de energia, consumo médio ou levantamento detalhado.', icon: WalletCards },
   { key: 'dimensionamento', label: 'Dimensionamento FV', short: 'Dimensionamento', description: 'Potência, geração e solução fotovoltaica recomendada.', icon: Zap },
   { key: 'kit_custos', label: 'Kit & Custos', short: 'Kit & Custos', description: 'Equipamentos, custos, preço, margem e lucro.', icon: PackageCheck },
   { key: 'proposta', label: 'Proposta', short: 'Proposta', description: 'Proposta técnica e comercial gerada a partir dos dados anteriores.', icon: FileText },
@@ -171,13 +173,13 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
       return;
     }
 
-    if (stage === 'dimensionamento' && selected.energySurvey?.status !== 'concluido') {
-      onShowToast('Conclua o levantamento energético antes de iniciar o dimensionamento.');
+    if (stage === 'kit_custos' && selected.sizing?.status !== 'concluido') {
+      onShowToast('Conclua o dimensionamento fotovoltaico antes de montar o kit e os custos.');
       return;
     }
 
-    if (stage === 'kit_custos' && selected.sizing?.status !== 'concluido') {
-      onShowToast('Conclua o dimensionamento fotovoltaico antes de montar o kit e os custos.');
+    if (stage === 'proposta' && selected.kitCosts?.status !== 'concluido') {
+      onShowToast('Conclua Kit & Custos antes de gerar a proposta.');
       return;
     }
 
@@ -199,6 +201,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
       selected.stage !== 'qualificacao' &&
       selected.stage !== 'levantamento' &&
       selected.stage !== 'dimensionamento' &&
+      selected.stage !== 'kit_custos' &&
       selectedIndex < FLOW.length - 1
   );
 
@@ -444,6 +447,20 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                   />
                 )}
 
+                {(selected.stage === 'kit_custos' || selected.kitCosts) && (
+                  <OpportunityKitCostsPanel
+                    opportunity={selected}
+                    products={INITIAL_PRODUCTS}
+                    theme={theme}
+                    panelBg={panelBg}
+                    panelAltBg={panelAltBg}
+                    mutedText={mutedText}
+                    onUpdateOpportunity={onUpdateOpportunity}
+                    onUpdateStage={onUpdateStage}
+                    onShowToast={onShowToast}
+                  />
+                )}
+
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-base font-extrabold">Fluxo da oportunidade</h3>
@@ -464,9 +481,9 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                     const completed = currentIndex > index;
                     const baseAvailable = currentIndex >= index - 1 && selected.stage !== 'perdido';
                     const qualificationBlocks = stage.key === 'levantamento' && selected.qualification?.status !== 'qualificado' && currentIndex < index;
-                    const surveyBlocks = stage.key === 'dimensionamento' && selected.energySurvey?.status !== 'concluido' && currentIndex < index;
                     const sizingBlocks = stage.key === 'kit_custos' && selected.sizing?.status !== 'concluido' && currentIndex < index;
-                    const available = baseAvailable && !qualificationBlocks && !surveyBlocks && !sizingBlocks;
+                    const kitBlocks = stage.key === 'proposta' && selected.kitCosts?.status !== 'concluido' && currentIndex < index;
+                    const available = baseAvailable && !qualificationBlocks && !sizingBlocks && !kitBlocks;
 
                     return (
                       <button
@@ -501,8 +518,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                               </div>
                               <p className="mt-1 text-xs leading-relaxed" style={{ color: mutedText }}>{stage.description}</p>
                               {qualificationBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir a qualificação.</p>}
-                              {surveyBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir o levantamento.</p>}
                               {sizingBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir o dimensionamento.</p>}
+                              {kitBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir Kit & Custos.</p>}
                             </div>
                           </div>
                           <ChevronRight className="mt-1 h-4 w-4 shrink-0" style={{ color: mutedText }} />
