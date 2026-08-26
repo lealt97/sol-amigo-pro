@@ -7,7 +7,6 @@ import {
   Client,
   Opportunity,
   OpportunityStage,
-  EnergySurvey,
   SolarProduct,
   TaskItem,
   ContractItem,
@@ -20,7 +19,6 @@ import {
 } from './utils/themeEngine';
 import {
   INITIAL_PROPOSALS,
-  INITIAL_OPPORTUNITIES,
   INITIAL_PRODUCTS,
   INITIAL_TASKS,
   INITIAL_CONTRACTS,
@@ -29,8 +27,6 @@ import {
 import { supabase } from './lib/supabase';
 import {
   fetchClients,
-  createClient as createClientRecord,
-  deleteClient as deleteClientRecord,
   updateClientProposalsCount,
 } from './services/clients';
 
@@ -46,9 +42,7 @@ import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { PropostasView } from './components/PropostasView';
-import { ClientesView } from './components/ClientesView';
 import { OportunidadesView } from './components/OportunidadesView';
-import { LevantamentoEnergeticoView } from './components/LevantamentoEnergeticoView';
 import { ProdutosView } from './components/ProdutosView';
 import { TarefasView } from './components/TarefasView';
 import { ContratosView } from './components/ContratosView';
@@ -84,9 +78,7 @@ export default function App() {
 
   const [proposals, setProposals] = useState<SolarProposal[]>(INITIAL_PROPOSALS);
   const [clients, setClients] = useState<Client[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(INITIAL_OPPORTUNITIES);
-  const [energySurveys, setEnergySurveys] = useState<EnergySurvey[]>([]);
-  const [selectedEnergyOpportunityId, setSelectedEnergyOpportunityId] = useState<string | null>(null);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [products, setProducts] = useState<SolarProduct[]>(INITIAL_PRODUCTS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
   const [contracts] = useState<ContractItem[]>(INITIAL_CONTRACTS);
@@ -360,17 +352,6 @@ export default function App() {
 
   const handleSaveNewProposal = (newProposal: SolarProposal) => {
     setProposals((prev) => [newProposal, ...prev]);
-    const newOpp: Opportunity = {
-      id: `opp-${Date.now()}`,
-      title: `Proposta ${newProposal.code} - ${newProposal.clientName}`,
-      clientName: newProposal.clientName,
-      value: newProposal.totalValue,
-      stage: 'proposta_enviada',
-      expectedCloseDate: newProposal.validUntil || '',
-      systemPowerKWp: newProposal.systemPowerKWp,
-      assignedTo: 'Rodrigo Leal',
-    };
-    setOpportunities((prev) => [newOpp, ...prev]);
 
     const targetClient = clients.find((client) => client.name === newProposal.clientName);
     if (targetClient) {
@@ -402,47 +383,10 @@ export default function App() {
 
   const handleUpdateOpportunityStage = (id: string, newStage: OpportunityStage) => {
     setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o)));
-    showToast('Etapa da oportunidade atualizada!');
   };
 
-  const handleAddOpportunity = (opp: Opportunity) => setOpportunities((prev) => [opp, ...prev]);
-
-  const handleSaveEnergySurvey = (survey: EnergySurvey) => {
-    setEnergySurveys((prev) => {
-      const existingIndex = prev.findIndex((item) => item.opportunityId === survey.opportunityId);
-      if (existingIndex < 0) return [survey, ...prev];
-      return prev.map((item, index) => index === existingIndex ? survey : item);
-    });
-    setSelectedEnergyOpportunityId(survey.opportunityId);
-  };
-
-  const handleAddClient = (client: Client) => {
-    setClients((prev) => [client, ...prev]);
-
-    void createClientRecord(client)
-      .then((savedClient) => {
-        setClients((prev) =>
-          prev.map((current) => (current.id === client.id ? savedClient : current))
-        );
-      })
-      .catch((error) => {
-        console.error('Erro ao salvar cliente:', error);
-        setClients((prev) => prev.filter((current) => current.id !== client.id));
-        showToast('Não foi possível salvar o cliente no banco de dados.');
-      });
-  };
-
-  const handleDeleteClient = (id: string) => {
-    const removedClient = clients.find((client) => client.id === id);
-    setClients((prev) => prev.filter((client) => client.id !== id));
-
-    if (!removedClient || id.startsWith('cli-')) return;
-
-    void deleteClientRecord(id).catch((error) => {
-      console.error('Erro ao excluir cliente:', error);
-      setClients((prev) => [removedClient, ...prev]);
-      showToast('Não foi possível excluir o cliente do banco de dados.');
-    });
+  const handleAddOpportunity = (opp: Opportunity) => {
+    setOpportunities((prev) => [opp, ...prev]);
   };
 
   const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
@@ -494,6 +438,16 @@ export default function App() {
         );
       case 'area-risco':
         return <RiskAreaView theme={currentTheme} />;
+      case 'oportunidades':
+        return (
+          <OportunidadesView
+            opportunities={opportunities}
+            theme={currentTheme}
+            onUpdateStage={handleUpdateOpportunityStage}
+            onAddOpportunity={handleAddOpportunity}
+            onShowToast={showToast}
+          />
+        );
       case 'propostas':
         return (
           <PropostasView
@@ -503,30 +457,6 @@ export default function App() {
             onViewProposal={(prop) => setViewingProposal(prop)}
             onUpdateStatus={handleUpdateProposalStatus}
             onDeleteProposal={handleDeleteProposal}
-            onShowToast={showToast}
-          />
-        );
-      case 'clientes':
-        return (
-          <ClientesView
-            clients={clients}
-            theme={currentTheme}
-            onAddClient={handleAddClient}
-            onDeleteClient={handleDeleteClient}
-            onShowToast={showToast}
-          />
-        );
-      case 'oportunidades':
-        return <OportunidadesView opportunities={opportunities} theme={currentTheme} onUpdateStage={handleUpdateOpportunityStage} onAddOpportunity={handleAddOpportunity} onShowToast={showToast} />;
-      case 'levantamento':
-        return (
-          <LevantamentoEnergeticoView
-            opportunities={opportunities}
-            clients={clients}
-            surveys={energySurveys}
-            initialOpportunityId={selectedEnergyOpportunityId}
-            theme={currentTheme}
-            onSave={handleSaveEnergySurvey}
             onShowToast={showToast}
           />
         );
