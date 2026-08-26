@@ -19,7 +19,6 @@ import {
 } from './utils/themeEngine';
 import {
   INITIAL_PROPOSALS,
-  INITIAL_CLIENTS,
   INITIAL_OPPORTUNITIES,
   INITIAL_PRODUCTS,
   INITIAL_TASKS,
@@ -27,6 +26,12 @@ import {
   INITIAL_FINANCIAL,
 } from './data/initialData';
 import { supabase } from './lib/supabase';
+import {
+  fetchClients,
+  createClient as createClientRecord,
+  deleteClient as deleteClientRecord,
+  updateClientProposalsCount,
+} from './services/clients';
 
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -74,7 +79,7 @@ export default function App() {
   );
 
   const [proposals, setProposals] = useState<SolarProposal[]>(INITIAL_PROPOSALS);
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
+  const [clients, setClients] = useState<Client[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(INITIAL_OPPORTUNITIES);
   const [products, setProducts] = useState<SolarProduct[]>(INITIAL_PRODUCTS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
@@ -151,6 +156,30 @@ export default function App() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isAuthenticated) {
+      setClients([]);
+      return;
+    }
+
+    const loadClients = async () => {
+      try {
+        const persistedClients = await fetchClients();
+        if (!cancelled) setClients(persistedClients);
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+        if (!cancelled) showToast('Não foi possível carregar os clientes do banco de dados.');
+      }
+    };
+
+    void loadClients();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   const handleLogin = async ({
     email,
@@ -336,13 +365,23 @@ export default function App() {
       assignedTo: 'Rodrigo Leal',
     };
     setOpportunities((prev) => [newOpp, ...prev]);
-    setClients((prev) =>
-      prev.map((c) =>
-        c.name === newProposal.clientName
-          ? { ...c, proposalsCount: c.proposalsCount + 1 }
-          : c
-      )
-    );
+
+    const targetClient = clients.find((client) => client.name === newProposal.clientName);
+    if (targetClient) {
+      const nextCount = targetClient.proposalsCount + 1;
+      setClients((prev) =>
+        prev.map((client) =>
+          client.id === targetClient.id ? { ...client, proposalsCount: nextCount } : client
+        )
+      );
+
+      if (!targetClient.id.startsWith('cli-')) {
+        void updateClientProposalsCount(targetClient.id, nextCount).catch((error) => {
+          console.error('Erro ao atualizar propostas do cliente:', error);
+          showToast('Proposta salva, mas não foi possível atualizar o cliente no banco.');
+        });
+      }
+    }
   };
 
   const handleUpdateProposalStatus = (id: string, newStatus: SolarProposal['status']) => {
@@ -361,8 +400,35 @@ export default function App() {
   };
 
   const handleAddOpportunity = (opp: Opportunity) => setOpportunities((prev) => [opp, ...prev]);
-  const handleAddClient = (client: Client) => setClients((prev) => [client, ...prev]);
-  const handleDeleteClient = (id: string) => setClients((prev) => prev.filter((client) => client.id !== id));
+
+  const handleAddClient = (client: Client) => {
+    setClients((prev) => [client, ...prev]);
+
+    void createClientRecord(client)
+      .then((savedClient) => {
+        setClients((prev) =>
+          prev.map((current) => (current.id === client.id ? savedClient : current))
+        );
+      })
+      .catch((error) => {
+        console.error('Erro ao salvar cliente:', error);
+        setClients((prev) => prev.filter((current) => current.id !== client.id));
+        showToast('Não foi possível salvar o cliente no banco de dados.');
+      });
+  };
+
+  const handleDeleteClient = (id: string) => {
+    const removedClient = clients.find((client) => client.id === id);
+    setClients((prev) => prev.filter((client) => client.id !== id));
+
+    if (!removedClient || id.startsWith('cli-')) return;
+
+    void deleteClientRecord(id).catch((error) => {
+      console.error('Erro ao excluir cliente:', error);
+      setClients((prev) => [removedClient, ...prev]);
+      showToast('Não foi possível excluir o cliente do banco de dados.');
+    });
+  };
 
   const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
