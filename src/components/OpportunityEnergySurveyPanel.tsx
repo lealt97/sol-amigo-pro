@@ -111,13 +111,19 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
 
   const completeAndAdvance = () => {
     if (!ready) {
-      onShowToast('Complete os dados obrigatórios do levantamento antes de avançar.');
+      onShowToast('Complete os dados obrigatórios do levantamento antes de concluir esta modalidade.');
       return;
     }
 
     persist({ status: 'concluido' });
     onUpdateStage(opportunity.id, 'dimensionamento');
     onShowToast('Levantamento concluído. Próxima etapa: dimensionamento fotovoltaico.');
+  };
+
+  const skipToSizing = () => {
+    if (opportunity.energySurvey) saveDraft();
+    onUpdateStage(opportunity.id, 'dimensionamento');
+    onShowToast('Dimensionamento aberto. Informe o consumo médio diretamente ou faça o levantamento de carga.');
   };
 
   const statusLabel = survey.status === 'concluido' ? 'Concluído' : 'Em preenchimento';
@@ -141,7 +147,7 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
           <div>
             <h3 className="text-base font-extrabold">3. Levantamento energético</h3>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed" style={{ color: mutedText }}>
-              Registre os dados da unidade consumidora e o histórico de 12 meses que alimentarão o dimensionamento.
+              O histórico detalhado de 12 meses pode ser registrado aqui, mas não é obrigatório para dimensionar. Também é possível informar o consumo médio diretamente ou usar levantamento de carga na próxima etapa.
             </p>
           </div>
         </div>
@@ -268,7 +274,7 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
               <div>
                 <h4 className="text-sm font-extrabold">Histórico de consumo — 12 meses</h4>
                 <p className="mt-1 text-xs" style={{ color: mutedText }}>
-                  Informe o consumo em kWh de cada mês da fatura ou histórico da distribuidora.
+                  Informe o consumo em kWh de cada mês se quiser manter o levantamento detalhado da unidade consumidora.
                 </p>
               </div>
               <span className="text-[11px] font-bold" style={{ color: completeHistory ? theme.accent : mutedText }}>
@@ -333,7 +339,7 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
           </div>
 
           <div className="rounded-xl border p-4" style={{ borderColor: theme.border, backgroundColor: panelBg }}>
-            <h4 className="text-sm font-extrabold">Dados necessários</h4>
+            <h4 className="text-sm font-extrabold">Levantamento detalhado</h4>
             <div className="mt-3 space-y-2">
               {[
                 ['Distribuidora', Boolean(survey.concessionaria.trim())],
@@ -358,11 +364,11 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
               backgroundColor: ready ? `color-mix(in srgb, ${theme.accent} 8%, ${panelBg})` : panelBg,
             }}
           >
-            <p className="text-xs font-extrabold">{ready ? 'Pronto para dimensionar' : 'Levantamento incompleto'}</p>
+            <p className="text-xs font-extrabold">{ready ? 'Levantamento detalhado completo' : 'Levantamento detalhado opcional'}</p>
             <p className="mt-1 text-[11px] leading-relaxed" style={{ color: mutedText }}>
               {ready
-                ? 'Os dados necessários estão completos e podem alimentar o dimensionamento fotovoltaico.'
-                : 'Complete os dados pendentes para liberar o dimensionamento.'}
+                ? 'Você pode concluir este levantamento e usar a média calculada no dimensionamento.'
+                : 'Se não quiser preencher todo o histórico, avance e informe o consumo médio diretamente ou faça o levantamento de carga.'}
             </p>
           </div>
         </aside>
@@ -380,16 +386,32 @@ export const OpportunityEnergySurveyPanel: React.FC<OpportunityEnergySurveyPanel
         </button>
 
         {opportunity.stage === 'levantamento' && (
-          <button
-            type="button"
-            onClick={completeAndAdvance}
-            disabled={!ready}
-            className="btn-filled inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold"
-            style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}
-          >
-            Concluir e dimensionar
-            <ArrowRight className="h-4 w-4" />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={skipToSizing}
+              className="btn-outline inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold"
+              style={{ borderColor: theme.border }}
+            >
+              Consumo médio ou levantamento de carga
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={completeAndAdvance}
+              disabled={!ready}
+              className="btn-filled inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold"
+              style={{
+                backgroundColor: theme.secondary,
+                color: getContrastFg(theme.secondary),
+                opacity: ready ? 1 : 0.45,
+              }}
+            >
+              Concluir levantamento detalhado
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </>
         )}
       </div>
     </section>
