@@ -123,9 +123,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeFg = getContrastFg(theme.secondary);
   const mutedOpacity = sidebarIsDark ? 0.68 : 0.72;
   const hoverClass = sidebarIsDark ? 'hover:bg-white/10' : 'hover:bg-black/5';
-  const displayName = getShortName(profile.fullName);
+  const shortName = getShortName(profile.fullName);
+  const displayName = shortName.toLocaleLowerCase('pt-BR') === 'renan hora' ? 'Renan Leal' : shortName;
   const companyName = profile.company.trim() || 'Conta autenticada';
-  const initials = getInitials(profile.fullName);
+  const initials = displayName === 'Renan Leal' ? 'RL' : getInitials(profile.fullName);
 
   useEffect(() => {
     let mounted = true;
