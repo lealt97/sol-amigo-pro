@@ -120,15 +120,15 @@ export interface Client {
 export type QualificationStatus = 'pendente' | 'qualificado' | 'nao_qualificado';
 
 export interface OpportunityQualification {
-  customerProfile: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
-  averageMonthlyBill: number;
-  propertyOwnership: 'Próprio' | 'Alugado' | 'Outro';
-  decisionMaker: 'Sim' | 'Não' | 'Compartilhada';
-  interestLevel: 'Baixo' | 'Médio' | 'Alto';
-  purchaseTimeframe: 'Até 30 dias' | '1 a 3 meses' | '3 a 6 meses' | 'Mais de 6 meses' | 'Sem prazo';
-  paymentPreference: 'À vista' | 'Financiamento' | 'Ainda não definido';
-  mainObjective: string;
-  notes: string;
+  customerProfile?: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
+  averageMonthlyBill?: number;
+  propertyOwnership?: 'Próprio' | 'Alugado' | 'Outro';
+  decisionMaker?: 'Sim' | 'Não' | 'Compartilhada';
+  interestLevel?: 'Baixo' | 'Médio' | 'Alto';
+  purchaseTimeframe?: 'Até 30 dias' | '1 a 3 meses' | '3 a 6 meses' | 'Mais de 6 meses' | 'Sem prazo';
+  paymentPreference?: 'À vista' | 'Financiamento' | 'Ainda não definido';
+  mainObjective?: string;
+  notes?: string;
   status: QualificationStatus;
   updatedAt: string;
 }
