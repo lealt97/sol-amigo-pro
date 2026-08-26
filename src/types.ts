@@ -153,8 +153,23 @@ export interface EnergySurvey {
 }
 
 export type SizingStatus = 'rascunho' | 'concluido';
+export type SizingInputMethod = 'consumo_medio' | 'levantamento_carga';
+
+export interface LoadSurveyItem {
+  id: string;
+  description: string;
+  quantity: number;
+  powerW: number;
+  hoursPerDay: number;
+  daysPerMonth: number;
+}
 
 export interface OpportunitySizing {
+  inputMethod: SizingInputMethod;
+  directAverageConsumptionKWh: number;
+  loadSurveyItems: LoadSurveyItem[];
+  loadSurveyMonthlyConsumptionKWh: number;
+  sourceConsumptionKWh: number;
   sunHoursPerDay: number;
   performanceRatio: number;
   targetCoveragePercent: number;
