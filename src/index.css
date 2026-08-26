@@ -167,6 +167,7 @@ main > #dashboard-view,
 main > #personalizacao-page,
 main > #clientes-page,
 main > #oportunidades-page,
+main > #levantamento-page,
 main > #seguranca-page,
 main > #perfil-page,
 main > #area-risco-page {
@@ -197,6 +198,7 @@ main > #area-risco-page {
 
 #clientes-page select option,
 #oportunidades-page select option,
+#levantamento-page select option,
 .crm-input option {
   background-color: var(--neutral);
   color: var(--text);
