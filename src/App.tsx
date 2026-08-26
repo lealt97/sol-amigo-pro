@@ -39,6 +39,8 @@ import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { MfaChallengeView } from './components/MfaChallengeView';
 import { SecurityView } from './components/SecurityView';
+import { ProfileView } from './components/ProfileView';
+import { RiskAreaView } from './components/RiskAreaView';
 import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
@@ -450,6 +452,8 @@ export default function App() {
             onViewProposal={(prop) => setViewingProposal(prop)}
           />
         );
+      case 'perfil':
+        return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
         return (
           <PersonalizacaoView
@@ -475,6 +479,8 @@ export default function App() {
             onSignedOut={handleSignedOut}
           />
         );
+      case 'area-risco':
+        return <RiskAreaView theme={currentTheme} />;
       case 'propostas':
         return (
           <PropostasView
