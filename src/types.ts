@@ -152,6 +152,27 @@ export interface EnergySurvey {
   updatedAt: string;
 }
 
+export type SizingStatus = 'rascunho' | 'concluido';
+
+export interface OpportunitySizing {
+  sunHoursPerDay: number;
+  performanceRatio: number;
+  targetCoveragePercent: number;
+  futureConsumptionKWh: number;
+  modulePowerW: number;
+  moduleAreaM2: number;
+  designConsumptionKWh: number;
+  requiredPowerKWp: number;
+  modulesCount: number;
+  installedPowerKWp: number;
+  estimatedMonthlyGenerationKWh: number;
+  estimatedAnnualGenerationKWh: number;
+  estimatedCoveragePercent: number;
+  estimatedAreaM2: number;
+  status: SizingStatus;
+  updatedAt: string;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -167,6 +188,7 @@ export interface Opportunity {
   createdAt?: string;
   qualification?: OpportunityQualification;
   energySurvey?: EnergySurvey;
+  sizing?: OpportunitySizing;
 }
 
 export interface SolarProduct {
