@@ -27,6 +27,7 @@ export type PageKey =
   | 'dashboard'
   | 'oportunidades'
   | 'clientes'
+  | 'levantamento'
   | 'empresas'
   | 'propostas'
   | 'contratos'
@@ -119,6 +120,24 @@ export interface Opportunity {
   expectedCloseDate: string;
   systemPowerKWp: number;
   assignedTo: string;
+}
+
+export interface EnergySurvey {
+  id: string;
+  opportunityId: string;
+  clientName: string;
+  concessionaria: string;
+  consumerUnit: string;
+  connectionType: 'Monofásica' | 'Bifásica' | 'Trifásica';
+  consumerClass: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
+  tariffMode: 'Convencional' | 'Tarifa Branca' | 'Grupo A';
+  installationAddress: string;
+  monthlyConsumptionKWh: number[];
+  averageConsumptionKWh: number;
+  currentMonthlyBill: number;
+  tariffPerKWh: number;
+  notes: string;
+  updatedAt: string;
 }
 
 export interface SolarProduct {
