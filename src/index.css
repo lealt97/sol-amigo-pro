@@ -90,7 +90,9 @@ main > * {
 main > #dashboard-view,
 main > #personalizacao-page,
 main > #clientes-page,
-main > #seguranca-page {
+main > #seguranca-page,
+main > #perfil-page,
+main > #area-risco-page {
   display: block !important;
 }
 
