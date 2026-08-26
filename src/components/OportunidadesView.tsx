@@ -339,7 +339,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                   </div>
                 </div>
 
-                <div className="max-h-[870px] space-y-3 overflow-y-auto pr-1">
+                <div className="max-h-[575px] space-y-3 overflow-y-auto pr-1">
                   {items.map((opp) => {
                     const expanded = expandedIds.has(opp.id);
                     const isDragging = draggedId === opp.id;
