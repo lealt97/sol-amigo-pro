@@ -21,6 +21,9 @@
   --muted: #B8C5D1;
   --dim: #7F95A8;
   --sidebar: 258px;
+  --interactive-hover-bg: color-mix(in srgb, var(--secondary) 12%, transparent);
+  --interactive-hover-border: color-mix(in srgb, var(--secondary) 62%, var(--border));
+  --interactive-hover-link: color-mix(in srgb, var(--secondary) 88%, var(--text));
 }
 
 body {
@@ -41,9 +44,35 @@ input[type="color"]:not(:disabled),
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled),
 label[for],
+label:has(input[type="file"]:not(:disabled)),
 summary,
 [role="button"]:not([aria-disabled="true"]) {
   cursor: pointer;
+}
+
+button:not(:disabled),
+a[href],
+label:has(input[type="file"]:not(:disabled)),
+[role="button"]:not([aria-disabled="true"]) {
+  transition-property: background-color, border-color, color, filter, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+button:not(:disabled):hover,
+label:has(input[type="file"]:not(:disabled)):hover,
+[role="button"]:not([aria-disabled="true"]):hover {
+  filter: brightness(1.08);
+}
+
+a[href]:hover {
+  color: var(--interactive-hover-link);
+}
+
+.theme-interactive:hover {
+  background-color: var(--interactive-hover-bg) !important;
+  border-color: var(--interactive-hover-border) !important;
+  filter: brightness(1.04);
 }
 
 #app-topbar {
