@@ -133,22 +133,6 @@ export interface OpportunityQualification {
   updatedAt: string;
 }
 
-export interface Opportunity {
-  id: string;
-  title: string;
-  clientName: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  source?: string;
-  value: number;
-  stage: OpportunityStage;
-  expectedCloseDate: string;
-  systemPowerKWp: number;
-  assignedTo: string;
-  createdAt?: string;
-  qualification?: OpportunityQualification;
-}
-
 export interface EnergySurvey {
   id: string;
   opportunityId: string;
@@ -164,7 +148,25 @@ export interface EnergySurvey {
   currentMonthlyBill: number;
   tariffPerKWh: number;
   notes: string;
+  status?: 'rascunho' | 'concluido';
   updatedAt: string;
+}
+
+export interface Opportunity {
+  id: string;
+  title: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  source?: string;
+  value: number;
+  stage: OpportunityStage;
+  expectedCloseDate: string;
+  systemPowerKWp: number;
+  assignedTo: string;
+  createdAt?: string;
+  qualification?: OpportunityQualification;
+  energySurvey?: EnergySurvey;
 }
 
 export interface SolarProduct {
