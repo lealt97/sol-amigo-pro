@@ -2,11 +2,8 @@ import React from 'react';
 import {
   Plus,
   FileText,
-  Users,
   Target,
   CheckSquare,
-  Package,
-  DollarSign,
   X,
 } from 'lucide-react';
 import { PageKey } from '../types';
@@ -24,34 +21,13 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onClose,
   onNavigate,
   onOpenNewProposal,
-  onShowToast,
 }) => {
   if (!isOpen) return null;
 
   const actions = [
     {
-      title: 'Nova Proposta Solar',
-      desc: 'Dimensionamento fotovoltaico e geração de PDF comercial',
-      icon: FileText,
-      color: 'bg-amber-500 text-white',
-      action: () => {
-        onClose();
-        onOpenNewProposal();
-      },
-    },
-    {
-      title: 'Novo Cliente',
-      desc: 'Cadastro de pessoa física ou jurídica / unidade consumidora',
-      icon: Users,
-      color: 'bg-blue-500 text-white',
-      action: () => {
-        onClose();
-        onNavigate('clientes');
-      },
-    },
-    {
       title: 'Nova Oportunidade',
-      desc: 'Adicionar projeto ao pipeline e funil de vendas solar',
+      desc: 'Iniciar uma venda e concentrar todo o fluxo comercial em uma única ficha',
       icon: Target,
       color: 'bg-indigo-500 text-white',
       action: () => {
@@ -60,8 +36,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       },
     },
     {
+      title: 'Nova Proposta Solar',
+      desc: 'Fluxo legado temporário enquanto a proposta é integrada à oportunidade',
+      icon: FileText,
+      color: 'bg-amber-500 text-white',
+      action: () => {
+        onClose();
+        onOpenNewProposal();
+      },
+    },
+    {
       title: 'Tarefa / Homologação',
-      desc: 'Protocolo de acesso e vistoria técnica em concessionária',
+      desc: 'Protocolo de acesso, vistoria e atividades operacionais',
       icon: CheckSquare,
       color: 'bg-emerald-500 text-white',
       action: () => {
