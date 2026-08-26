@@ -19,8 +19,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { Opportunity, OpportunityStage, ThemeConfig } from '../types';
-import { INITIAL_PRODUCTS } from '../data/initialData';
+import { Opportunity, OpportunityStage, SolarProduct, ThemeConfig } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
 import { OpportunityQualificationPanel } from './OpportunityQualificationPanel';
 import { OpportunityEnergySurveyPanel } from './OpportunityEnergySurveyPanel';
@@ -29,6 +28,7 @@ import { OpportunityKitCostsPanel } from './OpportunityKitCostsPanel';
 
 interface OportunidadesViewProps {
   opportunities: Opportunity[];
+  products: SolarProduct[];
   theme: ThemeConfig;
   onUpdateStage: (id: string, newStage: OpportunityStage) => void;
   onUpdateOpportunity: (id: string, changes: Partial<Opportunity>) => void;
@@ -79,6 +79,7 @@ const formatDate = (value: string) => {
 
 export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   opportunities,
+  products,
   theme,
   onUpdateStage,
   onUpdateOpportunity,
@@ -450,7 +451,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                 {(selected.stage === 'kit_custos' || selected.kitCosts) && (
                   <OpportunityKitCostsPanel
                     opportunity={selected}
-                    products={INITIAL_PRODUCTS}
+                    products={products}
                     theme={theme}
                     panelBg={panelBg}
                     panelAltBg={panelAltBg}
