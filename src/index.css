@@ -21,8 +21,12 @@
   --muted: #B8C5D1;
   --dim: #7F95A8;
   --sidebar: 258px;
-  --interactive-hover-bg: color-mix(in srgb, var(--secondary) 12%, transparent);
-  --interactive-hover-border: color-mix(in srgb, var(--secondary) 62%, var(--border));
+
+  /* Estados interativos derivados do motor de cores */
+  --button-filled-hover-bg: var(--primary);
+  --button-filled-hover-fg: #ffffff;
+  --button-outline-hover-bg: var(--secondary);
+  --button-outline-hover-fg: #ffffff;
   --interactive-hover-link: color-mix(in srgb, var(--secondary) 88%, var(--text));
 }
 
@@ -59,20 +63,63 @@ label:has(input[type="file"]:not(:disabled)),
   transition-timing-function: ease;
 }
 
+/*
+  Padrão global de hover:
+  1) Controles sem preenchimento / com borda recebem a cor SECUNDÁRIA.
+  2) Controles que já possuem preenchimento recebem a cor PRIMÁRIA.
+  Em ambos os casos, o texto fica branco.
+*/
 button:not(:disabled):hover,
+input[type="button"]:not(:disabled):hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="reset"]:not(:disabled):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
 [role="button"]:not([aria-disabled="true"]):hover {
-  filter: brightness(1.08);
+  background-color: var(--button-outline-hover-bg) !important;
+  border-color: var(--button-outline-hover-bg) !important;
+  color: var(--button-outline-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botões com preenchimento via style inline do React */
+button:not(:disabled)[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"])[style*="background-color"]:hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botões com preenchimento via classes utilitárias Tailwind */
+button:not(:disabled)[class^="bg-"]:not([class*="bg-transparent"]):hover,
+button:not(:disabled)[class*=" bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
 }
 
 a[href]:hover {
   color: var(--interactive-hover-link);
 }
 
+/* Classe opcional para forçar explicitamente o comportamento de botão preenchido. */
+.btn-filled:hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Classe opcional para forçar explicitamente o comportamento de botão com borda. */
+.btn-outline:hover,
 .theme-interactive:hover {
-  background-color: var(--interactive-hover-bg) !important;
-  border-color: var(--interactive-hover-border) !important;
-  filter: brightness(1.04);
+  background-color: var(--button-outline-hover-bg) !important;
+  border-color: var(--button-outline-hover-bg) !important;
+  color: var(--button-outline-hover-fg) !important;
+  filter: none !important;
 }
 
 #app-topbar {
