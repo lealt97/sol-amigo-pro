@@ -7,6 +7,7 @@ import {
   Client,
   Opportunity,
   OpportunityStage,
+  EnergySurvey,
   SolarProduct,
   TaskItem,
   ContractItem,
@@ -47,6 +48,7 @@ import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { PropostasView } from './components/PropostasView';
 import { ClientesView } from './components/ClientesView';
 import { OportunidadesView } from './components/OportunidadesView';
+import { LevantamentoEnergeticoView } from './components/LevantamentoEnergeticoView';
 import { ProdutosView } from './components/ProdutosView';
 import { TarefasView } from './components/TarefasView';
 import { ContratosView } from './components/ContratosView';
@@ -83,6 +85,8 @@ export default function App() {
   const [proposals, setProposals] = useState<SolarProposal[]>(INITIAL_PROPOSALS);
   const [clients, setClients] = useState<Client[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(INITIAL_OPPORTUNITIES);
+  const [energySurveys, setEnergySurveys] = useState<EnergySurvey[]>([]);
+  const [selectedEnergyOpportunityId, setSelectedEnergyOpportunityId] = useState<string | null>(null);
   const [products, setProducts] = useState<SolarProduct[]>(INITIAL_PRODUCTS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
   const [contracts] = useState<ContractItem[]>(INITIAL_CONTRACTS);
@@ -403,6 +407,15 @@ export default function App() {
 
   const handleAddOpportunity = (opp: Opportunity) => setOpportunities((prev) => [opp, ...prev]);
 
+  const handleSaveEnergySurvey = (survey: EnergySurvey) => {
+    setEnergySurveys((prev) => {
+      const existingIndex = prev.findIndex((item) => item.opportunityId === survey.opportunityId);
+      if (existingIndex < 0) return [survey, ...prev];
+      return prev.map((item, index) => index === existingIndex ? survey : item);
+    });
+    setSelectedEnergyOpportunityId(survey.opportunityId);
+  };
+
   const handleAddClient = (client: Client) => {
     setClients((prev) => [client, ...prev]);
 
@@ -505,6 +518,18 @@ export default function App() {
         );
       case 'oportunidades':
         return <OportunidadesView opportunities={opportunities} theme={currentTheme} onUpdateStage={handleUpdateOpportunityStage} onAddOpportunity={handleAddOpportunity} onShowToast={showToast} />;
+      case 'levantamento':
+        return (
+          <LevantamentoEnergeticoView
+            opportunities={opportunities}
+            clients={clients}
+            surveys={energySurveys}
+            initialOpportunityId={selectedEnergyOpportunityId}
+            theme={currentTheme}
+            onSave={handleSaveEnergySurvey}
+            onShowToast={showToast}
+          />
+        );
       case 'produtos':
         return <ProdutosView products={products} theme={currentTheme} onAddProduct={handleAddProduct} onShowToast={showToast} />;
       case 'tarefas':
