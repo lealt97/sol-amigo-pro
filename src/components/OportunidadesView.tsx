@@ -23,6 +23,7 @@ import { Opportunity, OpportunityStage, ThemeConfig } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
 import { OpportunityQualificationPanel } from './OpportunityQualificationPanel';
 import { OpportunityEnergySurveyPanel } from './OpportunityEnergySurveyPanel';
+import { OpportunitySizingPanel } from './OpportunitySizingPanel';
 
 interface OportunidadesViewProps {
   opportunities: Opportunity[];
@@ -175,6 +176,11 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
       return;
     }
 
+    if (stage === 'kit_custos' && selected.sizing?.status !== 'concluido') {
+      onShowToast('Conclua o dimensionamento fotovoltaico antes de montar o kit e os custos.');
+      return;
+    }
+
     onUpdateStage(selected.id, stage);
     onShowToast(`Oportunidade movida para “${getStageLabel(stage)}”.`);
   };
@@ -192,6 +198,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
       selected.stage !== 'perdido' &&
       selected.stage !== 'qualificacao' &&
       selected.stage !== 'levantamento' &&
+      selected.stage !== 'dimensionamento' &&
       selectedIndex < FLOW.length - 1
   );
 
@@ -424,6 +431,19 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                   />
                 )}
 
+                {(selected.stage === 'dimensionamento' || selected.sizing) && (
+                  <OpportunitySizingPanel
+                    opportunity={selected}
+                    theme={theme}
+                    panelBg={panelBg}
+                    panelAltBg={panelAltBg}
+                    mutedText={mutedText}
+                    onUpdateOpportunity={onUpdateOpportunity}
+                    onUpdateStage={onUpdateStage}
+                    onShowToast={onShowToast}
+                  />
+                )}
+
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-base font-extrabold">Fluxo da oportunidade</h3>
@@ -445,7 +465,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                     const baseAvailable = currentIndex >= index - 1 && selected.stage !== 'perdido';
                     const qualificationBlocks = stage.key === 'levantamento' && selected.qualification?.status !== 'qualificado' && currentIndex < index;
                     const surveyBlocks = stage.key === 'dimensionamento' && selected.energySurvey?.status !== 'concluido' && currentIndex < index;
-                    const available = baseAvailable && !qualificationBlocks && !surveyBlocks;
+                    const sizingBlocks = stage.key === 'kit_custos' && selected.sizing?.status !== 'concluido' && currentIndex < index;
+                    const available = baseAvailable && !qualificationBlocks && !surveyBlocks && !sizingBlocks;
 
                     return (
                       <button
@@ -481,6 +502,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
                               <p className="mt-1 text-xs leading-relaxed" style={{ color: mutedText }}>{stage.description}</p>
                               {qualificationBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir a qualificação.</p>}
                               {surveyBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir o levantamento.</p>}
+                              {sizingBlocks && <p className="mt-2 text-[10px] font-bold" style={{ color: theme.secondary }}>Bloqueado até concluir o dimensionamento.</p>}
                             </div>
                           </div>
                           <ChevronRight className="mt-1 h-4 w-4 shrink-0" style={{ color: mutedText }} />
