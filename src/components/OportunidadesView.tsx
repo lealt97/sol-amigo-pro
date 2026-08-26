@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Target,
-  Plus,
-  ArrowRight,
-  DollarSign,
-  User,
-  Calendar,
+  BadgeDollarSign,
+  CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Filter,
+  Handshake,
+  Plus,
+  Search,
+  Target,
+  UserRound,
+  Zap,
+  X,
 } from 'lucide-react';
 import { Opportunity, OpportunityStage, ThemeConfig } from '../types';
+import { getContrastFg } from '../utils/themeEngine';
 
 interface OportunidadesViewProps {
   opportunities: Opportunity[];
@@ -18,13 +25,31 @@ interface OportunidadesViewProps {
   onShowToast: (msg: string) => void;
 }
 
-const STAGES: Array<{ key: OpportunityStage; label: string; color: string }> = [
-  { key: 'prospeccao', label: 'Prospecção Inicial', color: 'bg-slate-100 text-slate-800' },
-  { key: 'visita_tecnica', label: 'Visita Técnica / Análise', color: 'bg-purple-100 text-purple-800' },
-  { key: 'proposta_enviada', label: 'Proposta Enviada', color: 'bg-blue-100 text-blue-800' },
-  { key: 'negociacao', label: 'Em Negociação', color: 'bg-amber-100 text-amber-800' },
-  { key: 'fechado', label: 'Fechado / Ganho', color: 'bg-emerald-100 text-emerald-800' },
+const STAGES: Array<{ key: OpportunityStage; label: string }> = [
+  { key: 'prospeccao', label: 'Prospecção inicial' },
+  { key: 'visita_tecnica', label: 'Visita técnica / análise' },
+  { key: 'proposta_enviada', label: 'Proposta enviada' },
+  { key: 'negociacao', label: 'Em negociação' },
+  { key: 'fechado', label: 'Fechado / ganho' },
 ];
+
+const getStageLabel = (stage: OpportunityStage) =>
+  STAGES.find((item) => item.key === stage)?.label ?? stage;
+
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+
+const formatDate = (value: string) => {
+  if (!value) return 'Não informado';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+  const parsed = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('pt-BR');
+};
 
 export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   opportunities,
@@ -34,221 +59,479 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   onShowToast,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState<'Todas' | OpportunityStage>('Todas');
+
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
-  const [value, setValue] = useState(45000);
-  const [systemPowerKWp, setSystemPowerKWp] = useState(12.5);
+  const [value, setValue] = useState(0);
+  const [systemPowerKWp, setSystemPowerKWp] = useState(0);
+  const [expectedCloseDate, setExpectedCloseDate] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !clientName) return;
-    const newOpp: Opportunity = {
-      id: `opp-${Date.now()}`,
-      title,
-      clientName,
-      value: Number(value),
-      stage: 'prospeccao',
-      expectedCloseDate: '30/09/2026',
-      systemPowerKWp: Number(systemPowerKWp),
-      assignedTo: 'Rodrigo Leal',
+  const backgroundIsDark = getContrastFg(theme.background) === '#FFFFFF';
+  const panelBg = backgroundIsDark
+    ? `color-mix(in srgb, ${theme.background} 88%, #FFFFFF)`
+    : `color-mix(in srgb, ${theme.background} 94%, #000000)`;
+  const panelAltBg = backgroundIsDark
+    ? `color-mix(in srgb, ${theme.background} 82%, #FFFFFF)`
+    : `color-mix(in srgb, ${theme.background} 90%, #000000)`;
+  const mutedText = `color-mix(in srgb, ${theme.text} 62%, transparent)`;
+
+  const panelStyle = {
+    backgroundColor: panelBg,
+    borderColor: theme.border,
+    color: theme.text,
+  };
+
+  const filtered = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    return opportunities.filter((opp) => {
+      const matchesSearch =
+        !normalized ||
+        opp.title.toLowerCase().includes(normalized) ||
+        opp.clientName.toLowerCase().includes(normalized) ||
+        opp.assignedTo.toLowerCase().includes(normalized);
+      const matchesStage = stageFilter === 'Todas' || opp.stage === stageFilter;
+      return matchesSearch && matchesStage;
+    });
+  }, [opportunities, search, stageFilter]);
+
+  const metrics = useMemo(() => {
+    const pipelineValue = opportunities.reduce((sum, opp) => sum + (opp.value || 0), 0);
+    const negotiation = opportunities.filter((opp) => opp.stage === 'negociacao').length;
+    const closed = opportunities.filter((opp) => opp.stage === 'fechado').length;
+    return {
+      total: opportunities.length,
+      pipelineValue,
+      negotiation,
+      closed,
     };
-    onAddOpportunity(newOpp);
-    setModalOpen(false);
+  }, [opportunities]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const resetForm = () => {
     setTitle('');
     setClientName('');
-    onShowToast(`Oportunidade "${title}" criada com sucesso!`);
+    setValue(0);
+    setSystemPowerKWp(0);
+    setExpectedCloseDate('');
+    setAssignedTo('');
+  };
+
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!title.trim() || !clientName.trim()) return;
+
+    const newOpp: Opportunity = {
+      id: `opp-${Date.now()}`,
+      title: title.trim(),
+      clientName: clientName.trim(),
+      value: Number(value) || 0,
+      stage: 'prospeccao',
+      expectedCloseDate,
+      systemPowerKWp: Number(systemPowerKWp) || 0,
+      assignedTo: assignedTo.trim() || 'Não atribuído',
+    };
+
+    onAddOpportunity(newOpp);
+    setExpandedIds((current) => new Set(current).add(newOpp.id));
+    setModalOpen(false);
+    resetForm();
+    onShowToast(`Oportunidade “${newOpp.title}” criada com sucesso!`);
+  };
+
+  const stageColor = (stage: OpportunityStage) => {
+    switch (stage) {
+      case 'prospeccao':
+        return theme.secondary;
+      case 'visita_tecnica':
+        return `color-mix(in srgb, ${theme.secondary} 55%, ${theme.accent})`;
+      case 'proposta_enviada':
+        return theme.primary;
+      case 'negociacao':
+        return theme.accent;
+      case 'fechado':
+        return `color-mix(in srgb, ${theme.accent} 58%, ${theme.primary})`;
+      default:
+        return theme.secondary;
+    }
   };
 
   return (
-    <div id="oportunidades-page" className="space-y-6 max-w-7xl mx-auto">
-      {/* Banner */}
-      <section className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div id="oportunidades-page" className="mx-auto max-w-[1480px] space-y-5" style={{ color: theme.text }}>
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">
-            <Target className="w-3.5 h-3.5" />
-            Comercial / Funil de Vendas
+          <div
+            className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em]"
+            style={{ color: mutedText }}
+          >
+            <Target className="h-4 w-4" />
+            CRM · Gestão de oportunidades
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Pipeline de Oportunidades Solares
-          </h2>
-          <p className="text-slate-500 text-sm mt-1 max-w-2xl">
-            Acompanhe o ciclo de fechamento desde o primeiro contato até a assinatura do contrato fotovoltaico.
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">Oportunidades</h1>
+          <p className="mt-1 max-w-3xl text-sm" style={{ color: mutedText }}>
+            Acompanhe cada negociação do primeiro contato até o fechamento, mantendo valor, potência, responsável e etapa comercial em um único lugar.
           </p>
         </div>
 
         <button
+          type="button"
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:brightness-105 active:scale-95 shrink-0"
-          style={{
-            backgroundColor: theme.secondary,
-            boxShadow: `0 4px 14px ${theme.secondary}40`,
-          }}
+          className="btn-filled inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold shadow-sm"
+          style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}
         >
-          <Plus className="w-4 h-4" />
-          Nova Oportunidade
+          <Plus className="h-4 w-4" />
+          Nova oportunidade
         </button>
-      </section>
+      </header>
 
-      {/* Kanban Board Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start">
-        {STAGES.map((col) => {
-          const colItems = opportunities.filter((o) => o.stage === col.key);
-          const colTotal = colItems.reduce((acc, o) => acc + o.value, 0);
-
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: 'Total de oportunidades', value: metrics.total, icon: Target },
+          { label: 'Pipeline estimado', value: formatMoney(metrics.pipelineValue), icon: BadgeDollarSign },
+          { label: 'Em negociação', value: metrics.negotiation, icon: Handshake },
+          { label: 'Fechadas', value: metrics.closed, icon: CheckCircle2 },
+        ].map((metric) => {
+          const Icon = metric.icon;
           return (
-            <div
-              key={col.key}
-              className="bg-slate-100/80 p-3.5 rounded-2xl border border-slate-200 flex flex-col min-h-[500px]"
-            >
-              {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
-                <span className="font-extrabold text-xs text-slate-800 truncate">
-                  {col.label}
-                </span>
-                <span className="w-5 h-5 rounded-full bg-white text-slate-700 font-bold text-[10px] flex items-center justify-center border border-slate-200">
-                  {colItems.length}
-                </span>
-              </div>
-
-              <div className="text-[10px] text-slate-500 font-bold mb-3">
-                Total: R$ {colTotal.toLocaleString('pt-BR')}
-              </div>
-
-              {/* Cards inside column */}
-              <div className="space-y-3 flex-1 overflow-y-auto">
-                {colItems.map((opp) => (
-                  <div
-                    key={opp.id}
-                    className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all space-y-2"
-                  >
-                    <span className="font-extrabold text-xs text-slate-900 block leading-snug">
-                      {opp.title}
-                    </span>
-                    <span className="text-[11px] text-slate-500 font-semibold block">
-                      {opp.clientName}
-                    </span>
-
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                      <span className="font-black text-slate-800">
-                        R$ {opp.value.toLocaleString('pt-BR')}
-                      </span>
-                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                        {opp.systemPowerKWp} kWp
-                      </span>
-                    </div>
-
-                    {/* Move Stage Actions */}
-                    <div className="pt-2 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-400">Responsável: {opp.assignedTo}</span>
-                      <select
-                        value={opp.stage}
-                        onChange={(e) =>
-                          onUpdateStage(
-                            opp.id,
-                            e.target.value as OpportunityStage
-                          )
-                        }
-                        className="bg-slate-50 border border-slate-200 text-[10px] font-bold rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
-                      >
-                        <option value="prospeccao">Prospecção</option>
-                        <option value="visita_tecnica">Visita Técnica</option>
-                        <option value="proposta_enviada">Proposta</option>
-                        <option value="negociacao">Negociação</option>
-                        <option value="fechado">Fechado</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
+            <div key={metric.label} className="rounded-xl border p-4" style={panelStyle}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: mutedText }}>{metric.label}</p>
+                  <p className="mt-2 truncate text-2xl font-extrabold">{metric.value}</p>
+                </div>
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
+                    color: theme.secondary,
+                  }}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                </div>
               </div>
             </div>
           );
         })}
-      </div>
+      </section>
 
-      {/* Modal New Opportunity */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Nova Oportunidade Comercial
-              </h3>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+      <section className="overflow-hidden rounded-xl border" style={panelStyle}>
+        <div
+          className="flex flex-col gap-3 border-b p-3 lg:flex-row lg:items-center"
+          style={{ borderColor: theme.border }}
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: mutedText }}
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por oportunidade, cliente ou responsável..."
+              className="h-10 w-full rounded-lg border bg-transparent pl-9 pr-3 text-sm outline-none transition focus:ring-2"
+              style={{ borderColor: theme.border, color: theme.text }}
+            />
+          </div>
+
+          <div className="flex h-10 items-center gap-2 rounded-lg border px-3" style={{ borderColor: theme.border }}>
+            <Filter className="h-4 w-4" style={{ color: mutedText }} />
+            <select
+              value={stageFilter}
+              onChange={(event) => setStageFilter(event.target.value as 'Todas' | OpportunityStage)}
+              className="bg-transparent text-sm outline-none"
+              style={{ color: theme.text }}
+            >
+              <option value="Todas">Todas as etapas</option>
+              {STAGES.map((stage) => (
+                <option key={stage.key} value={stage.key}>{stage.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-3 p-3">
+          {filtered.map((opp) => {
+            const expanded = expandedIds.has(opp.id);
+            const tone = stageColor(opp.stage);
+
+            return (
+              <article
+                key={opp.id}
+                className="overflow-hidden rounded-xl border transition-all duration-200"
+                style={{
+                  borderColor: expanded
+                    ? `color-mix(in srgb, ${theme.secondary} 58%, ${theme.border})`
+                    : theme.border,
+                  backgroundColor: expanded ? panelAltBg : panelBg,
+                  boxShadow: expanded ? `0 10px 28px color-mix(in srgb, ${theme.primary} 18%, transparent)` : 'none',
+                }}
               >
-                ✕
+                <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
+                        color: theme.secondary,
+                      }}
+                    >
+                      <Target className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-extrabold">{opp.title}</div>
+                      <div className="mt-0.5 truncate text-xs" style={{ color: mutedText }}>{opp.clientName}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:items-center lg:gap-6">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Valor</p>
+                      <p className="mt-1 text-sm font-extrabold">{formatMoney(opp.value)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Potência</p>
+                      <p className="mt-1 text-sm font-bold">{opp.systemPowerKWp || 0} kWp</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Fechamento</p>
+                      <p className="mt-1 text-sm font-bold">{formatDate(opp.expectedCloseDate)}</p>
+                    </div>
+                    <div className="flex items-end">
+                      <span
+                        className="inline-flex max-w-[190px] truncate rounded-full border px-2.5 py-1 text-[11px] font-bold"
+                        style={{
+                          backgroundColor: `color-mix(in srgb, ${tone} 16%, transparent)`,
+                          borderColor: `color-mix(in srgb, ${tone} 42%, ${theme.border})`,
+                          color: theme.text,
+                        }}
+                      >
+                        {getStageLabel(opp.stage)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(opp.id)}
+                    aria-expanded={expanded}
+                    className="btn-outline inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                    style={{ borderColor: theme.border, color: theme.text }}
+                  >
+                    {expanded ? 'Recolher' : 'Ver detalhes'}
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+
+                {expanded && (
+                  <div className="border-t p-4" style={{ borderColor: theme.border }}>
+                    <div className="mb-4">
+                      <h3 className="text-sm font-extrabold">Detalhes da oportunidade</h3>
+                      <p className="mt-1 text-xs" style={{ color: mutedText }}>
+                        Visão comercial consolidada para acompanhamento da negociação.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        { label: 'Cliente / empresa', value: opp.clientName, icon: UserRound },
+                        { label: 'Responsável', value: opp.assignedTo || 'Não atribuído', icon: UserRound },
+                        { label: 'Potência prevista', value: `${opp.systemPowerKWp || 0} kWp`, icon: Zap },
+                        { label: 'Previsão de fechamento', value: formatDate(opp.expectedCloseDate), icon: CalendarDays },
+                      ].map((detail) => {
+                        const Icon = detail.icon;
+                        return (
+                          <div
+                            key={detail.label}
+                            className="rounded-lg border p-3"
+                            style={{ borderColor: theme.border, backgroundColor: panelBg }}
+                          >
+                            <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: mutedText }}>
+                              <Icon className="h-3.5 w-3.5" />
+                              {detail.label}
+                            </div>
+                            <p className="mt-2 truncate text-sm font-bold" title={detail.value}>{detail.value}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div
+                      className="mt-4 flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
+                      style={{ borderColor: theme.border, backgroundColor: panelBg }}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-bold">
+                          <Clock3 className="h-4 w-4" style={{ color: theme.secondary }} />
+                          Etapa comercial
+                        </div>
+                        <p className="mt-1 text-xs" style={{ color: mutedText }}>
+                          Atualize a oportunidade conforme o avanço da negociação.
+                        </p>
+                      </div>
+
+                      <select
+                        value={opp.stage}
+                        onChange={(event) => onUpdateStage(opp.id, event.target.value as OpportunityStage)}
+                        className="h-10 min-w-[220px] rounded-lg border bg-transparent px-3 text-sm font-semibold outline-none"
+                        style={{ borderColor: theme.border, color: theme.text }}
+                      >
+                        {STAGES.map((stage) => (
+                          <option key={stage.key} value={stage.key}>{stage.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <div className="flex min-h-64 flex-col items-center justify-center px-4 text-center">
+              <Target className="h-10 w-10" style={{ color: mutedText }} />
+              <h3 className="mt-3 text-sm font-extrabold">Nenhuma oportunidade encontrada</h3>
+              <p className="mt-1 text-xs" style={{ color: mutedText }}>
+                Ajuste os filtros ou cadastre uma nova oportunidade.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div
+          className="flex items-center justify-between border-t px-4 py-3 text-xs"
+          style={{ borderColor: theme.border, color: mutedText }}
+        >
+          <span>{filtered.length} de {opportunities.length} oportunidades</span>
+          <span>Pipeline comercial</span>
+        </div>
+      </section>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl"
+            style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+          >
+            <div className="flex items-start justify-between gap-4 border-b p-5" style={{ borderColor: theme.border }}>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: mutedText }}>
+                  CRM · Nova oportunidade
+                </div>
+                <h2 className="mt-1 text-xl font-extrabold">Cadastrar oportunidade</h2>
+                <p className="mt-1 text-sm" style={{ color: mutedText }}>
+                  Registre os dados essenciais para iniciar o acompanhamento comercial.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="btn-outline flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+                style={{ borderColor: theme.border }}
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Título da Oportunidade
+            <form onSubmit={handleCreate} className="space-y-4 p-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block text-sm font-semibold md:col-span-2">
+                  <span className="mb-2 block">Título da oportunidade</span>
+                  <input
+                    required
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Ex.: Sistema solar residencial 10 kWp"
+                    className="crm-input"
+                  />
                 </label>
-                <input
-                  required
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Sistema Solar Residencial 10kWp"
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                />
-              </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Nome do Cliente / Empresa
+                <label className="block text-sm font-semibold md:col-span-2">
+                  <span className="mb-2 block">Cliente / empresa</span>
+                  <input
+                    required
+                    type="text"
+                    value={clientName}
+                    onChange={(event) => setClientName(event.target.value)}
+                    placeholder="Nome do cliente ou empresa"
+                    className="crm-input"
+                  />
                 </label>
-                <input
-                  required
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Ex: Fazenda Santa Rita"
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Valor Estimado (R$)
-                  </label>
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 block">Valor estimado (R$)</span>
                   <input
                     type="number"
+                    min="0"
                     value={value}
-                    onChange={(e) => setValue(Number(e.target.value))}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                    onChange={(event) => setValue(Number(event.target.value))}
+                    className="crm-input"
                   />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Potência (kWp)
-                  </label>
+                </label>
+
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 block">Potência estimada (kWp)</span>
                   <input
                     type="number"
-                    step="0.1"
+                    min="0"
+                    step="0.01"
                     value={systemPowerKWp}
-                    onChange={(e) => setSystemPowerKWp(Number(e.target.value))}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                    onChange={(event) => setSystemPowerKWp(Number(event.target.value))}
+                    className="crm-input"
                   />
-                </div>
+                </label>
+
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 block">Responsável</span>
+                  <input
+                    type="text"
+                    value={assignedTo}
+                    onChange={(event) => setAssignedTo(event.target.value)}
+                    placeholder="Responsável comercial"
+                    className="crm-input"
+                  />
+                </label>
+
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 block">Previsão de fechamento</span>
+                  <input
+                    type="date"
+                    value={expectedCloseDate}
+                    onChange={(event) => setExpectedCloseDate(event.target.value)}
+                    className="crm-input"
+                  />
+                </label>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end" style={{ borderColor: theme.border }}>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+                  className="btn-outline rounded-lg border px-4 py-2.5 text-sm font-semibold"
+                  style={{ borderColor: theme.border }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md"
+                  className="btn-filled inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold"
+                  style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}
                 >
-                  Criar Oportunidade
+                  <Plus className="h-4 w-4" />
+                  Criar oportunidade
                 </button>
               </div>
             </form>
