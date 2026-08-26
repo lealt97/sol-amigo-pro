@@ -188,6 +188,41 @@ export interface OpportunitySizing {
   updatedAt: string;
 }
 
+export interface KitEquipmentItem {
+  id: string;
+  productId?: string;
+  description: string;
+  category: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export type KitCostsStatus = 'rascunho' | 'concluido';
+
+export interface OpportunityKitCosts {
+  equipmentItems: KitEquipmentItem[];
+  installationCost: number;
+  engineeringCost: number;
+  utilityFee: number;
+  freightCost: number;
+  otherCosts: number;
+  taxesPercent: number;
+  commissionPercent: number;
+  grossSalePrice: number;
+  discountValue: number;
+  equipmentCost: number;
+  fixedCosts: number;
+  taxesValue: number;
+  commissionValue: number;
+  totalCost: number;
+  finalSalePrice: number;
+  profit: number;
+  marginPercent: number;
+  pricePerWp: number;
+  status: KitCostsStatus;
+  updatedAt: string;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -204,6 +239,7 @@ export interface Opportunity {
   qualification?: OpportunityQualification;
   energySurvey?: EnergySurvey;
   sizing?: OpportunitySizing;
+  kitCosts?: OpportunityKitCosts;
 }
 
 export interface SolarProduct {
