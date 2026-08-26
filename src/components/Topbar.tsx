@@ -64,6 +64,10 @@ const PAGE_TITLES: Record<PageKey, { title: string; subtitle: string }> = {
     title: 'Gestão Financeira',
     subtitle: 'Controle de fluxo de caixa, comissões e financiamentos solares',
   },
+  perfil: {
+    title: 'Perfil',
+    subtitle: 'Dados pessoais e informações da conta',
+  },
   personalizacao: {
     title: 'Personalização da Conta',
     subtitle: 'Motor de cores do SaaS, identidade visual e temas do sistema',
@@ -75,6 +79,10 @@ const PAGE_TITLES: Record<PageKey, { title: string; subtitle: string }> = {
   seguranca: {
     title: 'Segurança',
     subtitle: 'Autenticação, MFA e sessões da conta',
+  },
+  'area-risco': {
+    title: 'Área de risco',
+    subtitle: 'Ações sensíveis e irreversíveis da conta',
   },
 };
 
