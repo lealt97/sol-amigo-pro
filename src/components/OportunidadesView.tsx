@@ -225,11 +225,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
         })}
       </section>
 
-      <section className="overflow-hidden rounded-xl border" style={panelStyle}>
-        <div
-          className="flex flex-col gap-3 border-b p-3 lg:flex-row lg:items-center"
-          style={{ borderColor: theme.border }}
-        >
+      <section className="rounded-xl border p-3" style={panelStyle}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
               className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
@@ -260,8 +257,10 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
             </select>
           </div>
         </div>
+      </section>
 
-        <div className="space-y-3 p-3">
+      <section>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((opp) => {
             const expanded = expandedIds.has(opp.id);
             const tone = stageColor(opp.stage);
@@ -269,84 +268,104 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
             return (
               <article
                 key={opp.id}
-                className="overflow-hidden rounded-xl border transition-all duration-200"
+                className={`relative overflow-hidden rounded-xl border transition-all duration-200 ${expanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
                 style={{
                   borderColor: expanded
                     ? `color-mix(in srgb, ${theme.secondary} 58%, ${theme.border})`
                     : theme.border,
                   backgroundColor: expanded ? panelAltBg : panelBg,
-                  boxShadow: expanded ? `0 10px 28px color-mix(in srgb, ${theme.primary} 18%, transparent)` : 'none',
+                  boxShadow: expanded
+                    ? `0 12px 30px color-mix(in srgb, ${theme.primary} 18%, transparent)`
+                    : `0 4px 14px color-mix(in srgb, ${theme.primary} 8%, transparent)`,
                 }}
               >
-                <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
-                        color: theme.secondary,
-                      }}
-                    >
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold">{opp.title}</div>
-                      <div className="mt-0.5 truncate text-xs" style={{ color: mutedText }}>{opp.clientName}</div>
-                    </div>
-                  </div>
+                <div className="h-1 w-full" style={{ backgroundColor: tone }} />
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:items-center lg:gap-6">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Valor</p>
-                      <p className="mt-1 text-sm font-extrabold">{formatMoney(opp.value)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Potência</p>
-                      <p className="mt-1 text-sm font-bold">{opp.systemPowerKWp || 0} kWp</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: mutedText }}>Fechamento</p>
-                      <p className="mt-1 text-sm font-bold">{formatDate(opp.expectedCloseDate)}</p>
-                    </div>
-                    <div className="flex items-end">
-                      <span
-                        className="inline-flex max-w-[190px] truncate rounded-full border px-2.5 py-1 text-[11px] font-bold"
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
                         style={{
-                          backgroundColor: `color-mix(in srgb, ${tone} 16%, transparent)`,
-                          borderColor: `color-mix(in srgb, ${tone} 42%, ${theme.border})`,
-                          color: theme.text,
+                          backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
+                          color: theme.secondary,
                         }}
                       >
-                        {getStageLabel(opp.stage)}
-                      </span>
+                        <Target className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <h2 className="truncate text-sm font-extrabold" title={opp.title}>{opp.title}</h2>
+                        <p className="mt-1 truncate text-xs" style={{ color: mutedText }} title={opp.clientName}>
+                          {opp.clientName}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className="inline-flex max-w-[165px] shrink-0 truncate rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${tone} 16%, transparent)`,
+                        borderColor: `color-mix(in srgb, ${tone} 42%, ${theme.border})`,
+                        color: theme.text,
+                      }}
+                    >
+                      {getStageLabel(opp.stage)}
+                    </span>
+                  </div>
+
+                  <div className="mt-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: mutedText }}>
+                      Valor estimado
+                    </p>
+                    <p className="mt-1 text-2xl font-extrabold tracking-tight">{formatMoney(opp.value)}</p>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
+                      <Zap className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Potência</p>
+                      <p className="mt-0.5 truncate text-xs font-bold">{opp.systemPowerKWp || 0} kWp</p>
+                    </div>
+                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
+                      <CalendarDays className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Fechamento</p>
+                      <p className="mt-0.5 truncate text-xs font-bold">{formatDate(opp.expectedCloseDate)}</p>
+                    </div>
+                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
+                      <UserRound className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Responsável</p>
+                      <p className="mt-0.5 truncate text-xs font-bold" title={opp.assignedTo}>{opp.assignedTo || 'Não atribuído'}</p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(opp.id)}
-                    aria-expanded={expanded}
-                    className="btn-outline inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold"
-                    style={{ borderColor: theme.border, color: theme.text }}
-                  >
-                    {expanded ? 'Recolher' : 'Ver detalhes'}
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
-                  </button>
+                  <div className="mt-4 border-t pt-3" style={{ borderColor: theme.border }}>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(opp.id)}
+                      aria-expanded={expanded}
+                      className="btn-outline inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                      style={{ borderColor: theme.border, color: theme.text }}
+                    >
+                      {expanded ? 'Recolher detalhes' : 'Ver detalhes'}
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
                 </div>
 
                 {expanded && (
-                  <div className="border-t p-4" style={{ borderColor: theme.border }}>
-                    <div className="mb-4">
-                      <h3 className="text-sm font-extrabold">Detalhes da oportunidade</h3>
+                  <div className="border-t p-4 md:p-5" style={{ borderColor: theme.border }}>
+                    <div>
+                      <h3 className="text-base font-extrabold">Detalhes da oportunidade</h3>
                       <p className="mt-1 text-xs" style={{ color: mutedText }}>
                         Visão comercial consolidada para acompanhamento da negociação.
                       </p>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       {[
                         { label: 'Cliente / empresa', value: opp.clientName, icon: UserRound },
-                        { label: 'Responsável', value: opp.assignedTo || 'Não atribuído', icon: UserRound },
+                        { label: 'Responsável comercial', value: opp.assignedTo || 'Não atribuído', icon: UserRound },
                         { label: 'Potência prevista', value: `${opp.systemPowerKWp || 0} kWp`, icon: Zap },
                         { label: 'Previsão de fechamento', value: formatDate(opp.expectedCloseDate), icon: CalendarDays },
                       ].map((detail) => {
@@ -397,22 +416,19 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
               </article>
             );
           })}
-
-          {filtered.length === 0 && (
-            <div className="flex min-h-64 flex-col items-center justify-center px-4 text-center">
-              <Target className="h-10 w-10" style={{ color: mutedText }} />
-              <h3 className="mt-3 text-sm font-extrabold">Nenhuma oportunidade encontrada</h3>
-              <p className="mt-1 text-xs" style={{ color: mutedText }}>
-                Ajuste os filtros ou cadastre uma nova oportunidade.
-              </p>
-            </div>
-          )}
         </div>
 
-        <div
-          className="flex items-center justify-between border-t px-4 py-3 text-xs"
-          style={{ borderColor: theme.border, color: mutedText }}
-        >
+        {filtered.length === 0 && (
+          <div className="mt-4 flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 text-center" style={panelStyle}>
+            <Target className="h-10 w-10" style={{ color: mutedText }} />
+            <h3 className="mt-3 text-sm font-extrabold">Nenhuma oportunidade encontrada</h3>
+            <p className="mt-1 text-xs" style={{ color: mutedText }}>
+              Ajuste os filtros ou cadastre uma nova oportunidade.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-between text-xs" style={{ color: mutedText }}>
           <span>{filtered.length} de {opportunities.length} oportunidades</span>
           <span>Pipeline comercial</span>
         </div>
