@@ -238,7 +238,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
                 </div>
                 <p className="mt-1 text-sm opacity-60">PNG, JPG ou WEBP. Máximo de 5 MB.</p>
                 <label
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-bold transition hover:brightness-110"
+                  className="theme-interactive mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-bold"
                   style={{ borderColor: theme.border }}
                 >
                   {uploading === 'avatar' ? (
@@ -342,7 +342,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold"
                   style={{ backgroundColor: theme.secondary, color: '#fff' }}
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -416,7 +416,7 @@ const LogoGroup: React.FC<LogoGroupProps> = ({
             <div className="flex items-center justify-between gap-2 p-3">
               <span className="text-xs font-semibold">Logo {index + 1}</span>
               <label
-                className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition hover:brightness-110"
+                className="theme-interactive inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold"
                 style={{ borderColor: theme.border }}
               >
                 {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
