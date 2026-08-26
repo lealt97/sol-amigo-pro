@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, ShieldAlert, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Loader2, LockKeyhole, ShieldAlert, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { ThemeConfig } from '../types';
 
@@ -13,6 +13,7 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
   const [email, setEmail] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmation, setConfirmation] = useState('');
+  const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,11 +21,37 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
     void supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''));
   }, []);
 
+  const closeConfirmation = () => {
+    if (deleting) return;
+    setConfirmOpen(false);
+    setConfirmation('');
+    setPassword('');
+    setError('');
+  };
+
   const handleDeleteAccount = async () => {
-    if (confirmation !== CONFIRMATION_TEXT || deleting) return;
+    if (
+      confirmation !== CONFIRMATION_TEXT ||
+      !password.trim() ||
+      !email ||
+      deleting
+    ) {
+      return;
+    }
 
     setDeleting(true);
     setError('');
+
+    const { error: passwordError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (passwordError) {
+      setError('Senha incorreta. Verifique sua senha e tente novamente.');
+      setDeleting(false);
+      return;
+    }
 
     const { error: functionError } = await supabase.functions.invoke('delete-account', {
       body: { confirmation },
@@ -36,6 +63,7 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
       return;
     }
 
+    setPassword('');
     await supabase.auth.signOut({ scope: 'local' });
     window.location.reload();
   };
@@ -80,6 +108,7 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
             onClick={() => {
               setConfirmOpen(true);
               setConfirmation('');
+              setPassword('');
               setError('');
             }}
             className="btn-filled inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white"
@@ -100,12 +129,12 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
               <div>
                 <h3 className="text-lg font-bold text-red-200">Confirmar exclusão da conta</h3>
                 <p className="mt-2 text-sm opacity-70">
-                  Depois de confirmar, sua conta será removida permanentemente e você será desconectado.
+                  Para proteger sua conta, confirme a frase abaixo e informe sua senha atual.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setConfirmOpen(false)}
+                onClick={closeConfirmation}
                 disabled={deleting}
                 className="btn-outline flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border"
                 style={{ borderColor: theme.border }}
@@ -129,10 +158,26 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
               autoComplete="off"
             />
 
+            <label className="mt-4 block text-sm font-semibold">
+              <span className="mb-2 flex items-center gap-2">
+                <LockKeyhole className="h-4 w-4 opacity-65" />
+                Senha atual
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                disabled={deleting}
+                className="crm-input"
+                placeholder="Digite sua senha"
+                autoComplete="current-password"
+              />
+            </label>
+
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setConfirmOpen(false)}
+                onClick={closeConfirmation}
                 disabled={deleting}
                 className="btn-outline cursor-pointer rounded-lg border px-4 py-2.5 text-sm font-semibold"
                 style={{ borderColor: theme.border }}
@@ -142,11 +187,11 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                disabled={confirmation !== CONFIRMATION_TEXT || deleting}
+                disabled={confirmation !== CONFIRMATION_TEXT || !password.trim() || deleting}
                 className="btn-filled inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white"
               >
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                {deleting ? 'Excluindo conta...' : 'Excluir conta definitivamente'}
+                {deleting ? 'Verificando e excluindo...' : 'Excluir conta definitivamente'}
               </button>
             </div>
           </div>
