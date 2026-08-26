@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Target,
@@ -40,6 +40,12 @@ interface NavItemDef {
   icon: React.ElementType;
 }
 
+type SidebarProfile = {
+  fullName: string;
+  company: string;
+  photoUrl: string;
+};
+
 const NAV_ITEMS: NavItemDef[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'oportunidades', label: 'Oportunidades', icon: Target },
@@ -70,6 +76,20 @@ function mixHex(base: string, target: string, amount: number): string {
   return `#${result}`;
 }
 
+function getShortName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'Usuário';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'SA';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activePage,
   onSelectPage,
@@ -84,6 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const settingsPages: PageKey[] = ['perfil', 'personalizacao', 'pdf-customizacoes', 'seguranca', 'area-risco'];
   const [settingsOpen, setSettingsOpen] = useState(settingsPages.includes(activePage));
   const [signingOut, setSigningOut] = useState(false);
+  const [profile, setProfile] = useState<SidebarProfile>({
+    fullName: '',
+    company: '',
+    photoUrl: '',
+  });
   const isSettingsActive = settingsPages.includes(activePage);
 
   const navigateFn = onSelectPage || onNavigate || (() => {});
@@ -98,6 +123,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeFg = getContrastFg(theme.secondary);
   const mutedOpacity = sidebarIsDark ? 0.68 : 0.72;
   const hoverClass = sidebarIsDark ? 'hover:bg-white/10' : 'hover:bg-black/5';
+  const displayName = getShortName(profile.fullName);
+  const companyName = profile.company.trim() || 'Conta autenticada';
+  const initials = getInitials(profile.fullName);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const syncProfile = (user: any) => {
+      if (!mounted || !user) return;
+      const metadata = user.user_metadata ?? {};
+      setProfile({
+        fullName: String(metadata.full_name ?? ''),
+        company: String(metadata.company ?? ''),
+        photoUrl: String(metadata.profile_image_url ?? ''),
+      });
+    };
+
+    const loadProfile = async () => {
+      const { data } = await supabase.auth.getUser();
+      syncProfile(data.user);
+    };
+
+    void loadProfile();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) syncProfile(session.user);
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleNavClick = (key: PageKey) => {
     navigateFn(key);
@@ -217,12 +275,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          <div id="sidebar-profile-card" className={`mt-2 p-2 rounded-md border flex items-center gap-2 ${collapsed ? 'justify-center p-1.5' : ''}`} style={{ backgroundColor: subtleBg, borderColor }}>
-            <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0" style={{ backgroundColor: theme.accent, color: getContrastFg(theme.accent) }} title="Conta atual">SA</div>
+          <div id="sidebar-profile-card" className={`mt-2 p-2 rounded-md border flex items-center gap-2 overflow-hidden ${collapsed ? 'justify-center p-1.5' : ''}`} style={{ backgroundColor: subtleBg, borderColor }}>
+            <div
+              className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0"
+              style={{ backgroundColor: theme.accent, color: getContrastFg(theme.accent) }}
+              title={displayName}
+            >
+              {profile.photoUrl ? (
+                <img src={profile.photoUrl} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
             {!collapsed && (
-              <div className="flex flex-col truncate min-w-0 flex-1">
-                <span className="text-[11px] font-semibold leading-tight truncate">Sol Amigo Pro</span>
-                <span className="text-[9px] font-mono truncate" style={{ opacity: 0.6 }}>conta autenticada</span>
+              <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                <span className="text-[11px] font-semibold leading-tight truncate" title={displayName}>{displayName}</span>
+                <span className="text-[9px] leading-tight truncate" style={{ opacity: 0.62 }} title={companyName}>{companyName}</span>
               </div>
             )}
           </div>
