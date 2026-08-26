@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
-  const settingsPages: PageKey[] = ['personalizacao', 'pdf-customizacoes', 'seguranca'];
+  const settingsPages: PageKey[] = ['perfil', 'personalizacao', 'pdf-customizacoes', 'seguranca', 'area-risco'];
   const [settingsOpen, setSettingsOpen] = useState(settingsPages.includes(activePage));
   const [signingOut, setSigningOut] = useState(false);
   const isSettingsActive = settingsPages.includes(activePage);
@@ -194,9 +194,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!collapsed && settingsOpen && (
               <div id="settings-submenu" className="mt-1 ml-4 pl-2 border-l space-y-1" style={{ borderColor }}>
                 {[
+                  ['perfil', 'Perfil'],
                   ['personalizacao', 'Personalização da conta'],
                   ['pdf-customizacoes', 'Customizações do PDF'],
                   ['seguranca', 'Segurança'],
+                  ['area-risco', 'Área de risco'],
                 ].map(([key, label]) => {
                   const isActive = activePage === key;
                   return (
