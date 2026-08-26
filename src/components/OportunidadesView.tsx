@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowRight,
   BadgeDollarSign,
   CalendarDays,
   CheckCircle2,
@@ -37,6 +39,9 @@ const STAGES: Array<{ key: OpportunityStage; label: string }> = [
 const getStageLabel = (stage: OpportunityStage) =>
   STAGES.find((item) => item.key === stage)?.label ?? stage;
 
+const isOpportunityStage = (value: string | null): value is OpportunityStage =>
+  Boolean(value && STAGES.some((stage) => stage.key === value));
+
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -65,6 +70,14 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   const [stageFilter, setStageFilter] = useState<'Todas' | OpportunityStage>('Todas');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropStage, setDropStage] = useState<OpportunityStage | null>(null);
+
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const touchDragRef = useRef<{
+    id: string;
+    pointerId: number;
+    originStage: OpportunityStage;
+    targetStage: OpportunityStage;
+  } | null>(null);
 
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
@@ -169,8 +182,16 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
     }
   };
 
+  const moveOpportunity = (id: string, stage: OpportunityStage) => {
+    const opp = opportunities.find((item) => item.id === id);
+    if (!opp || opp.stage === stage) return;
+    onUpdateStage(id, stage);
+    onShowToast(`Oportunidade movida para “${getStageLabel(stage)}”`);
+  };
+
   const handleDragStart = (event: React.DragEvent<HTMLElement>, opp: Opportunity) => {
     setDraggedId(opp.id);
+    setDropStage(opp.stage);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', opp.id);
   };
@@ -183,15 +204,89 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   const handleDrop = (event: React.DragEvent<HTMLElement>, stage: OpportunityStage) => {
     event.preventDefault();
     const id = event.dataTransfer.getData('text/plain') || draggedId;
-    const opp = opportunities.find((item) => item.id === id);
-
+    if (id) moveOpportunity(id, stage);
     setDropStage(null);
     setDraggedId(null);
+  };
 
-    if (!opp || opp.stage === stage) return;
+  const scrollColumns = (direction: 'previous' | 'next') => {
+    const board = boardRef.current;
+    if (!board) return;
+    const amount = Math.max(300, Math.round(board.clientWidth * 0.72));
+    board.scrollBy({
+      left: direction === 'next' ? amount : -amount,
+      behavior: 'smooth',
+    });
+  };
 
-    onUpdateStage(opp.id, stage);
-    onShowToast(`Oportunidade movida para “${getStageLabel(stage)}”`);
+  const stageUnderPointer = (clientX: number, clientY: number): OpportunityStage | null => {
+    const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const stageElement = element?.closest<HTMLElement>('[data-opportunity-stage]');
+    const stage = stageElement?.dataset.opportunityStage ?? null;
+    return isOpportunityStage(stage) ? stage : null;
+  };
+
+  const autoScrollBoard = (clientX: number) => {
+    const board = boardRef.current;
+    if (!board) return;
+    const rect = board.getBoundingClientRect();
+    const edge = Math.min(72, rect.width * 0.18);
+    if (clientX < rect.left + edge) board.scrollBy({ left: -26, behavior: 'auto' });
+    if (clientX > rect.right - edge) board.scrollBy({ left: 26, behavior: 'auto' });
+  };
+
+  const handleMobileDragStart = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    opp: Opportunity
+  ) => {
+    if (event.pointerType === 'mouse') return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    touchDragRef.current = {
+      id: opp.id,
+      pointerId: event.pointerId,
+      originStage: opp.stage,
+      targetStage: opp.stage,
+    };
+    setDraggedId(opp.id);
+    setDropStage(opp.stage);
+  };
+
+  const handleMobileDragMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = touchDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    autoScrollBoard(event.clientX);
+    const stage = stageUnderPointer(event.clientX, event.clientY);
+    if (!stage) return;
+    drag.targetStage = stage;
+    setDropStage(stage);
+  };
+
+  const finishMobileDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = touchDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const stage = stageUnderPointer(event.clientX, event.clientY) ?? drag.targetStage;
+    if (stage !== drag.originStage) moveOpportunity(drag.id, stage);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    touchDragRef.current = null;
+    setDraggedId(null);
+    setDropStage(null);
+  };
+
+  const cancelMobileDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = touchDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    touchDragRef.current = null;
+    setDraggedId(null);
+    setDropStage(null);
   };
 
   return (
@@ -286,7 +381,36 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
         </div>
       </section>
 
-      <div className="overflow-x-auto pb-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2 text-xs" style={{ color: mutedText }}>
+          <GripVertical className="h-4 w-4 shrink-0" style={{ color: theme.secondary }} />
+          <span className="truncate">No celular, arraste pelo ícone do card.</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollColumns('previous')}
+            className="btn-outline flex h-10 w-10 items-center justify-center rounded-lg border"
+            style={{ borderColor: theme.border, color: theme.text }}
+            aria-label="Ver colunas anteriores"
+            title="Colunas anteriores"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollColumns('next')}
+            className="btn-outline flex h-10 w-10 items-center justify-center rounded-lg border"
+            style={{ borderColor: theme.border, color: theme.text }}
+            aria-label="Ver próximas colunas"
+            title="Próximas colunas"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div ref={boardRef} className="overflow-x-auto scroll-smooth pb-2">
         <section className="grid min-w-[1500px] grid-cols-5 gap-4">
           {STAGES.map((stage) => {
             const tone = stageColor(stage.key);
@@ -297,6 +421,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
             return (
               <div
                 key={stage.key}
+                data-opportunity-stage={stage.key}
                 onDragOver={(event) => {
                   event.preventDefault();
                   event.dataTransfer.dropEffect = 'move';
@@ -367,16 +492,24 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
 
                         <div className="p-3.5">
                           <div className="flex items-start gap-2.5">
-                            <div
-                              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                            <button
+                              type="button"
+                              draggable={false}
+                              onPointerDown={(event) => handleMobileDragStart(event, opp)}
+                              onPointerMove={handleMobileDragMove}
+                              onPointerUp={finishMobileDrag}
+                              onPointerCancel={cancelMobileDrag}
+                              className="mt-0.5 flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-lg border"
                               style={{
                                 backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
+                                borderColor: `color-mix(in srgb, ${theme.secondary} 35%, ${theme.border})`,
                                 color: theme.secondary,
                               }}
-                              title="Arraste este card"
+                              aria-label={`Arrastar ${opp.title} para outra etapa`}
+                              title="Segure e arraste para outra coluna"
                             >
                               <GripVertical className="h-4 w-4" />
-                            </div>
+                            </button>
 
                             <div className="min-w-0 flex-1">
                               <h3 className="truncate text-sm font-extrabold" title={opp.title}>{opp.title}</h3>
@@ -486,9 +619,9 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
         </section>
       </div>
 
-      <div className="flex items-center justify-between text-xs" style={{ color: mutedText }}>
+      <div className="flex items-center justify-between gap-3 text-xs" style={{ color: mutedText }}>
         <span>{filtered.length} de {opportunities.length} oportunidades</span>
-        <span>Arraste os cards entre as colunas para alterar a etapa</span>
+        <span className="text-right">Arraste os cards entre as colunas para alterar a etapa</span>
       </div>
 
       {modalOpen && (
