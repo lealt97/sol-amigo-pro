@@ -1,7 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  ArrowLeft,
-  ArrowRight,
   BadgeDollarSign,
   CalendarDays,
   CheckCircle2,
@@ -28,8 +26,6 @@ interface OportunidadesViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type DragDirection = 'previous' | 'next' | null;
-
 const STAGES: Array<{ key: OpportunityStage; label: string }> = [
   { key: 'prospeccao', label: 'Prospecção inicial' },
   { key: 'visita_tecnica', label: 'Visita técnica / análise' },
@@ -40,16 +36,6 @@ const STAGES: Array<{ key: OpportunityStage; label: string }> = [
 
 const getStageLabel = (stage: OpportunityStage) =>
   STAGES.find((item) => item.key === stage)?.label ?? stage;
-
-const getAdjacentStage = (
-  stage: OpportunityStage,
-  direction: Exclude<DragDirection, null>
-): OpportunityStage => {
-  const index = STAGES.findIndex((item) => item.key === stage);
-  if (index < 0) return stage;
-  const targetIndex = direction === 'next' ? index + 1 : index - 1;
-  return STAGES[targetIndex]?.key ?? stage;
-};
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
@@ -77,12 +63,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<'Todas' | OpportunityStage>('Todas');
-  const [dragState, setDragState] = useState<{
-    id: string;
-    offset: number;
-    direction: DragDirection;
-  } | null>(null);
-  const dragRef = useRef<{ id: string; startX: number; pointerId: number } | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropStage, setDropStage] = useState<OpportunityStage | null>(null);
 
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
@@ -165,7 +147,6 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
     };
 
     onAddOpportunity(newOpp);
-    setExpandedIds((current) => new Set(current).add(newOpp.id));
     setModalOpen(false);
     resetForm();
     onShowToast(`Oportunidade “${newOpp.title}” criada com sucesso!`);
@@ -188,83 +169,33 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
     }
   };
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
-    if (event.button !== 0) return;
-
-    const target = event.target as HTMLElement;
-    if (target.closest('button, select, input, textarea, a, label')) return;
-
-    dragRef.current = {
-      id: opp.id,
-      startX: event.clientX,
-      pointerId: event.pointerId,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDragState({ id: opp.id, offset: 0, direction: null });
+  const handleDragStart = (event: React.DragEvent<HTMLElement>, opp: Opportunity) => {
+    setDraggedId(opp.id);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', opp.id);
   };
 
-  const handlePointerMove = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
-    const drag = dragRef.current;
-    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
-
-    const rawOffset = event.clientX - drag.startX;
-    const offset = Math.max(-120, Math.min(120, rawOffset));
-    const hasPrevious = getAdjacentStage(opp.stage, 'previous') !== opp.stage;
-    const hasNext = getAdjacentStage(opp.stage, 'next') !== opp.stage;
-
-    let direction: DragDirection = null;
-    if (offset <= -45 && hasPrevious) direction = 'previous';
-    if (offset >= 45 && hasNext) direction = 'next';
-
-    setDragState({ id: opp.id, offset, direction });
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDropStage(null);
   };
 
-  const finishCardDrag = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
-    const drag = dragRef.current;
-    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
+  const handleDrop = (event: React.DragEvent<HTMLElement>, stage: OpportunityStage) => {
+    event.preventDefault();
+    const id = event.dataTransfer.getData('text/plain') || draggedId;
+    const opp = opportunities.find((item) => item.id === id);
 
-    const rawOffset = event.clientX - drag.startX;
-    let direction: DragDirection = null;
-    if (rawOffset <= -80) direction = 'previous';
-    if (rawOffset >= 80) direction = 'next';
+    setDropStage(null);
+    setDraggedId(null);
 
-    if (direction) {
-      const nextStage = getAdjacentStage(opp.stage, direction);
-      if (nextStage !== opp.stage) {
-        onUpdateStage(opp.id, nextStage);
-        onShowToast(`Oportunidade movida para “${getStageLabel(nextStage)}”`);
-      }
-    }
+    if (!opp || opp.stage === stage) return;
 
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragRef.current = null;
-    setDragState(null);
-  };
-
-  const cancelCardDrag = (event: React.PointerEvent<HTMLElement>, opp: Opportunity) => {
-    const drag = dragRef.current;
-    if (!drag || drag.id !== opp.id || drag.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragRef.current = null;
-    setDragState(null);
-  };
-
-  const moveStageByButton = (
-    opp: Opportunity,
-    direction: Exclude<DragDirection, null>
-  ) => {
-    const nextStage = getAdjacentStage(opp.stage, direction);
-    if (nextStage === opp.stage) return;
-    onUpdateStage(opp.id, nextStage);
-    onShowToast(`Oportunidade movida para “${getStageLabel(nextStage)}”`);
+    onUpdateStage(opp.id, stage);
+    onShowToast(`Oportunidade movida para “${getStageLabel(stage)}”`);
   };
 
   return (
-    <div id="oportunidades-page" className="mx-auto max-w-[1480px] space-y-5" style={{ color: theme.text }}>
+    <div id="oportunidades-page" className="mx-auto max-w-[1600px] space-y-5" style={{ color: theme.text }}>
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div
@@ -276,7 +207,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">Oportunidades</h1>
           <p className="mt-1 max-w-3xl text-sm" style={{ color: mutedText }}>
-            Acompanhe cada negociação do primeiro contato até o fechamento, mantendo valor, potência, responsável e etapa comercial em um único lugar.
+            Organize o funil comercial por etapas e arraste cada oportunidade para avançar ou retornar no processo de venda.
           </p>
         </div>
 
@@ -355,261 +286,210 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({
         </div>
       </section>
 
-      <div
-        className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border px-4 py-3 text-xs"
-        style={{ ...panelStyle, color: mutedText }}
-      >
-        <span className="flex items-center gap-2 font-semibold" style={{ color: theme.text }}>
-          <GripVertical className="h-4 w-4" style={{ color: theme.secondary }} />
-          Arraste o card para mudar a etapa
-        </span>
-        <span className="flex items-center gap-1.5"><ArrowLeft className="h-3.5 w-3.5" /> etapa anterior</span>
-        <span className="flex items-center gap-1.5">próxima etapa <ArrowRight className="h-3.5 w-3.5" /></span>
-      </div>
-
-      <section>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((opp) => {
-            const expanded = expandedIds.has(opp.id);
-            const tone = stageColor(opp.stage);
-            const isDragging = dragState?.id === opp.id;
-            const previousStage = getAdjacentStage(opp.stage, 'previous');
-            const nextStage = getAdjacentStage(opp.stage, 'next');
-            const hasPrevious = previousStage !== opp.stage;
-            const hasNext = nextStage !== opp.stage;
+      <div className="overflow-x-auto pb-2">
+        <section className="grid min-w-[1500px] grid-cols-5 gap-4">
+          {STAGES.map((stage) => {
+            const tone = stageColor(stage.key);
+            const items = filtered.filter((opp) => opp.stage === stage.key);
+            const total = items.reduce((sum, opp) => sum + (opp.value || 0), 0);
+            const isDropTarget = dropStage === stage.key && draggedId !== null;
 
             return (
-              <article
-                key={opp.id}
-                onPointerDown={(event) => handlePointerDown(event, opp)}
-                onPointerMove={(event) => handlePointerMove(event, opp)}
-                onPointerUp={(event) => finishCardDrag(event, opp)}
-                onPointerCancel={(event) => cancelCardDrag(event, opp)}
-                className={`relative overflow-hidden rounded-xl border ${expanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
+              <div
+                key={stage.key}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = 'move';
+                  setDropStage(stage.key);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setDropStage((current) => current === stage.key ? null : current);
+                  }
+                }}
+                onDrop={(event) => handleDrop(event, stage.key)}
+                className="flex min-h-[560px] min-w-0 flex-col rounded-xl border p-3 transition-all"
                 style={{
-                  borderColor: expanded
-                    ? `color-mix(in srgb, ${theme.secondary} 58%, ${theme.border})`
-                    : theme.border,
-                  backgroundColor: expanded ? panelAltBg : panelBg,
-                  boxShadow: isDragging
-                    ? `0 16px 34px color-mix(in srgb, ${theme.secondary} 24%, transparent)`
-                    : expanded
-                      ? `0 12px 30px color-mix(in srgb, ${theme.primary} 18%, transparent)`
-                      : `0 4px 14px color-mix(in srgb, ${theme.primary} 8%, transparent)`,
-                  transform: isDragging ? `translate3d(${dragState.offset}px, 0, 0) scale(1.01)` : 'translate3d(0, 0, 0)',
-                  transition: isDragging ? 'box-shadow 120ms ease' : 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
-                  zIndex: isDragging ? 20 : undefined,
-                  cursor: isDragging ? 'grabbing' : 'grab',
-                  touchAction: 'pan-y',
-                  userSelect: isDragging ? 'none' : undefined,
+                  backgroundColor: isDropTarget
+                    ? `color-mix(in srgb, ${theme.secondary} 13%, ${panelBg})`
+                    : panelBg,
+                  borderColor: isDropTarget ? theme.secondary : theme.border,
+                  boxShadow: isDropTarget
+                    ? `0 0 0 2px color-mix(in srgb, ${theme.secondary} 28%, transparent)`
+                    : 'none',
                 }}
               >
-                {isDragging && dragState.direction === 'previous' && hasPrevious && (
-                  <div
-                    className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold shadow-sm"
-                    style={{
-                      backgroundColor: theme.secondary,
-                      borderColor: theme.secondary,
-                      color: getContrastFg(theme.secondary),
-                    }}
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    {getStageLabel(previousStage)}
-                  </div>
-                )}
-
-                {isDragging && dragState.direction === 'next' && hasNext && (
-                  <div
-                    className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold shadow-sm"
-                    style={{
-                      backgroundColor: theme.secondary,
-                      borderColor: theme.secondary,
-                      color: getContrastFg(theme.secondary),
-                    }}
-                  >
-                    {getStageLabel(nextStage)}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </div>
-                )}
-
-                <div className="h-1 w-full" style={{ backgroundColor: tone }} />
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                        style={{
-                          backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
-                          color: theme.secondary,
-                        }}
-                      >
-                        <Target className="h-5 w-5" />
+                <div className="mb-3 border-b pb-3" style={{ borderColor: theme.border }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: tone }} />
+                        <h2 className="truncate text-sm font-extrabold" title={stage.label}>{stage.label}</h2>
                       </div>
-
-                      <div className="min-w-0">
-                        <h2 className="truncate text-sm font-extrabold" title={opp.title}>{opp.title}</h2>
-                        <p className="mt-1 truncate text-xs" style={{ color: mutedText }} title={opp.clientName}>
-                          {opp.clientName}
-                        </p>
-                      </div>
+                      <p className="mt-1 text-[11px]" style={{ color: mutedText }}>
+                        {formatMoney(total)} no estágio
+                      </p>
                     </div>
-
                     <span
-                      className="inline-flex max-w-[165px] shrink-0 truncate rounded-full border px-2.5 py-1 text-[10px] font-bold"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, ${tone} 16%, transparent)`,
-                        borderColor: `color-mix(in srgb, ${tone} 42%, ${theme.border})`,
-                        color: theme.text,
-                      }}
-                    >
-                      {getStageLabel(opp.stage)}
-                    </span>
-                  </div>
-
-                  <div className="mt-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: mutedText }}>
-                      Valor estimado
-                    </p>
-                    <p className="mt-1 text-2xl font-extrabold tracking-tight">{formatMoney(opp.value)}</p>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
-                      <Zap className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
-                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Potência</p>
-                      <p className="mt-0.5 truncate text-xs font-bold">{opp.systemPowerKWp || 0} kWp</p>
-                    </div>
-                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
-                      <CalendarDays className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
-                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Fechamento</p>
-                      <p className="mt-0.5 truncate text-xs font-bold">{formatDate(opp.expectedCloseDate)}</p>
-                    </div>
-                    <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
-                      <UserRound className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
-                      <p className="mt-2 text-[10px] font-semibold" style={{ color: mutedText }}>Responsável</p>
-                      <p className="mt-0.5 truncate text-xs font-bold" title={opp.assignedTo}>{opp.assignedTo || 'Não atribuído'}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 border-t pt-3" style={{ borderColor: theme.border }}>
-                    <button
-                      type="button"
-                      onClick={() => toggleExpanded(opp.id)}
-                      aria-expanded={expanded}
-                      className="btn-outline inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                      className="flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-xs font-extrabold"
                       style={{ borderColor: theme.border, color: theme.text }}
                     >
-                      {expanded ? 'Recolher detalhes' : 'Ver detalhes'}
-                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
-                    </button>
+                      {items.length}
+                    </span>
                   </div>
                 </div>
 
-                {expanded && (
-                  <div className="border-t p-4 md:p-5" style={{ borderColor: theme.border }}>
-                    <div>
-                      <h3 className="text-base font-extrabold">Detalhes da oportunidade</h3>
-                      <p className="mt-1 text-xs" style={{ color: mutedText }}>
-                        Visão comercial consolidada para acompanhamento da negociação.
+                <div className="space-y-3">
+                  {items.map((opp) => {
+                    const expanded = expandedIds.has(opp.id);
+                    const isDragging = draggedId === opp.id;
+
+                    return (
+                      <article
+                        key={opp.id}
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, opp)}
+                        onDragEnd={handleDragEnd}
+                        className="overflow-hidden rounded-xl border transition-all"
+                        style={{
+                          backgroundColor: expanded ? panelAltBg : panelBg,
+                          borderColor: expanded
+                            ? `color-mix(in srgb, ${theme.secondary} 55%, ${theme.border})`
+                            : theme.border,
+                          opacity: isDragging ? 0.45 : 1,
+                          cursor: isDragging ? 'grabbing' : 'grab',
+                          boxShadow: expanded
+                            ? `0 8px 22px color-mix(in srgb, ${theme.primary} 16%, transparent)`
+                            : `0 3px 10px color-mix(in srgb, ${theme.primary} 8%, transparent)`,
+                        }}
+                      >
+                        <div className="h-1 w-full" style={{ backgroundColor: tone }} />
+
+                        <div className="p-3.5">
+                          <div className="flex items-start gap-2.5">
+                            <div
+                              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                              style={{
+                                backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`,
+                                color: theme.secondary,
+                              }}
+                              title="Arraste este card"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-sm font-extrabold" title={opp.title}>{opp.title}</h3>
+                              <p className="mt-1 truncate text-xs" style={{ color: mutedText }} title={opp.clientName}>
+                                {opp.clientName}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: mutedText }}>
+                              Valor estimado
+                            </p>
+                            <p className="mt-1 text-xl font-extrabold tracking-tight">{formatMoney(opp.value)}</p>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="rounded-lg border p-2" style={{ borderColor: theme.border }}>
+                              <Zap className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                              <p className="mt-1.5 text-[10px]" style={{ color: mutedText }}>Potência</p>
+                              <p className="mt-0.5 truncate text-xs font-bold">{opp.systemPowerKWp || 0} kWp</p>
+                            </div>
+                            <div className="rounded-lg border p-2" style={{ borderColor: theme.border }}>
+                              <CalendarDays className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                              <p className="mt-1.5 text-[10px]" style={{ color: mutedText }}>Fechamento</p>
+                              <p className="mt-0.5 truncate text-xs font-bold">{formatDate(opp.expectedCloseDate)}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: mutedText }}>
+                            <UserRound className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate" title={opp.assignedTo}>{opp.assignedTo || 'Não atribuído'}</span>
+                          </div>
+
+                          <div className="mt-3 border-t pt-3" style={{ borderColor: theme.border }}>
+                            <button
+                              type="button"
+                              draggable={false}
+                              onClick={() => toggleExpanded(opp.id)}
+                              className="btn-outline inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold"
+                              style={{ borderColor: theme.border, color: theme.text }}
+                            >
+                              {expanded ? 'Recolher detalhes' : 'Ver detalhes'}
+                              <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="border-t p-3.5" style={{ borderColor: theme.border }}>
+                            <h4 className="text-sm font-extrabold">Detalhes</h4>
+                            <p className="mt-1 text-[11px]" style={{ color: mutedText }}>
+                              Dados comerciais desta oportunidade.
+                            </p>
+
+                            <div className="mt-3 space-y-2">
+                              <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
+                                <p className="text-[10px] font-semibold" style={{ color: mutedText }}>Responsável comercial</p>
+                                <p className="mt-1 truncate text-xs font-bold" title={opp.assignedTo}>{opp.assignedTo || 'Não atribuído'}</p>
+                              </div>
+                              <div className="rounded-lg border p-2.5" style={{ borderColor: theme.border }}>
+                                <p className="text-[10px] font-semibold" style={{ color: mutedText }}>Previsão de fechamento</p>
+                                <p className="mt-1 text-xs font-bold">{formatDate(opp.expectedCloseDate)}</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <div className="mb-1.5 flex items-center gap-2 text-xs font-bold">
+                                <Clock3 className="h-3.5 w-3.5" style={{ color: theme.secondary }} />
+                                Etapa comercial
+                              </div>
+                              <select
+                                value={opp.stage}
+                                onChange={(event) => onUpdateStage(opp.id, event.target.value as OpportunityStage)}
+                                className="h-9 w-full rounded-lg border bg-transparent px-2.5 text-xs font-semibold outline-none"
+                                style={{ borderColor: theme.border, color: theme.text }}
+                              >
+                                {STAGES.map((item) => (
+                                  <option key={item.key} value={item.key}>{item.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+
+                  {items.length === 0 && (
+                    <div
+                      className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed px-4 text-center"
+                      style={{
+                        borderColor: isDropTarget ? theme.secondary : theme.border,
+                        color: mutedText,
+                      }}
+                    >
+                      <Target className="h-6 w-6" />
+                      <p className="mt-2 text-xs font-semibold">
+                        {isDropTarget ? 'Solte o card aqui' : 'Nenhuma oportunidade'}
                       </p>
                     </div>
-
-                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        { label: 'Cliente / empresa', value: opp.clientName, icon: UserRound },
-                        { label: 'Responsável comercial', value: opp.assignedTo || 'Não atribuído', icon: UserRound },
-                        { label: 'Potência prevista', value: `${opp.systemPowerKWp || 0} kWp`, icon: Zap },
-                        { label: 'Previsão de fechamento', value: formatDate(opp.expectedCloseDate), icon: CalendarDays },
-                      ].map((detail) => {
-                        const Icon = detail.icon;
-                        return (
-                          <div
-                            key={detail.label}
-                            className="rounded-lg border p-3"
-                            style={{ borderColor: theme.border, backgroundColor: panelBg }}
-                          >
-                            <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: mutedText }}>
-                              <Icon className="h-3.5 w-3.5" />
-                              {detail.label}
-                            </div>
-                            <p className="mt-2 truncate text-sm font-bold" title={detail.value}>{detail.value}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div
-                      className="mt-4 flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center lg:justify-between"
-                      style={{ borderColor: theme.border, backgroundColor: panelBg }}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-bold">
-                          <Clock3 className="h-4 w-4" style={{ color: theme.secondary }} />
-                          Etapa comercial
-                        </div>
-                        <p className="mt-1 text-xs" style={{ color: mutedText }}>
-                          Arraste o card ou use os controles abaixo para avançar e voltar no funil.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={!hasPrevious}
-                          onClick={() => moveStageByButton(opp, 'previous')}
-                          className="btn-outline inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-bold"
-                          style={{ borderColor: theme.border }}
-                        >
-                          <ArrowLeft className="h-4 w-4" />
-                          Anterior
-                        </button>
-
-                        <select
-                          value={opp.stage}
-                          onChange={(event) => onUpdateStage(opp.id, event.target.value as OpportunityStage)}
-                          className="h-10 min-w-[220px] rounded-lg border bg-transparent px-3 text-sm font-semibold outline-none"
-                          style={{ borderColor: theme.border, color: theme.text }}
-                        >
-                          {STAGES.map((stage) => (
-                            <option key={stage.key} value={stage.key}>{stage.label}</option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          disabled={!hasNext}
-                          onClick={() => moveStageByButton(opp, 'next')}
-                          className="btn-outline inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-bold"
-                          style={{ borderColor: theme.border }}
-                        >
-                          Próxima
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </article>
+                  )}
+                </div>
+              </div>
             );
           })}
-        </div>
+        </section>
+      </div>
 
-        {filtered.length === 0 && (
-          <div className="mt-4 flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 text-center" style={panelStyle}>
-            <Target className="h-10 w-10" style={{ color: mutedText }} />
-            <h3 className="mt-3 text-sm font-extrabold">Nenhuma oportunidade encontrada</h3>
-            <p className="mt-1 text-xs" style={{ color: mutedText }}>
-              Ajuste os filtros ou cadastre uma nova oportunidade.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-4 flex items-center justify-between text-xs" style={{ color: mutedText }}>
-          <span>{filtered.length} de {opportunities.length} oportunidades</span>
-          <span>Pipeline comercial</span>
-        </div>
-      </section>
+      <div className="flex items-center justify-between text-xs" style={{ color: mutedText }}>
+        <span>{filtered.length} de {opportunities.length} oportunidades</span>
+        <span>Arraste os cards entre as colunas para alterar a etapa</span>
+      </div>
 
       {modalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
