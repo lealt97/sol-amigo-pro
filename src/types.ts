@@ -42,11 +42,19 @@ export type PageKey =
   | 'area-risco';
 
 export type OpportunityStage =
+  | 'lead'
+  | 'qualificacao'
+  | 'levantamento'
+  | 'dimensionamento'
+  | 'kit_custos'
+  | 'proposta'
+  | 'negociacao'
+  | 'fechado'
+  | 'perdido'
+  // Etapas legadas mantidas temporariamente para compatibilidade com dados antigos.
   | 'prospeccao'
   | 'visita_tecnica'
-  | 'proposta_enviada'
-  | 'negociacao'
-  | 'fechado';
+  | 'proposta_enviada';
 
 export interface SolarProposal {
   id: string;
@@ -88,7 +96,7 @@ export type ClientCrmStatus =
 export interface Client {
   id: string;
   name: string;
-  document: string; // CPF or CNPJ
+  document: string;
   type: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
   email: string;
   phone: string;
@@ -98,8 +106,6 @@ export interface Client {
   avgConsumptionKWh: number;
   proposalsCount: number;
   activeStatus: 'Ativo' | 'Em atendimento' | 'Inativo';
-
-  // Campos operacionais do CRM. Opcionais para manter compatibilidade com cadastros existentes.
   crmStatus?: ClientCrmStatus;
   responsible?: string;
   source?: string;
@@ -115,11 +121,15 @@ export interface Opportunity {
   id: string;
   title: string;
   clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  source?: string;
   value: number;
   stage: OpportunityStage;
   expectedCloseDate: string;
   systemPowerKWp: number;
   assignedTo: string;
+  createdAt?: string;
 }
 
 export interface EnergySurvey {
