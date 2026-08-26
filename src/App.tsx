@@ -362,6 +362,7 @@ export default function App() {
 
   const handleAddOpportunity = (opp: Opportunity) => setOpportunities((prev) => [opp, ...prev]);
   const handleAddClient = (client: Client) => setClients((prev) => [client, ...prev]);
+  const handleDeleteClient = (id: string) => setClients((prev) => prev.filter((client) => client.id !== id));
 
   const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
@@ -421,7 +422,15 @@ export default function App() {
           />
         );
       case 'clientes':
-        return <ClientesView clients={clients} theme={currentTheme} onAddClient={handleAddClient} onShowToast={showToast} />;
+        return (
+          <ClientesView
+            clients={clients}
+            theme={currentTheme}
+            onAddClient={handleAddClient}
+            onDeleteClient={handleDeleteClient}
+            onShowToast={showToast}
+          />
+        );
       case 'oportunidades':
         return <OportunidadesView opportunities={opportunities} theme={currentTheme} onUpdateStage={handleUpdateOpportunityStage} onAddOpportunity={handleAddOpportunity} onShowToast={showToast} />;
       case 'produtos':
