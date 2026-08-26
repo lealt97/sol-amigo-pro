@@ -385,6 +385,10 @@ export default function App() {
     setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o)));
   };
 
+  const handleUpdateOpportunity = (id: string, changes: Partial<Opportunity>) => {
+    setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, ...changes } : o)));
+  };
+
   const handleAddOpportunity = (opp: Opportunity) => {
     setOpportunities((prev) => [opp, ...prev]);
   };
@@ -444,6 +448,7 @@ export default function App() {
             opportunities={opportunities}
             theme={currentTheme}
             onUpdateStage={handleUpdateOpportunityStage}
+            onUpdateOpportunity={handleUpdateOpportunity}
             onAddOpportunity={handleAddOpportunity}
             onShowToast={showToast}
           />
