@@ -34,9 +34,11 @@ export type PageKey =
   | 'tarefas'
   | 'relatorios'
   | 'financeiro'
+  | 'perfil'
   | 'personalizacao'
   | 'pdf-customizacoes'
-  | 'seguranca';
+  | 'seguranca'
+  | 'area-risco';
 
 export type OpportunityStage =
   | 'prospeccao'
