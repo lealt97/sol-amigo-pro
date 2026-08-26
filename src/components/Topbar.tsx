@@ -36,6 +36,10 @@ const PAGE_TITLES: Record<PageKey, { title: string; subtitle: string }> = {
     title: 'Gestão de Clientes',
     subtitle: 'Base de contatos, histórico de consumo e unidades consumidoras',
   },
+  levantamento: {
+    title: 'Levantamento Energético',
+    subtitle: 'Consumo, unidade consumidora e dados para dimensionamento',
+  },
   empresas: {
     title: 'Empresas & Parceiros',
     subtitle: 'Integradores, instaladores credenciados e fornecedores',
