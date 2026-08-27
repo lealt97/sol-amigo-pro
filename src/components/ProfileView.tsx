@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Building2,
   Camera,
+  IdCard,
   Image as ImageIcon,
   Loader2,
   Mail,
@@ -32,12 +33,33 @@ const EMPTY_LOGOS: BrandLogos = {
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+const formatCpf = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+};
+
+const formatCnpj = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\/\d{4})(\d)/, '$1-$2');
+};
+
 export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cnpj, setCnpj] = useState('');
   const [email, setEmail] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [profilePhoto, setProfilePhoto] = useState('');
@@ -62,6 +84,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
 
       setFullName(String(metadata.full_name ?? ''));
       setCompany(String(metadata.company ?? ''));
+      setCpf(formatCpf(String(metadata.cpf ?? '')));
+      setCnpj(formatCnpj(String(metadata.cnpj ?? '')));
       setEmail(data.user.email ?? '');
       setProfilePhoto(String(metadata.profile_image_url ?? ''));
       setBrandLogos({
@@ -87,10 +111,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
     setSaving(true);
     setError('');
 
+    const cpfDigits = onlyDigits(cpf);
+    const cnpjDigits = onlyDigits(cnpj);
+
+    if (cpfDigits && cpfDigits.length !== 11) {
+      setError('Informe um CPF com 11 dígitos.');
+      setSaving(false);
+      return;
+    }
+
+    if (cnpjDigits && cnpjDigits.length !== 14) {
+      setError('Informe um CNPJ com 14 dígitos.');
+      setSaving(false);
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({
       data: {
         full_name: fullName.trim(),
         company: company.trim(),
+        cpf: cpfDigits,
+        cnpj: cnpjDigits,
       },
     });
 
@@ -199,7 +240,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
           <div>
             <h2 className="text-xl font-bold">Perfil</h2>
             <p className="mt-1 text-sm opacity-65">
-              Atualize seus dados, foto de perfil e arquivos de identidade visual.
+              Atualize seus dados, documentos, foto de perfil e arquivos de identidade visual.
             </p>
           </div>
         </div>
@@ -322,6 +363,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
                     className="crm-input"
                     placeholder="Nome da empresa"
                   />
+                </label>
+
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 flex items-center gap-2">
+                    <IdCard className="h-4 w-4 opacity-65" /> CPF
+                  </span>
+                  <input
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={cpf}
+                    onChange={(event) => setCpf(formatCpf(event.target.value))}
+                    className="crm-input"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  <span className="mt-1.5 block text-xs font-normal opacity-50">Opcional.</span>
+                </label>
+
+                <label className="block text-sm font-semibold">
+                  <span className="mb-2 flex items-center gap-2">
+                    <Building2 className="h-4 w-4 opacity-65" /> CNPJ
+                  </span>
+                  <input
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={cnpj}
+                    onChange={(event) => setCnpj(formatCnpj(event.target.value))}
+                    className="crm-input"
+                    placeholder="00.000.000/0000-00"
+                    maxLength={18}
+                  />
+                  <span className="mt-1.5 block text-xs font-normal opacity-50">Opcional.</span>
                 </label>
 
                 <label className="block text-sm font-semibold md:col-span-2">
