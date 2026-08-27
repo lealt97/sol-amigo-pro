@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Mail,
+  Phone,
   Save,
   Upload,
   UserRound,
@@ -52,12 +53,26 @@ const formatCnpj = (value: string) => {
     .replace(/(\/\d{4})(\d)/, '$1-$2');
 };
 
+const formatPhone = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};
+
 export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
   const [cpf, setCpf] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [email, setEmail] = useState('');
@@ -84,6 +99,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
 
       setFullName(String(metadata.full_name ?? ''));
       setCompany(String(metadata.company ?? ''));
+      setPhone(formatPhone(String(metadata.phone ?? '')));
       setCpf(formatCpf(String(metadata.cpf ?? '')));
       setCnpj(formatCnpj(String(metadata.cnpj ?? '')));
       setEmail(data.user.email ?? '');
@@ -111,8 +127,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
     setSaving(true);
     setError('');
 
+    const phoneDigits = onlyDigits(phone);
     const cpfDigits = onlyDigits(cpf);
     const cnpjDigits = onlyDigits(cnpj);
+
+    if (phoneDigits && phoneDigits.length !== 10 && phoneDigits.length !== 11) {
+      setError('Informe um telefone/celular com DDD e 10 ou 11 dígitos.');
+      setSaving(false);
+      return;
+    }
 
     if (cpfDigits && cpfDigits.length !== 11) {
       setError('Informe um CPF com 11 dígitos.');
@@ -130,6 +153,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
       data: {
         full_name: fullName.trim(),
         company: company.trim(),
+        phone: phoneDigits,
         cpf: cpfDigits,
         cnpj: cnpjDigits,
       },
@@ -240,7 +264,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
           <div>
             <h2 className="text-xl font-bold">Perfil</h2>
             <p className="mt-1 text-sm opacity-65">
-              Atualize seus dados, documentos, foto de perfil e arquivos de identidade visual.
+              Atualize seus dados, contato, documentos, foto de perfil e arquivos de identidade visual.
             </p>
           </div>
         </div>
@@ -363,6 +387,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
                     className="crm-input"
                     placeholder="Nome da empresa"
                   />
+                </label>
+
+                <label className="block text-sm font-semibold md:col-span-2">
+                  <span className="mb-2 flex items-center gap-2">
+                    <Phone className="h-4 w-4 opacity-65" /> Telefone / celular
+                  </span>
+                  <input
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(event) => setPhone(formatPhone(event.target.value))}
+                    className="crm-input"
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                  />
+                  <span className="mt-1.5 block text-xs font-normal opacity-50">Informe o DDD. Opcional.</span>
                 </label>
 
                 <label className="block text-sm font-semibold">
