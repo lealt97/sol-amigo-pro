@@ -1,34 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import {
-  PageKey,
-  ThemeConfig,
-  PdfSettingsConfig,
-  SolarProposal,
-  Client,
-  Opportunity,
-  OpportunityStage,
-  SolarProduct,
-  TaskItem,
-  ContractItem,
-  FinancialRecord,
-} from './types';
-import {
-  loadSavedTheme,
-  loadSavedPdfSettings,
-  applyThemeToDOM,
-} from './utils/themeEngine';
-import {
-  INITIAL_PROPOSALS,
-  INITIAL_PRODUCTS,
-  INITIAL_TASKS,
-  INITIAL_CONTRACTS,
-  INITIAL_FINANCIAL,
-} from './data/initialData';
+import { useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
+import { PageKey, PdfSettingsConfig, ThemeConfig } from './types';
+import { applyThemeToDOM, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
 import { supabase } from './lib/supabase';
-import {
-  fetchClients,
-  updateClientProposalsCount,
-} from './services/clients';
 
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -38,26 +12,16 @@ import { MfaChallengeView } from './components/MfaChallengeView';
 import { SecurityView } from './components/SecurityView';
 import { ProfileView } from './components/ProfileView';
 import { RiskAreaView } from './components/RiskAreaView';
-import { DashboardView } from './components/DashboardView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
-import { PropostasView } from './components/PropostasView';
-import { OportunidadesView } from './components/OportunidadesView';
-import { ProdutosView } from './components/ProdutosView';
-import { TarefasView } from './components/TarefasView';
-import { ContratosView } from './components/ContratosView';
-import { FinanceiroView } from './components/FinanceiroView';
-import { EmpresasView } from './components/EmpresasView';
-import { RelatoriosView } from './components/RelatoriosView';
-
-import { NewProposalModal } from './components/NewProposalModal';
-import { ProposalViewerModal } from './components/ProposalViewerModal';
-import { QuickAddModal } from './components/QuickAddModal';
-import { GitHubModal } from './components/GitHubModal';
 import { HelpModal } from './components/HelpModal';
-import { CheckCircle2 } from 'lucide-react';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
+
+const getBlankPageId = (page: PageKey) => {
+  if (page === 'dashboard') return 'dashboard-view';
+  return `${page}-page`;
+};
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -76,18 +40,6 @@ export default function App() {
     loadSavedPdfSettings
   );
 
-  const [proposals, setProposals] = useState<SolarProposal[]>(INITIAL_PROPOSALS);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [products, setProducts] = useState<SolarProduct[]>(INITIAL_PRODUCTS);
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
-  const [contracts] = useState<ContractItem[]>(INITIAL_CONTRACTS);
-  const [financial] = useState<FinancialRecord[]>(INITIAL_FINANCIAL);
-
-  const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
-  const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
-  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -107,8 +59,13 @@ export default function App() {
     if (assurance?.currentLevel === 'aal1' && assurance?.nextLevel === 'aal2') {
       const { data: factorData, error } = await supabase.auth.mfa.listFactors();
       if (error) return false;
-      const factor = factorData?.totp?.find((item) => item.status === 'verified') ??
-        factorData?.all?.find((item: any) => item.factor_type === 'totp' && item.status === 'verified');
+
+      const factor =
+        factorData?.totp?.find((item) => item.status === 'verified') ??
+        factorData?.all?.find(
+          (item: any) => item.factor_type === 'totp' && item.status === 'verified'
+        );
+
       if (factor) {
         setMfaFactorId(factor.id);
         setMfaError('');
@@ -117,6 +74,7 @@ export default function App() {
         return true;
       }
     }
+
     return false;
   };
 
@@ -155,30 +113,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!isAuthenticated) {
-      setClients([]);
-      return;
-    }
-
-    const loadClients = async () => {
-      try {
-        const persistedClients = await fetchClients();
-        if (!cancelled) setClients(persistedClients);
-      } catch (error) {
-        console.error('Erro ao carregar clientes:', error);
-        if (!cancelled) showToast('Não foi possível carregar os clientes do banco de dados.');
-      }
-    };
-
-    void loadClients();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
-
   const handleLogin = async ({
     email,
     password,
@@ -207,6 +141,7 @@ export default function App() {
       setIsAuthenticated(true);
       setAuthScreen('login');
     }
+
     return null;
   };
 
@@ -262,6 +197,7 @@ export default function App() {
       setMfaError('Fator MFA não encontrado. Faça login novamente.');
       return;
     }
+
     if (code.length !== 6) {
       setMfaError('Digite o código de 6 dígitos.');
       return;
@@ -269,6 +205,7 @@ export default function App() {
 
     setMfaLoading(true);
     setMfaError('');
+
     const { error } = await supabase.auth.mfa.challengeAndVerify({
       factorId: mfaFactorId,
       code,
@@ -299,14 +236,6 @@ export default function App() {
     setMfaFactorId(null);
     setAuthScreen('login');
     setActivePage('dashboard');
-  };
-
-  const handleApplyTheme = (newTheme: ThemeConfig) => {
-    setCurrentTheme(newTheme);
-  };
-
-  const handleSavePdfSettings = (newSettings: PdfSettingsConfig) => {
-    setCurrentPdfSettings(newSettings);
   };
 
   if (authLoading) {
@@ -350,76 +279,15 @@ export default function App() {
     );
   }
 
-  const handleSaveNewProposal = (newProposal: SolarProposal) => {
-    setProposals((prev) => [newProposal, ...prev]);
-
-    const targetClient = clients.find((client) => client.name === newProposal.clientName);
-    if (targetClient) {
-      const nextCount = targetClient.proposalsCount + 1;
-      setClients((prev) =>
-        prev.map((client) =>
-          client.id === targetClient.id ? { ...client, proposalsCount: nextCount } : client
-        )
-      );
-
-      if (!targetClient.id.startsWith('cli-')) {
-        void updateClientProposalsCount(targetClient.id, nextCount).catch((error) => {
-          console.error('Erro ao atualizar propostas do cliente:', error);
-          showToast('Proposta salva, mas não foi possível atualizar o cliente no banco.');
-        });
-      }
-    }
-  };
-
-  const handleUpdateProposalStatus = (id: string, newStatus: SolarProposal['status']) => {
-    setProposals((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
-    showToast(`Status da proposta alterado para "${newStatus}"`);
-  };
-
-  const handleDeleteProposal = (id: string) => {
-    setProposals((prev) => prev.filter((p) => p.id !== id));
-    showToast('Proposta excluída');
-  };
-
-  const handleUpdateOpportunityStage = (id: string, newStage: OpportunityStage) => {
-    setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, stage: newStage } : o)));
-  };
-
-  const handleUpdateOpportunity = (id: string, changes: Partial<Opportunity>) => {
-    setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, ...changes } : o)));
-  };
-
-  const handleAddOpportunity = (opp: Opportunity) => {
-    setOpportunities((prev) => [opp, ...prev]);
-  };
-
-  const handleUpdateTaskStatus = (id: string, newStatus: TaskItem['status']) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
-    showToast(`Status da tarefa atualizado para "${newStatus}"`);
-  };
-
-  const handleAddTask = (task: TaskItem) => setTasks((prev) => [task, ...prev]);
-  const handleAddProduct = (prod: SolarProduct) => setProducts((prev) => [prod, ...prev]);
-
   const renderCurrentView = () => {
     switch (activePage) {
-      case 'dashboard':
-        return (
-          <DashboardView
-            proposals={proposals}
-            theme={currentTheme}
-            onNavigate={(page) => setActivePage(page)}
-            onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
-            onViewProposal={(prop) => setViewingProposal(prop)}
-          />
-        );
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
         return (
           <PersonalizacaoView
             currentTheme={currentTheme}
-            onApplyTheme={handleApplyTheme}
+            onApplyTheme={setCurrentTheme}
             onShowToast={showToast}
           />
         );
@@ -428,7 +296,7 @@ export default function App() {
           <PdfCustomizacoesView
             currentPdfSettings={currentPdfSettings}
             currentTheme={currentTheme}
-            onSavePdfSettings={handleSavePdfSettings}
+            onSavePdfSettings={setCurrentPdfSettings}
             onShowToast={showToast}
           />
         );
@@ -442,44 +310,8 @@ export default function App() {
         );
       case 'area-risco':
         return <RiskAreaView theme={currentTheme} />;
-      case 'oportunidades':
-        return (
-          <OportunidadesView
-            opportunities={opportunities}
-            products={products}
-            theme={currentTheme}
-            onUpdateStage={handleUpdateOpportunityStage}
-            onUpdateOpportunity={handleUpdateOpportunity}
-            onAddOpportunity={handleAddOpportunity}
-            onShowToast={showToast}
-          />
-        );
-      case 'propostas':
-        return (
-          <PropostasView
-            proposals={proposals}
-            theme={currentTheme}
-            onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
-            onViewProposal={(prop) => setViewingProposal(prop)}
-            onUpdateStatus={handleUpdateProposalStatus}
-            onDeleteProposal={handleDeleteProposal}
-            onShowToast={showToast}
-          />
-        );
-      case 'produtos':
-        return <ProdutosView products={products} theme={currentTheme} onAddProduct={handleAddProduct} onShowToast={showToast} />;
-      case 'tarefas':
-        return <TarefasView tasks={tasks} theme={currentTheme} onUpdateStatus={handleUpdateTaskStatus} onAddTask={handleAddTask} onShowToast={showToast} />;
-      case 'contratos':
-        return <ContratosView contracts={contracts} theme={currentTheme} onShowToast={showToast} />;
-      case 'financeiro':
-        return <FinanceiroView records={financial} theme={currentTheme} onShowToast={showToast} />;
-      case 'empresas':
-        return <EmpresasView theme={currentTheme} onShowToast={showToast} />;
-      case 'relatorios':
-        return <RelatoriosView theme={currentTheme} onShowToast={showToast} />;
       default:
-        return <DashboardView proposals={proposals} theme={currentTheme} onNavigate={(page) => setActivePage(page)} onOpenNewProposal={() => setIsNewProposalModalOpen(true)} onViewProposal={(prop) => setViewingProposal(prop)} />;
+        return <div id={getBlankPageId(activePage)} />;
     }
   };
 
@@ -489,7 +321,12 @@ export default function App() {
         <div className="fixed bottom-6 right-6 z-50 bg-[#161B22] text-[#C9D1D9] px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-[#30363D] animate-in fade-in slide-in-from-bottom-5 font-mono text-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="font-medium text-white">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-[#8B949E] hover:text-white text-xs ml-2 cursor-pointer">✕</button>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-[#8B949E] hover:text-white text-xs ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -501,50 +338,25 @@ export default function App() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
-        onOpenHelp={() => setIsHelpModalOpen(true)}
       />
 
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
+          sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'
+        }`}
+      >
         <Topbar
           activePage={activePage}
           theme={currentTheme}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
-          onOpenQuickAdd={() => setIsQuickAddOpen(true)}
-          onOpenGitHubModal={() => setIsGitHubModalOpen(true)}
-          onOpenGitHub={() => setIsGitHubModalOpen(true)}
           onOpenHelp={() => setIsHelpModalOpen(true)}
-          onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">{renderCurrentView()}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">
+          {renderCurrentView()}
+        </main>
       </div>
 
-      <NewProposalModal
-        isOpen={isNewProposalModalOpen}
-        onClose={() => setIsNewProposalModalOpen(false)}
-        clients={clients}
-        theme={currentTheme}
-        onSaveProposal={handleSaveNewProposal}
-        onShowToast={showToast}
-      />
-
-      <ProposalViewerModal
-        proposal={viewingProposal}
-        pdfSettings={currentPdfSettings}
-        theme={currentTheme}
-        onClose={() => setViewingProposal(null)}
-        onShowToast={showToast}
-      />
-
-      <QuickAddModal
-        isOpen={isQuickAddOpen}
-        onClose={() => setIsQuickAddOpen(false)}
-        onNavigate={(page) => setActivePage(page)}
-        onOpenNewProposal={() => setIsNewProposalModalOpen(true)}
-        onShowToast={showToast}
-      />
-
-      <GitHubModal isOpen={isGitHubModalOpen} onClose={() => setIsGitHubModalOpen(false)} />
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
