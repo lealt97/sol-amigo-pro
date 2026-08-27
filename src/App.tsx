@@ -16,6 +16,8 @@ import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { ClientesView } from './components/ClientesView';
 import { HelpModal } from './components/HelpModal';
+import { OportunidadesView } from './components/OportunidadesView';
+import { PublicLeadFormView } from './components/PublicLeadFormView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -25,6 +27,7 @@ const getBlankPageId = (page: PageKey) => {
 };
 
 export default function App() {
+  const publicLeadFormToken = new URLSearchParams(window.location.search).get('captacao');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
@@ -239,6 +242,10 @@ export default function App() {
     setActivePage('dashboard');
   };
 
+  if (publicLeadFormToken) {
+    return <PublicLeadFormView formToken={publicLeadFormToken} />;
+  }
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white">
@@ -282,6 +289,8 @@ export default function App() {
 
   const renderCurrentView = () => {
     switch (activePage) {
+      case 'oportunidades':
+        return <OportunidadesView theme={currentTheme} onShowToast={showToast} />;
       case 'clientes':
         return <ClientesView />;
       case 'perfil':
