@@ -14,6 +14,7 @@ import { ProfileView } from './components/ProfileView';
 import { RiskAreaView } from './components/RiskAreaView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
+import { ClientesView } from './components/ClientesView';
 import { HelpModal } from './components/HelpModal';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
@@ -281,6 +282,8 @@ export default function App() {
 
   const renderCurrentView = () => {
     switch (activePage) {
+      case 'clientes':
+        return <ClientesView />;
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
