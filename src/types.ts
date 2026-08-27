@@ -117,6 +117,54 @@ export interface Client {
   tags?: string[];
 }
 
+export type LeadStage =
+  | 'novo'
+  | 'em_contato'
+  | 'qualificado'
+  | 'em_estudo'
+  | 'proposta_enviada'
+  | 'negociacao'
+  | 'ganho'
+  | 'perdido';
+
+export interface Lead {
+  id: string;
+  userId: string;
+  captureFormId?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  city: string;
+  state: string;
+  propertyType: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
+  averageMonthlyBill?: number;
+  averageConsumptionKWh?: number;
+  distributor?: string;
+  propertyStatus?: 'Próprio' | 'Alugado' | 'Em construção' | 'Outro';
+  installationTimeframe?: string;
+  preferredContactTime?: string;
+  status: LeadStage;
+  responsible?: string;
+  source: string;
+  landingPage?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  consentAt: string;
+  nextActivityAt?: string;
+  lastSubmissionAt: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadCaptureForm {
+  id: string;
+  publicToken: string;
+  name: string;
+  active: boolean;
+}
+
 export type QualificationStatus = 'pendente' | 'qualificado' | 'nao_qualificado';
 
 export interface OpportunityQualification {
