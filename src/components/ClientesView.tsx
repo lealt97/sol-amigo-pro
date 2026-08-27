@@ -1,2 +1,5 @@
-// Tela legada removida do fluxo. O contato do cliente agora nasce dentro da oportunidade.
-export {};
+import React from 'react';
+
+export const ClientesView: React.FC = () => {
+  return <div id="clientes-page" />;
+};
