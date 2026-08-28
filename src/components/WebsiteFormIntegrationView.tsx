@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clipboard,
   Code2,
   ExternalLink,
@@ -29,6 +31,8 @@ interface WebsiteFormIntegrationViewProps {
   theme: ThemeConfig;
   onShowToast: (message: string) => void;
 }
+
+type CollapsibleSection = 'domains' | 'states' | 'display' | 'branding';
 
 const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
@@ -79,6 +83,37 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [domainInput, setDomainInput] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<CollapsibleSection, boolean>>({
+    domains: false,
+    states: false,
+    display: false,
+    branding: false,
+  });
+
+  const toggleSection = (section: CollapsibleSection) => {
+    setCollapsedSections((current) => ({ ...current, [section]: !current[section] }));
+  };
+
+  const setAllSectionsCollapsed = (collapsed: boolean) => {
+    setCollapsedSections({ domains: collapsed, states: collapsed, display: collapsed, branding: collapsed });
+  };
+
+  const collapseButton = (section: CollapsibleSection, label: string) => {
+    const collapsed = collapsedSections[section];
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSection(section)}
+        aria-expanded={!collapsed}
+        aria-label={`${collapsed ? 'Expandir' : 'Recolher'} ${label}`}
+        className="btn-outline inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-bold"
+        style={{ borderColor: theme.border }}
+      >
+        {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        <span className="hidden sm:inline">{collapsed ? 'Expandir' : 'Recolher'}</span>
+      </button>
+    );
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -243,7 +278,17 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               Instale o formulário com um pequeno código. Cada envio autorizado entra automaticamente no funil como novo lead.
             </p>
           </div>
-          <label className="flex shrink-0 items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: theme.border }}>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAllSectionsCollapsed(!Object.values(collapsedSections).every(Boolean))}
+            className="btn-outline inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-xs font-bold"
+            style={{ borderColor: theme.border }}
+          >
+            {Object.values(collapsedSections).every(Boolean) ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            {Object.values(collapsedSections).every(Boolean) ? 'Expandir seções' : 'Recolher seções'}
+          </button>
+          <label className="flex items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: theme.border }}>
             <span>
               <span className="block text-sm font-bold">Integração ativa</span>
               <span className="block text-[11px] opacity-60">Bloqueada por padrão</span>
@@ -256,6 +301,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               style={{ accentColor: theme.secondary }}
             />
           </label>
+          </div>
         </div>
       </section>
 
@@ -268,16 +314,20 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="min-w-0 space-y-5">
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+                <div>
                 <h3 className="font-bold">1. Autorize os domínios</h3>
                 <p className="mt-1 text-xs leading-5 opacity-65">
                   Somente páginas nestes domínios poderão enviar dados. Use a origem completa, sem caminhos.
                 </p>
+                </div>
               </div>
+              {collapseButton('domains', 'domínios autorizados')}
             </div>
 
+            {!collapsedSections.domains && <>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <input
                 value={domainInput}
@@ -316,6 +366,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 </div>
               )}
             </div>
+            </>}
           </section>
 
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
@@ -329,11 +380,15 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   </p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold" style={{ borderColor: theme.border }}>
-                {draft.serviceStates.length}/27
-              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="rounded-full border px-2.5 py-1 text-[11px] font-bold" style={{ borderColor: theme.border }}>
+                  {draft.serviceStates.length}/27
+                </span>
+                {collapseButton('states', 'área de atendimento')}
+              </div>
             </div>
 
+            {!collapsedSections.states && <>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => setField('serviceStates', [...ALL_BRAZIL_STATE_CODES])} className="btn-outline rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>Selecionar todos</button>
               <button type="button" onClick={() => setField('serviceStates', [])} className="btn-outline rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>Limpar seleção</button>
@@ -365,17 +420,22 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 </fieldset>
               ))}
             </div>
+            </>}
           </section>
 
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-            <div className="flex items-start gap-3">
-              <Code2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Code2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
+                <div>
                 <h3 className="font-bold">3. Escolha como exibir</h3>
                 <p className="mt-1 text-xs leading-5 opacity-65">Funciona em WordPress, Wix e páginas HTML que aceitam código personalizado.</p>
+                </div>
               </div>
+              {collapseButton('display', 'modo de exibição')}
             </div>
 
+            {!collapsedSections.display && <>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {([
                 ['inline', 'Dentro da página', 'O formulário ocupa um bloco da sua página.'],
@@ -407,14 +467,19 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 {copied === 'code' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
               </button>
             </div>
+            </>}
           </section>
 
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-            <div className="flex items-start gap-3">
-              <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
-              <div><h3 className="font-bold">4. Personalize sua marca</h3><p className="mt-1 text-xs opacity-65">Estas cores são próprias do formulário e não alteram o tema do CRM.</p></div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+                <div><h3 className="font-bold">4. Personalize sua marca</h3><p className="mt-1 text-xs opacity-65">Estas cores são próprias do formulário e não alteram o tema do CRM.</p></div>
+              </div>
+              {collapseButton('branding', 'personalização da marca')}
             </div>
 
+            {!collapsedSections.branding &&
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Nome da empresa</span><input className="crm-input" value={draft.companyName} maxLength={100} onChange={(event) => setField('companyName', event.target.value)} /></label>
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">URL HTTPS do logotipo</span><input className="crm-input" value={draft.logoUrl} maxLength={500} inputMode="url" placeholder="https://.../logo.png" onChange={(event) => setField('logoUrl', event.target.value)} /></label>
@@ -427,6 +492,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Mensagem após o envio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.successMessage} maxLength={240} onChange={(event) => setField('successMessage', event.target.value)} /></label>
               <label className="sm:col-span-2 flex items-center gap-3 rounded-lg border p-3" style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
             </div>
+            }
           </section>
         </div>
 
