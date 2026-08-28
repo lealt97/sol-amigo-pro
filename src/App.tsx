@@ -18,6 +18,7 @@ import { ClientesView } from './components/ClientesView';
 import { HelpModal } from './components/HelpModal';
 import { OportunidadesView } from './components/OportunidadesView';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
+import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -309,6 +310,13 @@ export default function App() {
             currentPdfSettings={currentPdfSettings}
             currentTheme={currentTheme}
             onSavePdfSettings={setCurrentPdfSettings}
+            onShowToast={showToast}
+          />
+        );
+      case 'integracoes':
+        return (
+          <WebsiteFormIntegrationView
+            theme={currentTheme}
             onShowToast={showToast}
           />
         );

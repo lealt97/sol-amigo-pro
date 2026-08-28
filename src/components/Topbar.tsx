@@ -24,6 +24,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   perfil: 'Perfil',
   personalizacao: 'Personalização da Conta',
   'pdf-customizacoes': 'Customizações do PDF',
+  integracoes: 'Formulário no site',
   seguranca: 'Segurança',
   'area-risco': 'Área de risco',
 };
