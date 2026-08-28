@@ -9,6 +9,7 @@ const FORM_COLUMNS = [
   'active',
   'widget_enabled',
   'allowed_origins',
+  'service_states',
   'widget_mode',
   'company_name',
   'logo_url',
@@ -29,6 +30,7 @@ type WebsiteFormRow = {
   active: boolean;
   widget_enabled: boolean;
   allowed_origins: string[];
+  service_states: string[];
   widget_mode: WebsiteFormSettings['widgetMode'];
   company_name: string;
   logo_url: string | null;
@@ -49,6 +51,7 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
   active: row.active,
   widgetEnabled: row.widget_enabled,
   allowedOrigins: row.allowed_origins ?? [],
+  serviceStates: row.service_states ?? [],
   widgetMode: row.widget_mode,
   companyName: row.company_name,
   logoUrl: row.logo_url ?? '',
@@ -66,6 +69,7 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   active: settings.active,
   widget_enabled: settings.widgetEnabled,
   allowed_origins: settings.allowedOrigins,
+  service_states: settings.serviceStates,
   widget_mode: settings.widgetMode,
   company_name: settings.companyName.trim(),
   logo_url: settings.logoUrl.trim() || null,
