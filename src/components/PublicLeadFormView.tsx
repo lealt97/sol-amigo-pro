@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SUPABASE_URL, supabase } from '../lib/supabase';
 import { BrandLogo } from './BrandLogo';
+import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_NAMES } from '../data/brazilStates';
 
 interface PublicLeadFormViewProps {
   formToken: string;
@@ -45,6 +46,7 @@ type PublicFormConfig = {
   successMessage: string;
   privacyUrl: string | null;
   showPoweredBy: boolean;
+  serviceStates: string[];
 };
 
 const DEFAULT_CONFIG: PublicFormConfig = {
@@ -58,6 +60,7 @@ const DEFAULT_CONFIG: PublicFormConfig = {
   successMessage: 'Recebemos sua solicitação. Em breve, nossa equipe entrará em contato.',
   privacyUrl: null,
   showPoweredBy: true,
+  serviceStates: ALL_BRAZIL_STATE_CODES,
 };
 
 const INITIAL_FORM: PublicFormData = {
@@ -76,11 +79,6 @@ const INITIAL_FORM: PublicFormData = {
   consent: false,
   website: '',
 };
-
-const STATES = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
-  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
-];
 
 export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToken }) => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -370,7 +368,9 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Estado *</span>
                       <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option>
-                        {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+                        {config.serviceStates.map((state) => (
+                          <option key={state} value={state}>{state} — {BRAZIL_STATE_NAMES[state]}</option>
+                        ))}
                       </select>
                     </label>
                     <label className="sm:col-span-2">
