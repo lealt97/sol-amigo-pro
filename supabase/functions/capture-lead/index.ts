@@ -1,16 +1,39 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
+const OFFICIAL_ORIGINS = new Set([
+  "https://lealt97.github.io",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
+
+const preflightHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+  Vary: "Origin",
 };
 
-const json = (body: Record<string, unknown>, status = 200) =>
+const responseHeaders = (origin: string | null, isPublicConfig = false) => ({
+  "Access-Control-Allow-Origin": isPublicConfig ? "*" : origin ?? "null",
+  "Access-Control-Allow-Headers": preflightHeaders["Access-Control-Allow-Headers"],
+  "Access-Control-Allow-Methods": preflightHeaders["Access-Control-Allow-Methods"],
+  Vary: "Origin",
+  "Content-Type": "application/json; charset=utf-8",
+  "Cache-Control": isPublicConfig ? "public, max-age=60" : "no-store",
+});
+
+const json = (
+  body: Record<string, unknown>,
+  status = 200,
+  origin: string | null = null,
+  isPublicConfig = false,
+  extraHeaders: Record<string, string> = {},
+) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...responseHeaders(origin, isPublicConfig), ...extraHeaders },
   });
 
 const asText = (value: unknown, maxLength: number) =>
@@ -27,25 +50,183 @@ const asOptionalNumber = (value: unknown) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 };
 
+const normalizeOrigin = (value: unknown): string | null => {
+  const raw = asText(value, 300);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+};
+
+const sha256 = async (value: string) => {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
+
+const getClientAddress = (req: Request) => {
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return req.headers.get("cf-connecting-ip")?.trim()
+    || forwarded
+    || req.headers.get("x-real-ip")?.trim()
+    || "unknown";
+};
+
 const PROPERTY_TYPES = new Set(["Residencial", "Comercial", "Rural", "Industrial"]);
 const PROPERTY_STATUSES = new Set(["Próprio", "Alugado", "Em construção", "Outro"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type CaptureForm = {
+  id: string;
+  user_id: string;
+  active: boolean;
+  widget_enabled: boolean;
+  allowed_origins: string[];
+  widget_mode: "inline" | "modal";
+  company_name: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  headline: string;
+  subheadline: string;
+  submit_label: string;
+  success_message: string;
+  privacy_url: string | null;
+  show_powered_by: boolean;
+};
+
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: preflightHeaders });
+  }
+
+  const requestOrigin = normalizeOrigin(req.headers.get("origin"));
+  if (req.method !== "GET" && req.method !== "POST") {
+    return json({ error: "Método não permitido." }, 405, requestOrigin);
+  }
 
   try {
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") return json({ error: "Dados inválidos." }, 400);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) throw new Error("Missing server configuration");
 
-    const input = body as Record<string, unknown>;
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Campo-isca: navegadores reais não o preenchem; bots genéricos costumam preencher.
-    if (asText(input.website, 200)) return json({ success: true }, 202);
+    let input: Record<string, unknown> = {};
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => null);
+      if (!body || typeof body !== "object") {
+        return json({ error: "Dados inválidos." }, 400, requestOrigin);
+      }
+      input = body as Record<string, unknown>;
 
-    const formToken = asText(input.formToken, 64);
+      // Campo-isca: navegadores reais não o preenchem; bots genéricos costumam preencher.
+      if (asText(input.website, 200)) return json({ success: true }, 202, requestOrigin);
+    }
+
+    const requestUrl = new URL(req.url);
+    const formToken = asText(
+      req.method === "GET" ? requestUrl.searchParams.get("formToken") : input.formToken,
+      64,
+    );
+
+    if (!UUID_PATTERN.test(formToken)) {
+      return json({ error: "Formulário indisponível." }, 404, requestOrigin, req.method === "GET");
+    }
+
+    const { data: formData, error: formError } = await admin
+      .from("lead_capture_forms")
+      .select("id, user_id, active, widget_enabled, allowed_origins, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by")
+      .eq("public_token", formToken)
+      .maybeSingle();
+
+    if (formError) throw formError;
+    const form = formData as CaptureForm | null;
+    if (!form?.active) {
+      return json({ error: "Formulário indisponível." }, 404, requestOrigin, req.method === "GET");
+    }
+
+    const allowedOrigins = (form.allowed_origins ?? [])
+      .map(normalizeOrigin)
+      .filter((origin): origin is string => Boolean(origin));
+
+    if (req.method === "GET") {
+      const siteOriginRaw = requestUrl.searchParams.get("siteOrigin");
+      const siteOrigin = normalizeOrigin(siteOriginRaw);
+      if (siteOriginRaw && (!siteOrigin || !form.widget_enabled || !allowedOrigins.includes(siteOrigin))) {
+        return json({ error: "Este domínio não está autorizado para usar o formulário." }, 403, requestOrigin, true);
+      }
+
+      return json({
+        companyName: form.company_name,
+        logoUrl: form.logo_url,
+        primaryColor: form.primary_color,
+        secondaryColor: form.secondary_color,
+        headline: form.headline,
+        subheadline: form.subheadline,
+        submitLabel: form.submit_label,
+        successMessage: form.success_message,
+        privacyUrl: form.privacy_url,
+        showPoweredBy: form.show_powered_by,
+        widgetMode: form.widget_mode,
+      }, 200, requestOrigin, true);
+    }
+
+    if (!requestOrigin) {
+      return json({ error: "Origem da solicitação ausente." }, 403, null);
+    }
+
+    const isOfficialOrigin = OFFICIAL_ORIGINS.has(requestOrigin);
+    const claimedSiteOrigin = normalizeOrigin(input.siteOrigin);
+    const isAllowedWidgetOrigin = form.widget_enabled
+      && allowedOrigins.includes(requestOrigin)
+      && claimedSiteOrigin === requestOrigin;
+
+    if (!isOfficialOrigin && !isAllowedWidgetOrigin) {
+      return json({ error: "Este domínio não está autorizado para enviar o formulário." }, 403, requestOrigin);
+    }
+
+    const rateLimitSalt = Deno.env.get("RATE_LIMIT_SALT") || serviceRoleKey;
+    const ipHash = await sha256(`${rateLimitSalt}:ip:${getClientAddress(req)}`);
+    const globalHash = await sha256(`${rateLimitSalt}:form:${form.id}`);
+
+    const [{ data: ipAllowed, error: ipLimitError }, { data: formAllowed, error: formLimitError }] = await Promise.all([
+      admin.rpc("consume_lead_capture_rate_limit", {
+        p_form_id: form.id,
+        p_key_hash: ipHash,
+        p_max_requests: 8,
+        p_window_seconds: 600,
+      }),
+      admin.rpc("consume_lead_capture_rate_limit", {
+        p_form_id: form.id,
+        p_key_hash: globalHash,
+        p_max_requests: 120,
+        p_window_seconds: 3600,
+      }),
+    ]);
+
+    if (ipLimitError || formLimitError) throw ipLimitError || formLimitError;
+    if (!ipAllowed || !formAllowed) {
+      return json(
+        { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
+        429,
+        requestOrigin,
+        false,
+        { "Retry-After": "600" },
+      );
+    }
+
     const name = asText(input.name, 120);
     const phone = asText(input.phone, 30);
     const phoneNormalized = phone.replace(/\D/g, "");
@@ -56,38 +237,25 @@ Deno.serve(async (req: Request) => {
     const propertyStatus = asOptionalText(input.propertyStatus, 30);
     const consent = input.consent === true;
 
-    if (!UUID_PATTERN.test(formToken)) return json({ error: "Formulário indisponível." }, 404);
-    if (name.length < 2) return json({ error: "Informe seu nome." }, 400);
+    if (name.length < 2) return json({ error: "Informe seu nome." }, 400, requestOrigin);
     if (phoneNormalized.length < 10 || phoneNormalized.length > 13) {
-      return json({ error: "Informe um WhatsApp válido com DDD." }, 400);
+      return json({ error: "Informe um WhatsApp válido com DDD." }, 400, requestOrigin);
     }
-    if (email && !EMAIL_PATTERN.test(email)) return json({ error: "Informe um e-mail válido." }, 400);
+    if (email && !EMAIL_PATTERN.test(email)) {
+      return json({ error: "Informe um e-mail válido." }, 400, requestOrigin);
+    }
     if (city.length < 2 || !/^[A-Z]{2}$/.test(state)) {
-      return json({ error: "Informe a cidade e o estado." }, 400);
+      return json({ error: "Informe a cidade e o estado." }, 400, requestOrigin);
     }
-    if (!PROPERTY_TYPES.has(propertyType)) return json({ error: "Selecione o tipo do imóvel." }, 400);
+    if (!PROPERTY_TYPES.has(propertyType)) {
+      return json({ error: "Selecione o tipo do imóvel." }, 400, requestOrigin);
+    }
     if (propertyStatus && !PROPERTY_STATUSES.has(propertyStatus)) {
-      return json({ error: "Situação do imóvel inválida." }, 400);
+      return json({ error: "Situação do imóvel inválida." }, 400, requestOrigin);
     }
-    if (!consent) return json({ error: "É necessário autorizar o contato." }, 400);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) throw new Error("Configuração do servidor indisponível.");
-
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const { data: form, error: formError } = await admin
-      .from("lead_capture_forms")
-      .select("id, user_id")
-      .eq("public_token", formToken)
-      .eq("active", true)
-      .maybeSingle();
-
-    if (formError) throw formError;
-    if (!form) return json({ error: "Formulário indisponível." }, 404);
+    if (!consent) {
+      return json({ error: "É necessário autorizar o contato." }, 400, requestOrigin);
+    }
 
     const duplicateCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: phoneMatch, error: phoneMatchError } = await admin
@@ -147,7 +315,7 @@ Deno.serve(async (req: Request) => {
         if (taskError) throw taskError;
       }
 
-      return json({ success: true, duplicate: true }, 200);
+      return json({ success: true, duplicate: true }, 200, requestOrigin);
     }
 
     const averageMonthlyBill = asOptionalNumber(input.averageMonthlyBill);
@@ -194,10 +362,9 @@ Deno.serve(async (req: Request) => {
     });
 
     if (taskError) throw taskError;
-
-    return json({ success: true }, 201);
+    return json({ success: true }, 201, requestOrigin);
   } catch (error) {
-    console.error("capture-lead error", error);
-    return json({ error: "Não foi possível enviar seus dados. Tente novamente." }, 500);
+    console.error("capture-lead error", error instanceof Error ? error.message : "unknown");
+    return json({ error: "Não foi possível enviar seus dados. Tente novamente." }, 500, requestOrigin);
   }
 });

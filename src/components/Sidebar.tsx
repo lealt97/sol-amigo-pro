@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
-  const settingsPages: PageKey[] = ['perfil', 'personalizacao', 'pdf-customizacoes', 'seguranca', 'area-risco'];
+  const settingsPages: PageKey[] = ['perfil', 'personalizacao', 'pdf-customizacoes', 'integracoes', 'seguranca', 'area-risco'];
   const [settingsOpen, setSettingsOpen] = useState(settingsPages.includes(activePage));
   const [signingOut, setSigningOut] = useState(false);
   const [profile, setProfile] = useState<SidebarProfile>({
@@ -242,6 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ['perfil', 'Perfil'],
                   ['personalizacao', 'Personalização da conta'],
                   ['pdf-customizacoes', 'Customizações do PDF'],
+                  ['integracoes', 'Formulário no site'],
                   ['seguranca', 'Segurança'],
                   ['area-risco', 'Área de risco'],
                 ].map(([key, label]) => {

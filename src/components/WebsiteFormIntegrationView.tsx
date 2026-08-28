@@ -1,0 +1,431 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  Check,
+  Clipboard,
+  Code2,
+  ExternalLink,
+  Globe2,
+  KeyRound,
+  Loader2,
+  MonitorSmartphone,
+  Plus,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react';
+import type { ThemeConfig, WebsiteFormSettings } from '../types';
+import {
+  fetchWebsiteFormSettings,
+  normalizeWebsiteOrigin,
+  rotateWebsiteFormToken,
+  saveWebsiteFormSettings,
+} from '../services/websiteFormIntegration';
+
+interface WebsiteFormIntegrationViewProps {
+  theme: ThemeConfig;
+  onShowToast: (message: string) => void;
+}
+
+const PUBLIC_APP_URL = (
+  import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
+).replace(/\/?$/, '/');
+const CAPTURE_ENDPOINT = 'https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead';
+
+const escapeHtmlAttribute = (value: string) => value
+  .replaceAll('&', '&amp;')
+  .replaceAll('"', '&quot;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;');
+
+const copyText = async (value: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const field = document.createElement('textarea');
+  field.value = value;
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.appendChild(field);
+  field.select();
+  document.execCommand('copy');
+  field.remove();
+};
+
+const validateHttpsUrl = (value: string, label: string) => {
+  if (!value.trim()) return;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:') throw new Error();
+  } catch {
+    throw new Error(`${label} precisa ser uma URL HTTPS válida.`);
+  }
+};
+
+export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProps> = ({
+  theme,
+  onShowToast,
+}) => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [saved, setSaved] = useState<WebsiteFormSettings | null>(null);
+  const [draft, setDraft] = useState<WebsiteFormSettings | null>(null);
+  const [domainInput, setDomainInput] = useState('');
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchWebsiteFormSettings()
+      .then((settings) => {
+        if (!mounted) return;
+        setSaved(settings);
+        setDraft(settings);
+      })
+      .catch(() => mounted && setError('Não foi possível carregar a integração.'))
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const changed = useMemo(
+    () => Boolean(saved && draft && JSON.stringify(saved) !== JSON.stringify(draft)),
+    [saved, draft]
+  );
+
+  const publicLink = draft
+    ? `${PUBLIC_APP_URL}?captacao=${encodeURIComponent(draft.publicToken)}`
+    : '';
+
+  const installCode = useMemo(() => {
+    if (!draft) return '';
+    const widgetScript = `${PUBLIC_APP_URL}widget.js`;
+    if (draft.widgetMode === 'modal') {
+      return `<script async src="${widgetScript}" data-sol-amigo-token="${draft.publicToken}" data-mode="modal" data-color="${draft.primaryColor}" data-button-label="${escapeHtmlAttribute(draft.submitLabel)}"></script>`;
+    }
+    return `<div id="sol-amigo-formulario"></div>\n<script async src="${widgetScript}" data-sol-amigo-token="${draft.publicToken}" data-mode="inline" data-target="#sol-amigo-formulario"></script>`;
+  }, [draft]);
+
+  const setField = <K extends keyof WebsiteFormSettings>(
+    key: K,
+    value: WebsiteFormSettings[K]
+  ) => {
+    setDraft((current) => (current ? { ...current, [key]: value } : current));
+    setError('');
+  };
+
+  const addDomain = () => {
+    if (!draft) return;
+    try {
+      const origin = normalizeWebsiteOrigin(domainInput);
+      if (draft.allowedOrigins.includes(origin)) throw new Error('Este domínio já foi adicionado.');
+      if (draft.allowedOrigins.length >= 10) throw new Error('Você pode autorizar até 10 domínios.');
+      setField('allowedOrigins', [...draft.allowedOrigins, origin]);
+      setDomainInput('');
+    } catch (domainError) {
+      setError(domainError instanceof Error ? domainError.message : 'Domínio inválido.');
+    }
+  };
+
+  const validate = (settings: WebsiteFormSettings) => {
+    if (settings.widgetEnabled && !settings.allowedOrigins.length) {
+      throw new Error('Adicione ao menos um domínio antes de ativar a integração.');
+    }
+    if (settings.companyName.trim().length < 2) throw new Error('Informe o nome da empresa.');
+    if (settings.headline.trim().length < 5) throw new Error('O título está muito curto.');
+    if (settings.subheadline.trim().length < 5) throw new Error('O texto de apoio está muito curto.');
+    if (settings.submitLabel.trim().length < 3) throw new Error('O texto do botão está muito curto.');
+    if (settings.successMessage.trim().length < 5) throw new Error('A mensagem de sucesso está muito curta.');
+    if (!/^#[0-9A-Fa-f]{6}$/.test(settings.primaryColor)) throw new Error('A cor principal é inválida.');
+    if (!/^#[0-9A-Fa-f]{6}$/.test(settings.secondaryColor)) throw new Error('A cor secundária é inválida.');
+    validateHttpsUrl(settings.logoUrl, 'A URL do logotipo');
+    validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
+  };
+
+  const save = async () => {
+    if (!draft) return;
+    try {
+      validate(draft);
+      setSaving(true);
+      setError('');
+      const updated = await saveWebsiteFormSettings(draft);
+      setSaved(updated);
+      setDraft(updated);
+      onShowToast('Integração do formulário salva.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Não foi possível salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    if (!saved?.widgetEnabled || !saved.allowedOrigins.length) {
+      setError('Salve e ative a integração antes de testar.');
+      return;
+    }
+    setTesting(true);
+    setError('');
+    try {
+      const url = new URL(CAPTURE_ENDPOINT);
+      url.searchParams.set('formToken', saved.publicToken);
+      url.searchParams.set('siteOrigin', saved.allowedOrigins[0]);
+      const response = await fetch(url, { method: 'GET', credentials: 'omit' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'A conexão não respondeu como esperado.');
+      onShowToast(`Conexão validada para ${saved.allowedOrigins[0]}.`);
+    } catch (testError) {
+      setError(testError instanceof Error ? testError.message : 'Falha ao testar a conexão.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const rotateToken = async () => {
+    if (!draft) return;
+    const confirmed = window.confirm(
+      'Gerar um novo identificador? O código já instalado deixará de funcionar e a integração será desativada até você instalar o novo código.'
+    );
+    if (!confirmed) return;
+    setRotating(true);
+    setError('');
+    try {
+      const updated = await rotateWebsiteFormToken(draft.id);
+      setSaved(updated);
+      setDraft(updated);
+      onShowToast('Identificador renovado. Atualize o código no seu site.');
+    } catch {
+      setError('Não foi possível renovar o identificador.');
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  const copy = async (kind: 'code' | 'link' | 'token', value: string) => {
+    try {
+      await copyText(value);
+      setCopied(kind);
+      window.setTimeout(() => setCopied((current) => (current === kind ? null : current)), 1800);
+    } catch {
+      setError('Não foi possível copiar automaticamente. Selecione o conteúdo manualmente.');
+    }
+  };
+
+  if (loading || !draft) {
+    return (
+      <div id="integracoes-page" className="mx-auto flex min-h-72 max-w-6xl items-center justify-center gap-2 text-sm opacity-70">
+        <Loader2 className="h-5 w-5 animate-spin" /> Carregando integração...
+      </div>
+    );
+  }
+
+  return (
+    <div id="integracoes-page" className="mx-auto max-w-6xl space-y-5">
+      <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-bold">
+              <Globe2 className="h-5 w-5" style={{ color: theme.accent }} />
+              Formulário no site
+            </div>
+            <h2 className="mt-2 text-xl font-bold">Conecte seu site ao Sol Amigo PRO</h2>
+            <p className="mt-2 max-w-2xl text-sm opacity-70">
+              Instale o formulário com um pequeno código. Cada envio autorizado entra automaticamente no funil como novo lead.
+            </p>
+          </div>
+          <label className="flex shrink-0 items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: theme.border }}>
+            <span>
+              <span className="block text-sm font-bold">Integração ativa</span>
+              <span className="block text-[11px] opacity-60">Bloqueada por padrão</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={draft.widgetEnabled}
+              onChange={(event) => setField('widgetEnabled', event.target.checked)}
+              className="h-5 w-5"
+              style={{ accentColor: theme.secondary }}
+            />
+          </label>
+        </div>
+      </section>
+
+      {error && (
+        <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+        </div>
+      )}
+
+      <div className="grid gap-5 xl:grid-cols-[1.12fr_.88fr]">
+        <div className="space-y-5">
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+              <div>
+                <h3 className="font-bold">1. Autorize os domínios</h3>
+                <p className="mt-1 text-xs leading-5 opacity-65">
+                  Somente páginas nestes domínios poderão enviar dados. Use a origem completa, sem caminhos.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={domainInput}
+                onChange={(event) => setDomainInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addDomain();
+                  }
+                }}
+                className="crm-input flex-1"
+                placeholder="https://www.minhaempresa.com.br"
+                inputMode="url"
+              />
+              <button type="button" onClick={addDomain} className="btn-outline inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold" style={{ borderColor: theme.border }}>
+                <Plus className="h-4 w-4" /> Adicionar
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {draft.allowedOrigins.length ? draft.allowedOrigins.map((origin) => (
+                <div key={origin} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" style={{ borderColor: theme.border }}>
+                  <span className="truncate font-mono text-xs">{origin}</span>
+                  <button
+                    type="button"
+                    onClick={() => setField('allowedOrigins', draft.allowedOrigins.filter((item) => item !== origin))}
+                    className="rounded-md p-1.5 text-red-300"
+                    aria-label={`Remover ${origin}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )) : (
+                <div className="rounded-lg border border-dashed p-4 text-center text-xs opacity-55" style={{ borderColor: theme.border }}>
+                  Nenhum domínio autorizado. O widget permanece bloqueado.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start gap-3">
+              <Code2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
+              <div>
+                <h3 className="font-bold">2. Escolha como exibir</h3>
+                <p className="mt-1 text-xs leading-5 opacity-65">Funciona em WordPress, Wix e páginas HTML que aceitam código personalizado.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {([
+                ['inline', 'Dentro da página', 'O formulário ocupa um bloco da sua página.'],
+                ['modal', 'Botão flutuante', 'Um botão abre o formulário sobre a página.'],
+              ] as const).map(([mode, label, description]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setField('widgetMode', mode)}
+                  className="rounded-xl border p-4 text-left"
+                  style={{
+                    borderColor: draft.widgetMode === mode ? theme.secondary : theme.border,
+                    boxShadow: draft.widgetMode === mode ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                  }}
+                >
+                  <span className="flex items-center justify-between gap-2 text-sm font-bold">
+                    {label}{draft.widgetMode === mode && <Check className="h-4 w-4" style={{ color: theme.accent }} />}
+                  </span>
+                  <span className="mt-1 block text-xs opacity-60">{description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="relative mt-4">
+              <pre className="max-h-48 overflow-auto rounded-xl border p-4 pr-12 font-mono text-[11px] leading-5" style={{ borderColor: theme.border, backgroundColor: `${theme.primary}22` }}>
+                <code>{installCode}</code>
+              </pre>
+              <button type="button" onClick={() => copy('code', installCode)} className="absolute right-2 top-2 rounded-lg border p-2" style={{ borderColor: theme.border }} aria-label="Copiar código de instalação">
+                {copied === 'code' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start gap-3">
+              <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+              <div><h3 className="font-bold">3. Personalize sua marca</h3><p className="mt-1 text-xs opacity-65">Estas cores são próprias do formulário e não alteram o tema do CRM.</p></div>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Nome da empresa</span><input className="crm-input" value={draft.companyName} maxLength={100} onChange={(event) => setField('companyName', event.target.value)} /></label>
+              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">URL HTTPS do logotipo</span><input className="crm-input" value={draft.logoUrl} maxLength={500} inputMode="url" placeholder="https://.../logo.png" onChange={(event) => setField('logoUrl', event.target.value)} /></label>
+              <label><span className="mb-1.5 block text-xs font-bold">Cor principal</span><div className="flex gap-2"><input type="color" value={draft.primaryColor} onChange={(event) => setField('primaryColor', event.target.value.toUpperCase())} className="h-[42px] w-12 rounded-lg border bg-transparent p-1" style={{ borderColor: theme.border }} /><input className="crm-input font-mono" value={draft.primaryColor} maxLength={7} onChange={(event) => setField('primaryColor', event.target.value.toUpperCase())} /></div></label>
+              <label><span className="mb-1.5 block text-xs font-bold">Cor secundária</span><div className="flex gap-2"><input type="color" value={draft.secondaryColor} onChange={(event) => setField('secondaryColor', event.target.value.toUpperCase())} className="h-[42px] w-12 rounded-lg border bg-transparent p-1" style={{ borderColor: theme.border }} /><input className="crm-input font-mono" value={draft.secondaryColor} maxLength={7} onChange={(event) => setField('secondaryColor', event.target.value.toUpperCase())} /></div></label>
+              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>
+              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Texto de apoio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.subheadline} maxLength={240} onChange={(event) => setField('subheadline', event.target.value)} /></label>
+              <label><span className="mb-1.5 block text-xs font-bold">Texto do botão</span><input className="crm-input" value={draft.submitLabel} maxLength={60} onChange={(event) => setField('submitLabel', event.target.value)} /></label>
+              <label><span className="mb-1.5 block text-xs font-bold">Política de privacidade</span><input className="crm-input" value={draft.privacyUrl} maxLength={500} inputMode="url" placeholder="https://..." onChange={(event) => setField('privacyUrl', event.target.value)} /></label>
+              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Mensagem após o envio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.successMessage} maxLength={240} onChange={(event) => setField('successMessage', event.target.value)} /></label>
+              <label className="sm:col-span-2 flex items-center gap-3 rounded-lg border p-3" style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-5">
+          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+            <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia</p>
+            <div className="mt-4 overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
+              <div className="p-5" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
+                {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-5 h-9 max-w-[180px] object-contain object-left" /> : <p className="mb-5 text-xs font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
+                <h3 className="text-xl font-extrabold leading-tight">{draft.headline}</h3>
+                <p className="mt-2 text-xs leading-5 opacity-75">{draft.subheadline}</p>
+              </div>
+              <div className="space-y-3 p-5">
+                {['Nome completo', 'WhatsApp com DDD', 'Cidade e estado'].map((field) => <div key={field} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">{field}</div>)}
+                <button type="button" className="btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
+                {draft.showPoweredBy && <p className="text-center text-[9px] text-slate-400">Tecnologia Sol Amigo PRO</p>}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+            <h3 className="font-bold">Link direto</h3>
+            <p className="mt-1 text-xs opacity-60">Alternativa para bio, anúncio ou WhatsApp.</p>
+            <div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="crm-input min-w-0 flex-1 font-mono text-[10px]" /><button type="button" onClick={() => copy('link', publicLink)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>{copied === 'link' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="flex items-center rounded-lg border px-3" style={{ borderColor: theme.border }}><ExternalLink className="h-4 w-4" /></a></div>
+          </section>
+
+          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-2"><KeyRound className="h-4 w-4" style={{ color: theme.accent }} /><h3 className="font-bold">Identificador público</h3></div>
+            <p className="mt-2 text-xs leading-5 opacity-60">Pode aparecer no código do site. Ele identifica o destino dos leads, mas não concede acesso ao CRM.</p>
+            <div className="mt-3 flex gap-2"><input readOnly value={draft.publicToken} className="crm-input min-w-0 flex-1 font-mono text-[10px]" /><button type="button" onClick={() => copy('token', draft.publicToken)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>{copied === 'token' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button></div>
+            <button type="button" disabled={rotating} onClick={rotateToken} className="btn-outline mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}><RefreshCw className={`h-4 w-4 ${rotating ? 'animate-spin' : ''}`} />Renovar identificador</button>
+          </section>
+
+          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+            <h3 className="font-bold">Proteções ativas</h3>
+            <ul className="mt-3 space-y-2 text-xs opacity-70">
+              <li>• isolamento por conta e políticas RLS</li>
+              <li>• domínio autorizado e integração desligada por padrão</li>
+              <li>• limite por IP anonimizado e limite global</li>
+              <li>• campo-isca, validação no servidor e deduplicação</li>
+              <li>• nenhuma chave administrativa no navegador</li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <div className="sticky bottom-4 flex flex-col gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
+        <div><p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p><p className="mt-0.5 text-xs opacity-60">Teste a conexão somente depois de salvar.</p></div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={testing || changed} onClick={testConnection} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold" style={{ borderColor: theme.border }}>{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}Testar conexão</button>
+          <button type="button" disabled={saving || !changed} onClick={save} className="btn-filled inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold" style={{ backgroundColor: theme.secondary, color: '#fff' }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar integração</button>
+        </div>
+      </div>
+    </div>
+  );
+};

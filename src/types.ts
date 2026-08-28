@@ -38,6 +38,7 @@ export type PageKey =
   | 'perfil'
   | 'personalizacao'
   | 'pdf-customizacoes'
+  | 'integracoes'
   | 'seguranca'
   | 'area-risco';
 
@@ -163,6 +164,22 @@ export interface LeadCaptureForm {
   publicToken: string;
   name: string;
   active: boolean;
+}
+
+export interface WebsiteFormSettings extends LeadCaptureForm {
+  widgetEnabled: boolean;
+  allowedOrigins: string[];
+  widgetMode: 'inline' | 'modal';
+  companyName: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  headline: string;
+  subheadline: string;
+  submitLabel: string;
+  successMessage: string;
+  privacyUrl: string;
+  showPoweredBy: boolean;
 }
 
 export type QualificationStatus = 'pendente' | 'qualificado' | 'nao_qualificado';
