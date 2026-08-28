@@ -265,8 +265,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1.12fr_.88fr]">
-        <div className="space-y-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+        <div className="min-w-0 space-y-5">
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
@@ -400,7 +400,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             </div>
 
             <div className="relative mt-4">
-              <pre className="max-h-48 overflow-auto rounded-xl border p-4 pr-12 font-mono text-[11px] leading-5" style={{ borderColor: theme.border, backgroundColor: `${theme.primary}22` }}>
+              <pre className="max-h-48 min-w-0 overflow-y-auto whitespace-pre-wrap break-all rounded-xl border p-4 pr-12 font-mono text-[11px] leading-5" style={{ borderColor: theme.border, backgroundColor: `${theme.primary}22` }}>
                 <code>{installCode}</code>
               </pre>
               <button type="button" onClick={() => copy('code', installCode)} className="absolute right-2 top-2 rounded-lg border p-2" style={{ borderColor: theme.border }} aria-label="Copiar código de instalação">
@@ -430,19 +430,21 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
           </section>
         </div>
 
-        <aside className="space-y-5">
-          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+        <aside className="min-w-0 space-y-5 xl:sticky xl:top-20 xl:self-start">
+          <section className="rounded-2xl border p-4" style={{ borderColor: theme.border }}>
             <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia</p>
             <div className="mt-4 overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
-              <div className="p-5" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
-                {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-5 h-9 max-w-[180px] object-contain object-left" /> : <p className="mb-5 text-xs font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
-                <h3 className="text-xl font-extrabold leading-tight">{draft.headline}</h3>
-                <p className="mt-2 text-xs leading-5 opacity-75">{draft.subheadline}</p>
+              <div className="p-4" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
+                {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-3 h-8 max-w-[180px] object-contain object-left" /> : <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
+                <h3 className="text-lg font-extrabold leading-tight">{draft.headline}</h3>
+                <p className="mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
               </div>
-              <div className="space-y-3 p-5">
-                {['Nome completo', 'WhatsApp com DDD', 'Cidade e estado'].map((field) => <div key={field} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">{field}</div>)}
-                <button type="button" className="btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
-                {draft.showPoweredBy && <p className="text-center text-[9px] text-slate-400">Tecnologia Sol Amigo PRO</p>}
+              <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
+                <button type="button" className="btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
+                {draft.showPoweredBy && <p className="text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
               </div>
             </div>
           </section>
