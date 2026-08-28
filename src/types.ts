@@ -169,6 +169,7 @@ export interface LeadCaptureForm {
 export interface WebsiteFormSettings extends LeadCaptureForm {
   widgetEnabled: boolean;
   allowedOrigins: string[];
+  serviceStates: string[];
   widgetMode: 'inline' | 'modal';
   companyName: string;
   logoUrl: string;
