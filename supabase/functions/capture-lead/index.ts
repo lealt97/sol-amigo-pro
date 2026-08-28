@@ -91,6 +91,7 @@ type CaptureForm = {
   active: boolean;
   widget_enabled: boolean;
   allowed_origins: string[];
+  service_states: string[];
   widget_mode: "inline" | "modal";
   company_name: string;
   logo_url: string | null;
@@ -147,7 +148,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: formData, error: formError } = await admin
       .from("lead_capture_forms")
-      .select("id, user_id, active, widget_enabled, allowed_origins, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by")
+      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by")
       .eq("public_token", formToken)
       .maybeSingle();
 
@@ -179,6 +180,7 @@ Deno.serve(async (req: Request) => {
         successMessage: form.success_message,
         privacyUrl: form.privacy_url,
         showPoweredBy: form.show_powered_by,
+        serviceStates: form.service_states,
         widgetMode: form.widget_mode,
       }, 200, requestOrigin, true);
     }
@@ -246,6 +248,9 @@ Deno.serve(async (req: Request) => {
     }
     if (city.length < 2 || !/^[A-Z]{2}$/.test(state)) {
       return json({ error: "Informe a cidade e o estado." }, 400, requestOrigin);
+    }
+    if (!(form.service_states ?? []).includes(state)) {
+      return json({ error: "Este integrador ainda não atende o estado selecionado." }, 422, requestOrigin);
     }
     if (!PROPERTY_TYPES.has(propertyType)) {
       return json({ error: "Selecione o tipo do imóvel." }, 400, requestOrigin);
