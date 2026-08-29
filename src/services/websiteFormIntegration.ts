@@ -1,5 +1,5 @@
 import type { WebsiteFormSettings } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { ensureLeadCaptureForm } from './leads';
 
 export interface ProfileBrandLogo {
@@ -105,7 +105,7 @@ export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
 
   const stored = data.user.user_metadata?.brand_logos ?? {};
   const expectedPath = `/storage/v1/object/public/account-assets/${data.user.id}/logos/`;
-  const projectHost = new URL(import.meta.env.VITE_SUPABASE_URL).hostname;
+  const projectHost = new URL(SUPABASE_URL).hostname;
 
   return (['dark', 'light'] as const).flatMap((background) =>
     [0, 1, 2].flatMap((index) => {
