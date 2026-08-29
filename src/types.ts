@@ -181,6 +181,8 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   successMessage: string;
   privacyUrl: string;
   showPoweredBy: boolean;
+  customCssEnabled: boolean;
+  customCss: string;
 }
 
 export type QualificationStatus = 'pendente' | 'qualificado' | 'nao_qualificado';
