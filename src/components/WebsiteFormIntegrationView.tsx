@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Braces,
   Check,
   ChevronDown,
   ChevronUp,
@@ -14,6 +15,7 @@ import {
   MonitorSmartphone,
   Plus,
   RefreshCw,
+  RotateCcw,
   Save,
   ShieldCheck,
   Trash2,
@@ -26,13 +28,14 @@ import {
   saveWebsiteFormSettings,
 } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
+import { CUSTOM_FORM_CSS_EXAMPLE, CUSTOM_FORM_CSS_LIMIT, validateCustomFormCss } from '../utils/customFormCss';
 
 interface WebsiteFormIntegrationViewProps {
   theme: ThemeConfig;
   onShowToast: (message: string) => void;
 }
 
-type CollapsibleSection = 'domains' | 'states' | 'display' | 'branding';
+type CollapsibleSection = 'domains' | 'states' | 'display' | 'branding' | 'css';
 
 const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
@@ -88,6 +91,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     states: false,
     display: false,
     branding: false,
+    css: false,
   });
 
   const toggleSection = (section: CollapsibleSection) => {
@@ -95,7 +99,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   const setAllSectionsCollapsed = (collapsed: boolean) => {
-    setCollapsedSections({ domains: collapsed, states: collapsed, display: collapsed, branding: collapsed });
+    setCollapsedSections({ domains: collapsed, states: collapsed, display: collapsed, branding: collapsed, css: collapsed });
   };
 
   const collapseButton = (section: CollapsibleSection, label: string) => {
@@ -185,6 +189,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.secondaryColor)) throw new Error('A cor secundária é inválida.');
     validateHttpsUrl(settings.logoUrl, 'A URL do logotipo');
     validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
+    const cssErrors = validateCustomFormCss(settings.customCss);
+    if (cssErrors.length) throw new Error(cssErrors[0]);
   };
 
   const save = async () => {
@@ -263,6 +269,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       </div>
     );
   }
+
+  const cssErrors = validateCustomFormCss(draft.customCss);
+  const previewCss = draft.customCssEnabled && !cssErrors.length ? draft.customCss : '';
 
   return (
     <div id="integracoes-page" className="mx-auto max-w-6xl space-y-5">
@@ -494,24 +503,85 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             </div>
             }
           </section>
+
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Braces className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
+                <div>
+                  <h3 className="font-bold">5. CSS avançado</h3>
+                  <p className="mt-1 text-xs leading-5 opacity-65">Personalização visual restrita às classes públicas e propriedades seguras do formulário.</p>
+                </div>
+              </div>
+              {collapseButton('css', 'CSS avançado')}
+            </div>
+
+            {!collapsedSections.css && (
+              <div className="mt-4 space-y-4">
+                <label className="flex items-center justify-between gap-4 rounded-xl border p-3" style={{ borderColor: theme.border }}>
+                  <span><span className="block text-xs font-bold">Ativar CSS personalizado</span><span className="mt-0.5 block text-[11px] opacity-60">O CSS só será aplicado se passar pela validação.</span></span>
+                  <input type="checkbox" checked={draft.customCssEnabled} onChange={(event) => setField('customCssEnabled', event.target.checked)} className="h-5 w-5" style={{ accentColor: theme.secondary }} />
+                </label>
+
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold">Editor CSS</span>
+                    <span className="text-[11px] opacity-60">{draft.customCss.length.toLocaleString('pt-BR')}/{CUSTOM_FORM_CSS_LIMIT.toLocaleString('pt-BR')}</span>
+                  </div>
+                  <textarea
+                    value={draft.customCss}
+                    onChange={(event) => setField('customCss', event.target.value)}
+                    maxLength={CUSTOM_FORM_CSS_LIMIT}
+                    spellCheck={false}
+                    className="min-h-72 w-full rounded-xl border bg-[#091A29] p-4 font-mono text-xs leading-5 text-slate-100 outline-none"
+                    style={{ borderColor: cssErrors.length ? '#F87171' : theme.border }}
+                    placeholder={CUSTOM_FORM_CSS_EXAMPLE}
+                    aria-label="CSS personalizado do formulário"
+                  />
+                </div>
+
+                {cssErrors.length ? (
+                  <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-xs text-red-200">
+                    <p className="font-bold">Revise o CSS antes de salvar:</p>
+                    <ul className="mt-2 space-y-1">{cssErrors.map((item) => <li key={item}>• {item}</li>)}</ul>
+                  </div>
+                ) : draft.customCss.trim() ? (
+                  <p className="flex items-center gap-2 text-xs text-emerald-300"><Check className="h-4 w-4" /> CSS válido e restrito ao formulário.</p>
+                ) : null}
+
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setField('customCss', CUSTOM_FORM_CSS_EXAMPLE)} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}><Clipboard className="h-4 w-4" />Usar exemplo</button>
+                  <button type="button" onClick={() => { setField('customCss', ''); setField('customCssEnabled', false); }} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}><RotateCcw className="h-4 w-4" />Restaurar padrão</button>
+                </div>
+
+                <details className="rounded-xl border p-3 text-xs" style={{ borderColor: theme.border }}>
+                  <summary className="cursor-pointer font-bold">Classes disponíveis</summary>
+                  <code className="mt-3 block whitespace-pre-wrap font-mono text-[11px] leading-5 opacity-70">.sol-form{`\n`}.sol-form__card{`\n`}.sol-form__header{`\n`}.sol-form__title{`\n`}.sol-form__subtitle{`\n`}.sol-form__input{`\n`}.sol-form__select{`\n`}.sol-form__button{`\n`}.sol-form__secondary-button{`\n`}.sol-form__progress{`\n`}.sol-form__consent{`\n`}.sol-form__success{`\n`}.sol-form__powered-by</code>
+                </details>
+              </div>
+            )}
+          </section>
         </div>
 
         <aside className="min-w-0 space-y-5 xl:sticky xl:top-20 xl:self-start">
           <section className="rounded-2xl border p-4" style={{ borderColor: theme.border }}>
             <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia</p>
-            <div className="mt-4 overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
-              <div className="p-4" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
+            {previewCss && <style>{previewCss}</style>}
+            <div className="sol-form mt-4">
+            <div className="sol-form__card overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
+              <div className="sol-form__header p-4" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
                 {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-3 h-8 max-w-[180px] object-contain object-left" /> : <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
-                <h3 className="text-lg font-extrabold leading-tight">{draft.headline}</h3>
-                <p className="mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
+                <h3 className="sol-form__title text-lg font-extrabold leading-tight">{draft.headline}</h3>
+                <p className="sol-form__subtitle mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
               </div>
               <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
-                <button type="button" className="btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
-                {draft.showPoweredBy && <p className="text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
+                <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
+                <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
+                <div className="sol-form__select rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
+                <button type="button" className="sol-form__button btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
+                {draft.showPoweredBy && <p className="sol-form__powered-by text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
               </div>
+            </div>
             </div>
           </section>
 

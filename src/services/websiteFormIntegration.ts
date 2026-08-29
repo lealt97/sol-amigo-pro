@@ -21,6 +21,8 @@ const FORM_COLUMNS = [
   'success_message',
   'privacy_url',
   'show_powered_by',
+  'custom_css_enabled',
+  'custom_css',
 ].join(', ');
 
 type WebsiteFormRow = {
@@ -42,6 +44,8 @@ type WebsiteFormRow = {
   success_message: string;
   privacy_url: string | null;
   show_powered_by: boolean;
+  custom_css_enabled: boolean;
+  custom_css: string;
 };
 
 const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
@@ -63,6 +67,8 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
   successMessage: row.success_message,
   privacyUrl: row.privacy_url ?? '',
   showPoweredBy: row.show_powered_by,
+  customCssEnabled: row.custom_css_enabled,
+  customCss: row.custom_css ?? '',
 });
 
 const toUpdate = (settings: WebsiteFormSettings) => ({
@@ -81,6 +87,8 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   success_message: settings.successMessage.trim(),
   privacy_url: settings.privacyUrl.trim() || null,
   show_powered_by: settings.showPoweredBy,
+  custom_css_enabled: settings.customCssEnabled,
+  custom_css: settings.customCss,
 });
 
 export const normalizeWebsiteOrigin = (value: string): string => {

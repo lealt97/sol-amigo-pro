@@ -47,6 +47,8 @@ type PublicFormConfig = {
   privacyUrl: string | null;
   showPoweredBy: boolean;
   serviceStates: string[];
+  customCssEnabled: boolean;
+  customCss: string;
 };
 
 const DEFAULT_CONFIG: PublicFormConfig = {
@@ -61,6 +63,8 @@ const DEFAULT_CONFIG: PublicFormConfig = {
   privacyUrl: null,
   showPoweredBy: true,
   serviceStates: ALL_BRAZIL_STATE_CODES,
+  customCssEnabled: false,
+  customCss: '',
 };
 
 const INITIAL_FORM: PublicFormData = {
@@ -275,9 +279,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   if (submitted) {
     return (
-      <div id="public-lead-form-page" className={`${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={{ backgroundColor: queryContext.embedded ? '#F4F7FA' : config.secondaryColor }}>
+      <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={{ backgroundColor: queryContext.embedded ? '#F4F7FA' : config.secondaryColor }}>
+        {config.customCssEnabled && <style>{config.customCss}</style>}
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
-          <section className="w-full rounded-3xl bg-white p-7 text-center shadow-2xl md:p-10">
+          <section className="sol-form__card sol-form__success w-full rounded-3xl bg-white p-7 text-center shadow-2xl md:p-10">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#B4BF8A]/25" style={{ color: config.primaryColor }}>
               <CheckCircle2 className="h-9 w-9" />
             </div>
@@ -294,7 +299,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                 </div>
               </div>
             </div>
-            {config.showPoweredBy && <p className="mt-5 text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
+            {config.showPoweredBy && <p className="sol-form__powered-by mt-5 text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
           </section>
         </div>
       </div>
@@ -302,16 +307,17 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   }
 
   return (
-    <div id="public-lead-form-page" className={`${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={{ backgroundColor: config.secondaryColor }}>
+    <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={{ backgroundColor: config.secondaryColor }}>
+      {config.customCssEnabled && <style>{config.customCss}</style>}
       <div className={`mx-auto grid max-w-7xl ${queryContext.embedded ? 'min-h-0' : 'min-h-screen lg:grid-cols-[0.85fr_1.15fr]'}`}>
-        <aside className={`${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`} style={{ backgroundColor: config.secondaryColor }}>
+        <aside className={`sol-form__header ${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`} style={{ backgroundColor: config.secondaryColor }}>
           {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-12 max-w-[240px] object-contain object-left" referrerPolicy="no-referrer" /> : <p className="text-sm font-extrabold uppercase tracking-[.12em]">{config.companyName}</p>}
           <div className="max-w-md">
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FACB5C] text-[#0E2337]">
               <SunMedium className="h-7 w-7" />
             </div>
-            <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.035em]">{config.headline}</h1>
-            <p className="mt-5 text-sm leading-6 text-white/75">{config.subheadline}</p>
+            <h1 className="sol-form__title text-4xl font-extrabold leading-tight tracking-[-0.035em]">{config.headline}</h1>
+            <p className="sol-form__subtitle mt-5 text-sm leading-6 text-white/75">{config.subheadline}</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-white/60">
             <LockKeyhole className="h-4 w-4" />
@@ -326,7 +332,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FACB5C] text-[#0E2337]"><SunMedium className="h-5 w-5" /></div>
             </div>
 
-            <div className="mb-6 flex items-center gap-3">
+            <div className="sol-form__progress mb-6 flex items-center gap-3">
               {[1, 2].map((item) => (
                 <React.Fragment key={item}>
                   <div className="flex items-center gap-2">
@@ -338,7 +344,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
+            <form onSubmit={handleSubmit} className="sol-form__card rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
               {step === 1 ? (
                 <>
                   <div className="mb-6">
@@ -350,23 +356,23 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="sm:col-span-2">
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Nome completo *</span>
-                      <input value={form.name} onChange={(event) => setField('name', event.target.value)} autoComplete="name" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Como podemos chamar você?" />
+                      <input value={form.name} onChange={(event) => setField('name', event.target.value)} autoComplete="name" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Como podemos chamar você?" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">WhatsApp com DDD *</span>
-                      <input value={form.phone} onChange={(event) => setField('phone', event.target.value)} autoComplete="tel" inputMode="tel" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="(00) 00000-0000" />
+                      <input value={form.phone} onChange={(event) => setField('phone', event.target.value)} autoComplete="tel" inputMode="tel" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="(00) 00000-0000" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">E-mail</span>
-                      <input value={form.email} onChange={(event) => setField('email', event.target.value)} autoComplete="email" inputMode="email" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="voce@email.com" />
+                      <input value={form.email} onChange={(event) => setField('email', event.target.value)} autoComplete="email" inputMode="email" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="voce@email.com" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Cidade *</span>
-                      <input value={form.city} onChange={(event) => setField('city', event.target.value)} autoComplete="address-level2" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Sua cidade" />
+                      <input value={form.city} onChange={(event) => setField('city', event.target.value)} autoComplete="address-level2" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Sua cidade" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Estado *</span>
-                      <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option>
                         {config.serviceStates.map((state) => (
                           <option key={state} value={state}>{state} — {BRAZIL_STATE_NAMES[state]}</option>
@@ -375,13 +381,13 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                     <label className="sm:col-span-2">
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Tipo de imóvel *</span>
-                      <select value={form.propertyType} onChange={(event) => setField('propertyType', event.target.value as PublicFormData['propertyType'])} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.propertyType} onChange={(event) => setField('propertyType', event.target.value as PublicFormData['propertyType'])} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option>Residencial</option><option>Comercial</option><option>Rural</option><option>Industrial</option>
                       </select>
                     </label>
                   </div>
 
-                  <button type="button" onClick={continueToEnergy} className="btn-filled mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
+                  <button type="button" onClick={continueToEnergy} className="sol-form__button btn-filled mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
                     Continuar <ArrowRight className="h-4 w-4" />
                   </button>
                 </>
@@ -396,37 +402,37 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Valor médio da conta (R$)</span>
-                      <input value={form.averageMonthlyBill} onChange={(event) => setField('averageMonthlyBill', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 450" />
+                      <input value={form.averageMonthlyBill} onChange={(event) => setField('averageMonthlyBill', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 450" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Consumo médio (kWh/mês)</span>
-                      <input value={form.averageConsumptionKWh} onChange={(event) => setField('averageConsumptionKWh', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 380" />
+                      <input value={form.averageConsumptionKWh} onChange={(event) => setField('averageConsumptionKWh', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 380" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Distribuidora</span>
-                      <input value={form.distributor} onChange={(event) => setField('distributor', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: CPFL, Cemig, Copel" />
+                      <input value={form.distributor} onChange={(event) => setField('distributor', event.target.value)} className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: CPFL, Cemig, Copel" />
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Situação do imóvel</span>
-                      <select value={form.propertyStatus} onChange={(event) => setField('propertyStatus', event.target.value as PublicFormData['propertyStatus'])} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.propertyStatus} onChange={(event) => setField('propertyStatus', event.target.value as PublicFormData['propertyStatus'])} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option><option>Próprio</option><option>Alugado</option><option>Em construção</option><option>Outro</option>
                       </select>
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Prazo para instalação</span>
-                      <select value={form.installationTimeframe} onChange={(event) => setField('installationTimeframe', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.installationTimeframe} onChange={(event) => setField('installationTimeframe', event.target.value)} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Ainda não sei</option><option>Até 30 dias</option><option>1 a 3 meses</option><option>3 a 6 meses</option><option>Mais de 6 meses</option>
                       </select>
                     </label>
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-700">Melhor horário para contato</span>
-                      <select value={form.preferredContactTime} onChange={(event) => setField('preferredContactTime', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.preferredContactTime} onChange={(event) => setField('preferredContactTime', event.target.value)} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Qualquer horário</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
                       </select>
                     </label>
                   </div>
 
-                  <label className="mt-5 flex items-start gap-3 rounded-xl bg-slate-50 p-3">
+                  <label className="sol-form__consent mt-5 flex items-start gap-3 rounded-xl bg-slate-50 p-3">
                     <input type="checkbox" checked={form.consent} onChange={(event) => setField('consent', event.target.checked)} className="mt-0.5 h-4 w-4" style={{ accentColor: config.primaryColor }} />
                     <span className="text-xs leading-5 text-slate-600">Autorizo o contato da equipe para atender esta solicitação e concordo com o tratamento dos dados informados para essa finalidade.{config.privacyUrl && <> Consulte a <a href={config.privacyUrl} target="_blank" rel="noreferrer" className="font-bold underline">política de privacidade</a>.</>}</span>
                   </label>
@@ -434,8 +440,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   <input value={form.website} onChange={(event) => setField('website', event.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[10000px] h-px w-px opacity-0" />
 
                   <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-                    <button type="button" onClick={() => setStep(1)} className="btn-outline flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-600 sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
-                    <button type="submit" disabled={submitting} className="btn-filled flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
+                    <button type="button" onClick={() => setStep(1)} className="sol-form__secondary-button btn-outline flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-600 sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
+                    <button type="submit" disabled={submitting} className="sol-form__button btn-filled flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
                       {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <>{config.submitLabel} <ArrowRight className="h-4 w-4" /></>}
                     </button>
                   </div>
@@ -446,7 +452,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
             </form>
 
             <p className="mt-5 flex items-center justify-center gap-2 text-center text-[11px] text-slate-500"><LockKeyhole className="h-3.5 w-3.5" /> Seus dados não serão vendidos ou compartilhados para publicidade.</p>
-            {config.showPoweredBy && <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
+            {config.showPoweredBy && <p className="sol-form__powered-by mt-2 text-center text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
           </div>
         </section>
       </div>

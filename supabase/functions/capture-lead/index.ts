@@ -84,6 +84,38 @@ const PROPERTY_TYPES = new Set(["Residencial", "Comercial", "Rural", "Industrial
 const PROPERTY_STATUSES = new Set(["Próprio", "Alugado", "Em construção", "Outro"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SAFE_CSS_SELECTORS = new Set([
+  ".sol-form", ".sol-form__card", ".sol-form__header", ".sol-form__title",
+  ".sol-form__subtitle", ".sol-form__field", ".sol-form__label", ".sol-form__input",
+  ".sol-form__select", ".sol-form__button", ".sol-form__secondary-button",
+  ".sol-form__progress", ".sol-form__consent", ".sol-form__success", ".sol-form__powered-by",
+]);
+const SAFE_CSS_PROPERTIES = new Set([
+  "background", "background-color", "border", "border-color", "border-radius",
+  "border-style", "border-width", "box-shadow", "color", "font-family", "font-size",
+  "font-style", "font-weight", "letter-spacing", "line-height", "margin", "margin-bottom",
+  "margin-left", "margin-right", "margin-top", "max-width", "min-height", "padding",
+  "padding-bottom", "padding-left", "padding-right", "padding-top", "text-align",
+  "text-decoration", "text-transform", "width",
+]);
+
+const isSafeCustomCss = (css: string) => {
+  if (!css || css.length > 20_000 || /\/\*|@|url\s*\(|expression\s*\(|javascript\s*:|\\|<|>/i.test(css)) return false;
+  if (css.replace(/[^{}]+\{[^{}]*\}/g, "").trim()) return false;
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const selector of match[1].split(",").map((item) => item.trim()).filter(Boolean)) {
+      if (!SAFE_CSS_SELECTORS.has(selector.replace(/:(hover|focus|focus-visible)$/i, ""))) return false;
+    }
+    for (const declaration of match[2].split(";").map((item) => item.trim()).filter(Boolean)) {
+      const separator = declaration.indexOf(":");
+      if (separator < 1) return false;
+      const property = declaration.slice(0, separator).trim().toLowerCase();
+      const value = declaration.slice(separator + 1).trim();
+      if (!SAFE_CSS_PROPERTIES.has(property) || !value || /!important|var\s*\(|calc\s*\(|attr\s*\(|data:|https?:/i.test(value)) return false;
+    }
+  }
+  return true;
+};
 
 type CaptureForm = {
   id: string;
@@ -103,6 +135,8 @@ type CaptureForm = {
   success_message: string;
   privacy_url: string | null;
   show_powered_by: boolean;
+  custom_css_enabled: boolean;
+  custom_css: string;
 };
 
 Deno.serve(async (req: Request) => {
@@ -148,7 +182,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: formData, error: formError } = await admin
       .from("lead_capture_forms")
-      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by")
+      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
       .eq("public_token", formToken)
       .maybeSingle();
 
@@ -169,6 +203,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Este domínio não está autorizado para usar o formulário." }, 403, requestOrigin, true);
       }
 
+      const customCssSafe = isSafeCustomCss(form.custom_css ?? "");
       return json({
         companyName: form.company_name,
         logoUrl: form.logo_url,
@@ -181,6 +216,8 @@ Deno.serve(async (req: Request) => {
         privacyUrl: form.privacy_url,
         showPoweredBy: form.show_powered_by,
         serviceStates: form.service_states,
+        customCssEnabled: form.custom_css_enabled && customCssSafe,
+        customCss: customCssSafe ? form.custom_css : "",
         widgetMode: form.widget_mode,
       }, 200, requestOrigin, true);
     }
