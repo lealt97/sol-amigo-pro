@@ -13,6 +13,7 @@ import {
   Loader2,
   MapPin,
   MonitorSmartphone,
+  Image,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -23,10 +24,12 @@ import {
 import type { ThemeConfig, WebsiteFormSettings } from '../types';
 import {
   fetchWebsiteFormSettings,
+  fetchProfileBrandLogos,
   normalizeWebsiteOrigin,
   rotateWebsiteFormToken,
   saveWebsiteFormSettings,
 } from '../services/websiteFormIntegration';
+import type { ProfileBrandLogo } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
 import { CUSTOM_FORM_CSS_EXAMPLE, CUSTOM_FORM_CSS_LIMIT, validateCustomFormCss } from '../utils/customFormCss';
 
@@ -83,6 +86,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [rotating, setRotating] = useState(false);
   const [saved, setSaved] = useState<WebsiteFormSettings | null>(null);
   const [draft, setDraft] = useState<WebsiteFormSettings | null>(null);
+  const [profileLogos, setProfileLogos] = useState<ProfileBrandLogo[]>([]);
   const [domainInput, setDomainInput] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
@@ -121,11 +125,12 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
   useEffect(() => {
     let mounted = true;
-    fetchWebsiteFormSettings()
-      .then((settings) => {
+    Promise.all([fetchWebsiteFormSettings(), fetchProfileBrandLogos()])
+      .then(([settings, logos]) => {
         if (!mounted) return;
         setSaved(settings);
         setDraft(settings);
+        setProfileLogos(logos);
       })
       .catch(() => mounted && setError('Não foi possível carregar a integração.'))
       .finally(() => mounted && setLoading(false));
@@ -187,7 +192,6 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     if (settings.successMessage.trim().length < 5) throw new Error('A mensagem de sucesso está muito curta.');
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.primaryColor)) throw new Error('A cor principal é inválida.');
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.secondaryColor)) throw new Error('A cor secundária é inválida.');
-    validateHttpsUrl(settings.logoUrl, 'A URL do logotipo');
     validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
     const cssErrors = validateCustomFormCss(settings.customCss);
     if (cssErrors.length) throw new Error(cssErrors[0]);
@@ -491,7 +495,54 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             {!collapsedSections.branding &&
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Nome da empresa</span><input className="crm-input" value={draft.companyName} maxLength={100} onChange={(event) => setField('companyName', event.target.value)} /></label>
-              <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">URL HTTPS do logotipo</span><input className="crm-input" value={draft.logoUrl} maxLength={500} inputMode="url" placeholder="https://.../logo.png" onChange={(event) => setField('logoUrl', event.target.value)} /></label>
+              <fieldset className="sm:col-span-2">
+                <legend className="text-xs font-bold">Logotipo do formulário</legend>
+                <p className="mt-1 text-[11px] leading-5 opacity-60">Escolha uma das imagens enviadas em Configurações → Perfil.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => setField('logoUrl', '')}
+                    aria-pressed={!draft.logoUrl}
+                    className="flex min-h-24 items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold"
+                    style={{ borderColor: !draft.logoUrl ? theme.secondary : theme.border, boxShadow: !draft.logoUrl ? `0 0 0 2px ${theme.secondary}25` : undefined }}
+                  >
+                    <Image className="h-4 w-4 opacity-60" /> Sem logo
+                    {!draft.logoUrl && <Check className="h-4 w-4" style={{ color: theme.accent }} />}
+                  </button>
+                  {profileLogos.map((logo) => {
+                    const selected = draft.logoUrl === logo.url;
+                    return (
+                      <button
+                        key={logo.id}
+                        type="button"
+                        onClick={() => setField('logoUrl', logo.url)}
+                        aria-pressed={selected}
+                        className="relative min-h-24 overflow-hidden rounded-xl border p-3 text-left"
+                        style={{
+                          borderColor: selected ? theme.secondary : theme.border,
+                          backgroundColor: logo.background === 'dark' ? '#0E2337' : '#F4F7FA',
+                          boxShadow: selected ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                        }}
+                      >
+                        <img src={logo.url} alt={logo.label} className="mx-auto h-12 max-w-full object-contain" />
+                        <span className={`mt-2 block truncate text-[10px] font-bold ${logo.background === 'dark' ? 'text-white' : 'text-[#0E2337]'}`}>{logo.label}</span>
+                        {selected && <span className="absolute right-2 top-2 rounded-full bg-white p-1"><Check className="h-3.5 w-3.5" style={{ color: theme.secondary }} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!profileLogos.length && (
+                  <p className="mt-3 rounded-lg border border-dashed p-3 text-xs opacity-65" style={{ borderColor: theme.border }}>
+                    Nenhum logo cadastrado. Envie suas imagens em Configurações → Perfil e volte a esta seção.
+                  </p>
+                )}
+                {draft.logoUrl && !profileLogos.some((logo) => logo.url === draft.logoUrl) && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-xs">
+                    <span>O formulário ainda usa uma imagem antiga. Escolha um logo do perfil ou “Sem logo”.</span>
+                    <img src={draft.logoUrl} alt="Logo atual antigo" className="h-8 max-w-24 object-contain" />
+                  </div>
+                )}
+              </fieldset>
               <label><span className="mb-1.5 block text-xs font-bold">Cor principal</span><div className="flex gap-2"><input type="color" value={draft.primaryColor} onChange={(event) => setField('primaryColor', event.target.value.toUpperCase())} className="h-[42px] w-12 rounded-lg border bg-transparent p-1" style={{ borderColor: theme.border }} /><input className="crm-input font-mono" value={draft.primaryColor} maxLength={7} onChange={(event) => setField('primaryColor', event.target.value.toUpperCase())} /></div></label>
               <label><span className="mb-1.5 block text-xs font-bold">Cor secundária</span><div className="flex gap-2"><input type="color" value={draft.secondaryColor} onChange={(event) => setField('secondaryColor', event.target.value.toUpperCase())} className="h-[42px] w-12 rounded-lg border bg-transparent p-1" style={{ borderColor: theme.border }} /><input className="crm-input font-mono" value={draft.secondaryColor} maxLength={7} onChange={(event) => setField('secondaryColor', event.target.value.toUpperCase())} /></div></label>
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>

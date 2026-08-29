@@ -2,6 +2,13 @@ import type { WebsiteFormSettings } from '../types';
 import { supabase } from '../lib/supabase';
 import { ensureLeadCaptureForm } from './leads';
 
+export interface ProfileBrandLogo {
+  id: string;
+  label: string;
+  url: string;
+  background: 'dark' | 'light';
+}
+
 const FORM_COLUMNS = [
   'id',
   'public_token',
@@ -90,6 +97,39 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   custom_css_enabled: settings.customCssEnabled,
   custom_css: settings.customCss,
 });
+
+export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!data.user) return [];
+
+  const stored = data.user.user_metadata?.brand_logos ?? {};
+  const expectedPath = `/storage/v1/object/public/account-assets/${data.user.id}/logos/`;
+  const projectHost = new URL(import.meta.env.VITE_SUPABASE_URL).hostname;
+
+  return (['dark', 'light'] as const).flatMap((background) =>
+    [0, 1, 2].flatMap((index) => {
+      const value = String(stored[background]?.[index] ?? '').trim();
+      if (!value) return [];
+
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:' || url.hostname !== projectHost || !url.pathname.startsWith(expectedPath)) {
+          return [];
+        }
+      } catch {
+        return [];
+      }
+
+      return [{
+        id: `${background}-${index + 1}`,
+        label: `${background === 'dark' ? 'Fundo escuro' : 'Fundo claro'} · Logo ${index + 1}`,
+        url: value,
+        background,
+      }];
+    })
+  );
+};
 
 export const normalizeWebsiteOrigin = (value: string): string => {
   const candidate = value.trim();
