@@ -125,7 +125,13 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([fetchWebsiteFormSettings(), fetchProfileBrandLogos()])
+    Promise.all([
+      fetchWebsiteFormSettings(),
+      fetchProfileBrandLogos().catch((logoError) => {
+        console.warn('Não foi possível carregar os logos do perfil:', logoError);
+        return [];
+      }),
+    ])
       .then(([settings, logos]) => {
         if (!mounted) return;
         setSaved(settings);
@@ -266,10 +272,27 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     }
   };
 
-  if (loading || !draft) {
+  if (loading) {
     return (
       <div id="integracoes-page" className="mx-auto flex min-h-72 max-w-6xl items-center justify-center gap-2 text-sm opacity-70">
         <Loader2 className="h-5 w-5 animate-spin" /> Carregando integração...
+      </div>
+    );
+  }
+
+  if (!draft) {
+    return (
+      <div id="integracoes-page" className="mx-auto max-w-2xl rounded-2xl border border-red-400/40 bg-red-500/10 p-6 text-sm text-red-100">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <h2 className="font-bold">Não foi possível carregar o formulário</h2>
+            <p className="mt-1 opacity-75">Tente novamente. Se o problema continuar, as configurações da integração precisam ser verificadas.</p>
+            <button type="button" onClick={() => window.location.reload()} className="btn-outline mt-4 inline-flex items-center gap-2 rounded-lg border border-red-200/30 px-3 py-2 text-xs font-bold">
+              <RefreshCw className="h-4 w-4" /> Recarregar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
