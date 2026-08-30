@@ -132,6 +132,8 @@ export interface Lead {
   id: string;
   userId: string;
   captureFormId?: string;
+  clientId?: string;
+  consumerUnitId?: string;
   name: string;
   phone: string;
   email?: string;
@@ -155,8 +157,48 @@ export interface Lead {
   nextActivityAt?: string;
   lastSubmissionAt: string;
   notes?: string;
+  qualifiedAt?: string;
+  lostAt?: string;
+  lostReason?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type LeadTaskStatus = 'pendente' | 'concluida';
+
+export interface LeadTask {
+  id: string;
+  userId: string;
+  leadId: string;
+  title: string;
+  dueAt: string;
+  status: LeadTaskStatus;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeadActivityType =
+  | 'lead_criado'
+  | 'status_alterado'
+  | 'contato'
+  | 'nota'
+  | 'tarefa_criada'
+  | 'tarefa_concluida'
+  | 'qualificado'
+  | 'conversao'
+  | 'perdido'
+  | 'reaberto';
+
+export interface LeadActivity {
+  id: string;
+  userId: string;
+  leadId: string;
+  activityType: LeadActivityType;
+  title: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface LeadCaptureForm {

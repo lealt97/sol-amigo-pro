@@ -71,10 +71,18 @@ const toInsertRow = (client: Client) => ({
   tags: client.tags ?? [],
 });
 
+const getCurrentUserId = async (): Promise<string> => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) throw error ?? new Error('Sessão inválida.');
+  return data.user.id;
+};
+
 export const fetchClients = async (): Promise<Client[]> => {
+  const userId = await getCurrentUserId();
   const { data, error } = await supabase
     .from('clients')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -82,9 +90,10 @@ export const fetchClients = async (): Promise<Client[]> => {
 };
 
 export const createClient = async (client: Client): Promise<Client> => {
+  const userId = await getCurrentUserId();
   const { data, error } = await supabase
     .from('clients')
-    .insert(toInsertRow(client))
+    .insert({ ...toInsertRow(client), user_id: userId })
     .select('*')
     .single();
 
@@ -93,15 +102,22 @@ export const createClient = async (client: Client): Promise<Client> => {
 };
 
 export const deleteClient = async (id: string): Promise<void> => {
-  const { error } = await supabase.from('clients').delete().eq('id', id);
+  const userId = await getCurrentUserId();
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw error;
 };
 
 export const updateClientProposalsCount = async (id: string, proposalsCount: number): Promise<void> => {
+  const userId = await getCurrentUserId();
   const { error } = await supabase
     .from('clients')
     .update({ proposals_count: Math.max(0, proposalsCount) })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw error;
 };
