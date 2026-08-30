@@ -293,7 +293,7 @@ export default function App() {
       case 'oportunidades':
         return <OportunidadesView theme={currentTheme} onShowToast={showToast} />;
       case 'clientes':
-        return <ClientesView />;
+        return <ClientesView theme={currentTheme} />;
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':

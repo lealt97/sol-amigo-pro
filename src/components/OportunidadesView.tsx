@@ -1,27 +1,55 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   ArrowRight,
   Building2,
   CalendarClock,
+  Check,
   CheckCircle2,
   Clipboard,
+  CirclePlus,
   ExternalLink,
+  FileText,
   Filter,
+  ListTodo,
   Loader2,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
   RefreshCw,
+  Save,
   Search,
   Target,
+  UserCheck,
   UserRound,
+  UserX,
   WalletCards,
   X,
   Zap,
 } from 'lucide-react';
-import { Lead, LeadCaptureForm, LeadStage, ThemeConfig } from '../types';
-import { ensureLeadCaptureForm, fetchLeads, leadFromRow, updateLeadStage } from '../services/leads';
+import {
+  Lead,
+  LeadActivity,
+  LeadCaptureForm,
+  LeadStage,
+  LeadTask,
+  ThemeConfig,
+} from '../types';
+import {
+  completeLeadTask,
+  createLeadTask,
+  ensureLeadCaptureForm,
+  fetchLeadActivities,
+  fetchLeads,
+  fetchLeadTasks,
+  leadFromRow,
+  markLeadLost,
+  qualifyLead,
+  registerLeadContact,
+  saveLeadDetails,
+  updateLeadStage,
+} from '../services/leads';
 import { getContrastFg } from '../utils/themeEngine';
 import { supabase } from '../lib/supabase';
 
@@ -61,6 +89,19 @@ const formatDateTime = (value?: string) => {
   }).format(new Date(value));
 };
 
+const defaultFutureDateTime = () => {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+};
+
+const errorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return fallback;
+};
+
 const getLeadPublicUrl = (token: string) => {
   const url = new URL(import.meta.env.BASE_URL, window.location.origin);
   url.searchParams.set('captacao', token);
@@ -76,6 +117,19 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingStage, setUpdatingStage] = useState(false);
+  const [leadTasks, setLeadTasks] = useState<LeadTask[]>([]);
+  const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMode, setActionMode] = useState<'contact' | 'qualify' | 'lost' | null>(null);
+  const [responsible, setResponsible] = useState('');
+  const [notes, setNotes] = useState('');
+  const [contactChannel, setContactChannel] = useState('WhatsApp');
+  const [contactSummary, setContactSummary] = useState('');
+  const [contactNextAt, setContactNextAt] = useState('');
+  const [lostReason, setLostReason] = useState('');
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDueAt, setTaskDueAt] = useState(defaultFutureDateTime);
   const [error, setError] = useState('');
 
   const backgroundIsDark = getContrastFg(theme.background) === '#FFFFFF';
@@ -139,6 +193,45 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedLeadId) {
+      setLeadTasks([]);
+      setLeadActivities([]);
+      setActionMode(null);
+      return;
+    }
+
+    const lead = leads.find((item) => item.id === selectedLeadId);
+    setResponsible(lead?.responsible ?? '');
+    setNotes(lead?.notes ?? '');
+    setActionMode(null);
+    setContactSummary('');
+    setContactNextAt('');
+    setLostReason(lead?.lostReason ?? '');
+    setTaskTitle('');
+    setTaskDueAt(defaultFutureDateTime());
+
+    let cancelled = false;
+    setDetailsLoading(true);
+    void Promise.all([fetchLeadTasks(selectedLeadId), fetchLeadActivities(selectedLeadId)])
+      .then(([tasks, activities]) => {
+        if (cancelled) return;
+        setLeadTasks(tasks);
+        setLeadActivities(activities);
+      })
+      .catch((detailsError) => {
+        console.error('load lead details error', detailsError);
+        if (!cancelled) onShowToast('Não foi possível carregar tarefas e histórico.');
+      })
+      .finally(() => {
+        if (!cancelled) setDetailsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeadId]);
+
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
   const filteredLeads = useMemo(
     () =>
@@ -190,16 +283,159 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
 
   const handleStageChange = async (status: LeadStage) => {
     if (!selectedLead || selectedLead.status === status || updatingStage) return;
+    if (status === 'qualificado') {
+      setActionMode('qualify');
+      return;
+    }
+    if (status === 'perdido') {
+      setActionMode('lost');
+      return;
+    }
     setUpdatingStage(true);
     try {
       const updated = await updateLeadStage(selectedLead.id, status);
       setLeads((current) => current.map((lead) => (lead.id === updated.id ? updated : lead)));
+      if (selectedLead.status === 'perdido') setLostReason('');
       onShowToast(`Lead movido para “${stageLabel(status)}”.`);
     } catch (updateError) {
       console.error('update lead stage error', updateError);
       onShowToast('Não foi possível alterar a etapa do lead.');
     } finally {
       setUpdatingStage(false);
+    }
+  };
+
+  const replaceLead = (updated: Lead) => {
+    setLeads((current) => current.map((lead) => (lead.id === updated.id ? updated : lead)));
+    setResponsible(updated.responsible ?? '');
+    setNotes(updated.notes ?? '');
+    setLostReason(updated.lostReason ?? '');
+  };
+
+  const refreshLeadDetails = async (leadId: string) => {
+    const [tasks, activities] = await Promise.all([
+      fetchLeadTasks(leadId),
+      fetchLeadActivities(leadId),
+    ]);
+    setLeadTasks(tasks);
+    setLeadActivities(activities);
+  };
+
+  const handleSaveDetails = async () => {
+    if (!selectedLead || actionLoading) return;
+    setActionLoading(true);
+    try {
+      const updated = await saveLeadDetails(selectedLead.id, responsible, notes);
+      replaceLead(updated);
+      await refreshLeadDetails(selectedLead.id);
+      onShowToast('Ficha comercial salva.');
+    } catch (saveError) {
+      console.error('save lead details error', saveError);
+      onShowToast(errorMessage(saveError, 'Não foi possível salvar a ficha.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRegisterContact = async () => {
+    if (!selectedLead || actionLoading) return;
+    if (!contactSummary.trim()) {
+      onShowToast('Informe um resumo do contato.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const updated = await registerLeadContact(
+        selectedLead.id,
+        contactChannel,
+        contactSummary,
+        contactNextAt ? new Date(contactNextAt).toISOString() : undefined
+      );
+      replaceLead(updated);
+      await refreshLeadDetails(selectedLead.id);
+      setContactSummary('');
+      setContactNextAt('');
+      setActionMode(null);
+      onShowToast('Contato registrado no histórico.');
+    } catch (contactError) {
+      console.error('register lead contact error', contactError);
+      onShowToast(errorMessage(contactError, 'Não foi possível registrar o contato.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleQualify = async () => {
+    if (!selectedLead || actionLoading) return;
+    setActionLoading(true);
+    try {
+      const updated = await qualifyLead(selectedLead.id, responsible, notes);
+      replaceLead(updated);
+      await refreshLeadDetails(selectedLead.id);
+      setActionMode(null);
+      onShowToast('Lead qualificado. Cliente e unidade consumidora criados.');
+    } catch (qualifyError) {
+      console.error('qualify lead error', qualifyError);
+      onShowToast(errorMessage(qualifyError, 'Não foi possível qualificar o lead.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkLost = async () => {
+    if (!selectedLead || actionLoading) return;
+    if (lostReason.trim().length < 3) {
+      onShowToast('Informe o motivo da perda.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const updated = await markLeadLost(selectedLead.id, lostReason);
+      replaceLead(updated);
+      await refreshLeadDetails(selectedLead.id);
+      setActionMode(null);
+      onShowToast('Lead encerrado como perdido.');
+    } catch (lostError) {
+      console.error('mark lead lost error', lostError);
+      onShowToast(errorMessage(lostError, 'Não foi possível encerrar o lead.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!selectedLead || actionLoading) return;
+    if (taskTitle.trim().length < 2 || !taskDueAt) {
+      onShowToast('Informe a tarefa e a data de vencimento.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await createLeadTask(selectedLead.id, taskTitle.trim(), new Date(taskDueAt).toISOString());
+      await refreshLeadDetails(selectedLead.id);
+      setTaskTitle('');
+      setTaskDueAt(defaultFutureDateTime());
+      onShowToast('Tarefa criada.');
+    } catch (taskError) {
+      console.error('create lead task error', taskError);
+      onShowToast(errorMessage(taskError, 'Não foi possível criar a tarefa.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    if (!selectedLead || actionLoading) return;
+    setActionLoading(true);
+    try {
+      await completeLeadTask(taskId);
+      await refreshLeadDetails(selectedLead.id);
+      onShowToast('Tarefa concluída.');
+    } catch (taskError) {
+      console.error('complete lead task error', taskError);
+      onShowToast(errorMessage(taskError, 'Não foi possível concluir a tarefa.'));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -323,7 +559,133 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
                   </select>
                   {updatingStage && <Loader2 className="h-5 w-5 animate-spin" style={{ color: theme.secondary }} />}
                 </div>
+                {selectedLead.clientId && selectedLead.consumerUnitId && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] font-bold text-emerald-400">
+                    <UserCheck className="h-4 w-4" /> Cliente e unidade consumidora vinculados
+                  </div>
+                )}
+                {selectedLead.lostReason && (
+                  <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                    <span className="font-extrabold">Motivo da perda:</span> {selectedLead.lostReason}
+                  </div>
+                )}
               </section>
+
+              <section className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => setActionMode(actionMode === 'contact' ? null : 'contact')}
+                  disabled={selectedLead.status === 'ganho' || selectedLead.status === 'perdido'}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ borderColor: theme.border, color: theme.text }}
+                >
+                  <MessageCircle className="h-4 w-4" /> Registrar contato
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionMode(actionMode === 'qualify' ? null : 'qualify')}
+                  disabled={selectedLead.status === 'ganho' || selectedLead.status === 'perdido'}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ borderColor: theme.border, color: theme.text }}
+                >
+                  <UserCheck className="h-4 w-4" /> Qualificar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionMode(actionMode === 'lost' ? null : 'lost')}
+                  disabled={selectedLead.status === 'perdido'}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-red-500/35 text-xs font-extrabold text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <UserX className="h-4 w-4" /> Marcar perda
+                </button>
+              </section>
+
+              {actionMode === 'contact' && (
+                <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
+                  <h3 className="text-xs font-extrabold">Registrar contato realizado</h3>
+                  <div className="mt-3 grid gap-3">
+                    <select value={contactChannel} onChange={(event) => setContactChannel(event.target.value)} className="crm-input">
+                      <option>WhatsApp</option>
+                      <option>Ligação</option>
+                      <option>E-mail</option>
+                      <option>Presencial</option>
+                      <option>Outro</option>
+                    </select>
+                    <textarea
+                      value={contactSummary}
+                      onChange={(event) => setContactSummary(event.target.value)}
+                      maxLength={1000}
+                      rows={3}
+                      placeholder="Resumo do que foi conversado..."
+                      className="crm-input min-h-[88px] resize-y py-3"
+                    />
+                    <label className="text-[10px] font-bold" style={{ color: mutedText }}>
+                      Próximo acompanhamento (opcional)
+                      <input
+                        type="datetime-local"
+                        value={contactNextAt}
+                        onChange={(event) => setContactNextAt(event.target.value)}
+                        className="crm-input mt-1"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleRegisterContact()}
+                      disabled={actionLoading}
+                      className="btn-filled flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-extrabold disabled:opacity-60"
+                      style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}
+                    >
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Salvar contato
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {actionMode === 'qualify' && (
+                <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <h3 className="flex items-center gap-2 text-xs font-extrabold text-emerald-300">
+                    <UserCheck className="h-4 w-4" /> Qualificar e converter
+                  </h3>
+                  <p className="mt-2 text-[11px]" style={{ color: mutedText }}>
+                    Cria ou reaproveita o cliente, cria a unidade consumidora e mantém o vínculo com este lead.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleQualify()}
+                    disabled={actionLoading}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-extrabold text-white disabled:opacity-60"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                    Confirmar qualificação
+                  </button>
+                </section>
+              )}
+
+              {actionMode === 'lost' && (
+                <section className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <h3 className="flex items-center gap-2 text-xs font-extrabold text-red-300">
+                    <UserX className="h-4 w-4" /> Encerrar oportunidade
+                  </h3>
+                  <textarea
+                    value={lostReason}
+                    onChange={(event) => setLostReason(event.target.value)}
+                    maxLength={300}
+                    rows={3}
+                    placeholder="Por que esta oportunidade foi perdida?"
+                    className="crm-input mt-3 min-h-[82px] resize-y py-3"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleMarkLost()}
+                    disabled={actionLoading}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-red-600 text-xs font-extrabold text-white disabled:opacity-60"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+                    Confirmar perda
+                  </button>
+                </section>
+              )}
 
               <section className="grid grid-cols-2 gap-2">
                 <a href={`https://wa.me/55${selectedLead.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex h-11 items-center justify-center gap-2 rounded-lg text-xs font-extrabold" style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}><MessageCircle className="h-4 w-4" /> WhatsApp</a>
@@ -341,6 +703,39 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
               </section>
 
               <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
+                <h3 className="flex items-center gap-2 text-xs font-extrabold">
+                  <FileText className="h-4 w-4" style={{ color: theme.secondary }} /> Responsável e observações
+                </h3>
+                <div className="mt-3 grid gap-3">
+                  <input
+                    value={responsible}
+                    onChange={(event) => setResponsible(event.target.value)}
+                    maxLength={120}
+                    placeholder="Responsável pelo atendimento"
+                    className="crm-input"
+                  />
+                  <textarea
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    maxLength={4000}
+                    rows={4}
+                    placeholder="Informações importantes para a negociação..."
+                    className="crm-input min-h-[96px] resize-y py-3"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveDetails()}
+                    disabled={actionLoading}
+                    className="btn-outline flex h-10 items-center justify-center gap-2 rounded-lg border text-xs font-extrabold disabled:opacity-60"
+                    style={{ borderColor: theme.border, color: theme.text }}
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Salvar ficha
+                  </button>
+                </div>
+              </section>
+
+              <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
                 <h3 className="flex items-center gap-2 text-xs font-extrabold"><Zap className="h-4 w-4" style={{ color: '#FACB5C' }} /> Perfil de energia</h3>
                 <div className="mt-4 grid gap-4 text-xs sm:grid-cols-2">
                   <div><p style={{ color: mutedText }}>Tipo do imóvel</p><p className="mt-1 font-bold">{selectedLead.propertyType}</p></div>
@@ -353,10 +748,74 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
               </section>
 
               <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
-                <h3 className="flex items-center gap-2 text-xs font-extrabold"><CalendarClock className="h-4 w-4" style={{ color: theme.secondary }} /> Próxima atividade</h3>
-                <div className="mt-3 flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: theme.border }}>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `color-mix(in srgb, ${theme.secondary} 18%, transparent)`, color: theme.secondary }}><Phone className="h-4 w-4" /></div>
-                  <div><p className="text-xs font-extrabold">Realizar primeiro contato</p><p className="mt-1 text-[10px]" style={{ color: mutedText }}>{formatDateTime(selectedLead.nextActivityAt)}</p></div>
+                <h3 className="flex items-center gap-2 text-xs font-extrabold">
+                  <ListTodo className="h-4 w-4" style={{ color: theme.secondary }} /> Tarefas
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {detailsLoading && (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-5 w-5 animate-spin" style={{ color: theme.secondary }} />
+                    </div>
+                  )}
+                  {!detailsLoading && leadTasks.length === 0 && (
+                    <p className="rounded-lg border border-dashed p-3 text-center text-[10px]" style={{ borderColor: theme.border, color: mutedText }}>
+                      Nenhuma tarefa registrada
+                    </p>
+                  )}
+                  {leadTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-start gap-3 rounded-lg border p-3"
+                      style={{ borderColor: theme.border, opacity: task.status === 'concluida' ? 0.65 : 1 }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => task.status === 'pendente' && void handleCompleteTask(task.id)}
+                        disabled={task.status === 'concluida' || actionLoading}
+                        aria-label={task.status === 'concluida' ? 'Tarefa concluída' : 'Concluir tarefa'}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border disabled:cursor-default"
+                        style={{
+                          borderColor: task.status === 'concluida' ? '#10B981' : theme.border,
+                          color: task.status === 'concluida' ? '#10B981' : theme.secondary,
+                        }}
+                      >
+                        {task.status === 'concluida' ? <Check className="h-4 w-4" /> : <CalendarClock className="h-4 w-4" />}
+                      </button>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-extrabold ${task.status === 'concluida' ? 'line-through' : ''}`}>{task.title}</p>
+                        <p className="mt-1 text-[10px]" style={{ color: mutedText }}>
+                          {task.status === 'concluida' ? `Concluída em ${formatDateTime(task.completedAt)}` : formatDateTime(task.dueAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 grid gap-2 border-t pt-3" style={{ borderColor: theme.border }}>
+                  <input
+                    value={taskTitle}
+                    onChange={(event) => setTaskTitle(event.target.value)}
+                    maxLength={160}
+                    placeholder="Nova tarefa"
+                    className="crm-input"
+                  />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="datetime-local"
+                      value={taskDueAt}
+                      onChange={(event) => setTaskDueAt(event.target.value)}
+                      className="crm-input flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateTask()}
+                      disabled={actionLoading}
+                      className="btn-outline flex h-[42px] items-center justify-center gap-2 rounded-lg border px-4 text-xs font-extrabold disabled:opacity-60"
+                      style={{ borderColor: theme.border, color: theme.text }}
+                    >
+                      <CirclePlus className="h-4 w-4" /> Criar
+                    </button>
+                  </div>
                 </div>
               </section>
 
@@ -367,6 +826,49 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
                   <div><p style={{ color: mutedText }}>Campanha</p><p className="mt-1 font-bold">{selectedLead.utmCampaign || 'Orgânico / não informado'}</p></div>
                   <div><p style={{ color: mutedText }}>Recebido em</p><p className="mt-1 font-bold">{formatDateTime(selectedLead.createdAt)}</p></div>
                   <div><p style={{ color: mutedText }}>Consentimento</p><p className="mt-1 font-bold">Registrado em {formatDateTime(selectedLead.consentAt)}</p></div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
+                <h3 className="flex items-center gap-2 text-xs font-extrabold">
+                  <Activity className="h-4 w-4" style={{ color: theme.secondary }} /> Histórico do lead
+                </h3>
+                <div className="mt-4 space-y-0">
+                  {detailsLoading && (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-5 w-5 animate-spin" style={{ color: theme.secondary }} />
+                    </div>
+                  )}
+                  {!detailsLoading && leadActivities.length === 0 && (
+                    <p className="rounded-lg border border-dashed p-3 text-center text-[10px]" style={{ borderColor: theme.border, color: mutedText }}>
+                      O histórico será formado a partir das próximas ações.
+                    </p>
+                  )}
+                  {leadActivities.map((activity, index) => (
+                    <div key={activity.id} className="relative flex gap-3 pb-4">
+                      {index < leadActivities.length - 1 && (
+                        <span
+                          className="absolute left-[7px] top-4 h-[calc(100%-8px)] w-px"
+                          style={{ backgroundColor: theme.border }}
+                        />
+                      )}
+                      <span
+                        className="relative mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2"
+                        style={{ borderColor: theme.secondary, backgroundColor: panelAltBg }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold">{activity.title}</p>
+                        {activity.description && (
+                          <p className="mt-1 whitespace-pre-wrap text-[11px]" style={{ color: mutedText }}>
+                            {activity.description}
+                          </p>
+                        )}
+                        <p className="mt-1 text-[9px] font-bold uppercase tracking-wide" style={{ color: mutedText }}>
+                          {formatDateTime(activity.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>
