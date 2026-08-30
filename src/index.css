@@ -197,6 +197,34 @@ main > #area-risco-page {
   color: color-mix(in srgb, var(--text) 42%, transparent);
 }
 
+/* Public lead form theme defaults. Custom CSS is injected after this stylesheet,
+   so every selector exposed by the editor can override these values. */
+.sol-form {
+  background-color: var(--sol-form-secondary, #0E2337);
+}
+
+.sol-form__header {
+  background-color: var(--sol-form-secondary, #0E2337);
+  color: #fff;
+}
+
+.sol-form__button {
+  background-color: var(--sol-form-primary, #0076DD);
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.sol-form__button:hover {
+  filter: brightness(0.94);
+}
+
+.sol-form__secondary-button {
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.sol-form__secondary-button:hover {
+  background-color: #f1f5f9;
+}
+
 #clientes-page select option,
 #oportunidades-page select option,
 #levantamento-page select option,

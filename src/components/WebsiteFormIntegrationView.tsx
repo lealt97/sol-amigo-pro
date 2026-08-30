@@ -45,12 +45,6 @@ const PUBLIC_APP_URL = (
 ).replace(/\/?$/, '/');
 const CAPTURE_ENDPOINT = 'https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead';
 
-const escapeHtmlAttribute = (value: string) => value
-  .replaceAll('&', '&amp;')
-  .replaceAll('"', '&quot;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;');
-
 const copyText = async (value: string) => {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -157,10 +151,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const installCode = useMemo(() => {
     if (!draft) return '';
     const widgetScript = `${PUBLIC_APP_URL}widget.js`;
-    if (draft.widgetMode === 'modal') {
-      return `<script async src="${widgetScript}" data-sol-amigo-token="${draft.publicToken}" data-mode="modal" data-color="${draft.primaryColor}" data-button-label="${escapeHtmlAttribute(draft.submitLabel)}"></script>`;
-    }
-    return `<div id="sol-amigo-formulario"></div>\n<script async src="${widgetScript}" data-sol-amigo-token="${draft.publicToken}" data-mode="inline" data-target="#sol-amigo-formulario"></script>`;
+    return `<div id="sol-amigo-formulario"></div>\n<script async src="${widgetScript}" data-sol-amigo-token="${draft.publicToken}" data-target="#sol-amigo-formulario"></script>`;
   }, [draft]);
 
   const setField = <K extends keyof WebsiteFormSettings>(
@@ -168,6 +159,15 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     value: WebsiteFormSettings[K]
   ) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
+    setError('');
+  };
+
+  const setFormActive = (active: boolean) => {
+    setDraft((current) => current ? {
+      ...current,
+      active,
+      widgetEnabled: active ? current.widgetEnabled : false,
+    } : current);
     setError('');
   };
 
@@ -185,6 +185,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   const validate = (settings: WebsiteFormSettings) => {
+    if (!settings.active && settings.widgetEnabled) {
+      throw new Error('Ative o formulário público antes de ativar a integração no site.');
+    }
     if (settings.widgetEnabled && !settings.allowedOrigins.length) {
       throw new Error('Adicione ao menos um domínio antes de ativar a integração.');
     }
@@ -212,7 +215,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       const updated = await saveWebsiteFormSettings(draft);
       setSaved(updated);
       setDraft(updated);
-      onShowToast('Integração do formulário salva.');
+      onShowToast('Configurações do formulário salvas.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Não foi possível salvar.');
     } finally {
@@ -221,20 +224,33 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   const testConnection = async () => {
-    if (!saved?.widgetEnabled || !saved.allowedOrigins.length) {
+    if (!saved?.active || !saved.widgetEnabled || !saved.allowedOrigins.length) {
       setError('Salve e ative a integração antes de testar.');
       return;
     }
     setTesting(true);
     setError('');
     try {
-      const url = new URL(CAPTURE_ENDPOINT);
-      url.searchParams.set('formToken', saved.publicToken);
-      url.searchParams.set('siteOrigin', saved.allowedOrigins[0]);
-      const response = await fetch(url, { method: 'GET', credentials: 'omit' });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'A conexão não respondeu como esperado.');
-      onShowToast(`Conexão validada para ${saved.allowedOrigins[0]}.`);
+      const widgetResponse = await fetch(`${PUBLIC_APP_URL}widget.js`, {
+        method: 'GET',
+        credentials: 'omit',
+        cache: 'no-store',
+      });
+      if (!widgetResponse.ok) throw new Error('O script público do formulário não está disponível.');
+
+      await Promise.all(saved.allowedOrigins.map(async (origin) => {
+        const url = new URL(CAPTURE_ENDPOINT);
+        url.searchParams.set('formToken', saved.publicToken);
+        url.searchParams.set('siteOrigin', origin);
+        const response = await fetch(url, { method: 'GET', credentials: 'omit', cache: 'no-store' });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(`${origin}: ${body.error || 'conexão recusada'}`);
+        if (!['inline', 'modal'].includes(body.widgetMode) || !body.primaryColor || !body.submitLabel) {
+          throw new Error(`${origin}: a configuração pública está incompleta.`);
+        }
+      }));
+
+      onShowToast(`Script e ${saved.allowedOrigins.length} domínio(s) validados com sucesso.`);
     } catch (testError) {
       setError(testError instanceof Error ? testError.message : 'Falha ao testar a conexão.');
     } finally {
@@ -299,6 +315,10 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
   const cssErrors = validateCustomFormCss(draft.customCss);
   const previewCss = draft.customCssEnabled && !cssErrors.length ? draft.customCss : '';
+  const previewThemeStyle = {
+    '--sol-form-primary': draft.primaryColor,
+    '--sol-form-secondary': draft.secondaryColor,
+  } as React.CSSProperties;
 
   return (
     <div id="integracoes-page" className="mx-auto max-w-6xl space-y-5">
@@ -326,12 +346,26 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
           </button>
           <label className="flex items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: theme.border }}>
             <span>
-              <span className="block text-sm font-bold">Integração ativa</span>
-              <span className="block text-[11px] opacity-60">Bloqueada por padrão</span>
+              <span className="block text-sm font-bold">Formulário público</span>
+              <span className="block text-[11px] opacity-60">Link e captação</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={draft.active}
+              onChange={(event) => setFormActive(event.target.checked)}
+              className="h-5 w-5"
+              style={{ accentColor: theme.secondary }}
+            />
+          </label>
+          <label className="flex items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: theme.border }}>
+            <span>
+              <span className="block text-sm font-bold">Integração no site</span>
+              <span className="block text-[11px] opacity-60">Somente domínios autorizados</span>
             </span>
             <input
               type="checkbox"
               checked={draft.widgetEnabled}
+              disabled={!draft.active}
               onChange={(event) => setField('widgetEnabled', event.target.checked)}
               className="h-5 w-5"
               style={{ accentColor: theme.secondary }}
@@ -503,6 +537,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 {copied === 'code' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
               </button>
             </div>
+            <p className="mt-3 text-[11px] leading-5 opacity-65">Modo, cores e texto do botão são sincronizados automaticamente. Não é necessário reinstalar o código depois de salvar essas alterações.</p>
             </>}
           </section>
 
@@ -630,7 +665,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
                 <details className="rounded-xl border p-3 text-xs" style={{ borderColor: theme.border }}>
                   <summary className="cursor-pointer font-bold">Classes disponíveis</summary>
-                  <code className="mt-3 block whitespace-pre-wrap font-mono text-[11px] leading-5 opacity-70">.sol-form{`\n`}.sol-form__card{`\n`}.sol-form__header{`\n`}.sol-form__title{`\n`}.sol-form__subtitle{`\n`}.sol-form__input{`\n`}.sol-form__select{`\n`}.sol-form__button{`\n`}.sol-form__secondary-button{`\n`}.sol-form__progress{`\n`}.sol-form__consent{`\n`}.sol-form__success{`\n`}.sol-form__powered-by</code>
+                  <code className="mt-3 block whitespace-pre-wrap font-mono text-[11px] leading-5 opacity-70">.sol-form{`\n`}.sol-form__card{`\n`}.sol-form__header{`\n`}.sol-form__title{`\n`}.sol-form__subtitle{`\n`}.sol-form__field{`\n`}.sol-form__label{`\n`}.sol-form__input{`\n`}.sol-form__select{`\n`}.sol-form__button{`\n`}.sol-form__secondary-button{`\n`}.sol-form__progress{`\n`}.sol-form__consent{`\n`}.sol-form__success{`\n`}.sol-form__powered-by</code>
                 </details>
               </div>
             )}
@@ -639,11 +674,23 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
         <aside className="min-w-0 space-y-5 xl:sticky xl:top-20 xl:self-start">
           <section className="rounded-2xl border p-4" style={{ borderColor: theme.border }}>
-            <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia do widget</p>
+              <span className="rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-[.08em]" style={{ borderColor: theme.border }}>{draft.widgetMode === 'modal' ? 'Botão flutuante' : 'Dentro da página'}</span>
+            </div>
             {previewCss && <style>{previewCss}</style>}
-            <div className="sol-form mt-4">
+            {draft.widgetMode === 'modal' && (
+              <div className="relative mt-4 min-h-32 overflow-hidden rounded-2xl border bg-slate-100 p-4 text-[#0E2337]" style={{ borderColor: theme.border }}>
+                <p className="text-[10px] font-bold uppercase tracking-[.1em] text-slate-400">Exemplo no site</p>
+                <div className="mt-3 h-2 w-2/3 rounded bg-slate-200" />
+                <div className="mt-2 h-2 w-1/2 rounded bg-slate-200" />
+                <button type="button" className="absolute bottom-3 right-3 rounded-full px-4 py-2 text-[10px] font-extrabold text-white shadow-lg" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
+              </div>
+            )}
+            <p className="mt-4 text-[10px] font-bold uppercase tracking-[.1em] opacity-50">{draft.widgetMode === 'modal' ? 'Formulário ao abrir' : 'Primeira etapa incorporada'}</p>
+            <div className="sol-form mt-4" style={previewThemeStyle}>
             <div className="sol-form__card overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
-              <div className="sol-form__header p-4" style={{ backgroundColor: draft.secondaryColor, color: '#fff' }}>
+              <div className="sol-form__header p-4">
                 {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-3 h-8 max-w-[180px] object-contain object-left" /> : <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
                 <h3 className="sol-form__title text-lg font-extrabold leading-tight">{draft.headline}</h3>
                 <p className="sol-form__subtitle mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
@@ -652,16 +699,17 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
                 <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
                 <div className="sol-form__select rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
-                <button type="button" className="sol-form__button btn-filled h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2" style={{ backgroundColor: draft.primaryColor }}>{draft.submitLabel}</button>
+                <button type="button" className="sol-form__button h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2">{draft.submitLabel}</button>
                 {draft.showPoweredBy && <p className="sol-form__powered-by text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
               </div>
             </div>
             </div>
+            <div className="mt-3 rounded-xl border p-3 text-[11px] leading-5" style={{ borderColor: theme.border }}><strong>Após o envio:</strong> <span className="opacity-70">{draft.successMessage}</span></div>
           </section>
 
           <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
-            <h3 className="font-bold">Link direto</h3>
-            <p className="mt-1 text-xs opacity-60">Alternativa para bio, anúncio ou WhatsApp.</p>
+            <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Link direto</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${draft.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>{draft.active ? 'Ativo' : 'Desativado'}</span></div>
+            <p className="mt-1 text-xs opacity-60">Alternativa para bio, anúncio ou WhatsApp. O link é bloqueado quando o formulário público está desativado.</p>
             <div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="crm-input min-w-0 flex-1 font-mono text-[10px]" /><button type="button" onClick={() => copy('link', publicLink)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>{copied === 'link' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="flex items-center rounded-lg border px-3" style={{ borderColor: theme.border }}><ExternalLink className="h-4 w-4" /></a></div>
           </section>
 
@@ -686,10 +734,10 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       </div>
 
       <div className="sticky bottom-4 flex flex-col gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
-        <div><p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p><p className="mt-0.5 text-xs opacity-60">Teste a conexão somente depois de salvar.</p></div>
+        <div><p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p><p className="mt-0.5 text-xs opacity-60">O teste valida o script e todos os domínios sem criar um lead.</p></div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={testing || changed} onClick={testConnection} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold" style={{ borderColor: theme.border }}>{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}Testar conexão</button>
-          <button type="button" disabled={saving || !changed} onClick={save} className="btn-filled inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold" style={{ backgroundColor: theme.secondary, color: '#fff' }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar integração</button>
+          <button type="button" disabled={testing || changed || !saved?.active || !saved.widgetEnabled || !saved.allowedOrigins.length} onClick={testConnection} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold" style={{ borderColor: theme.border }} title="Valida o script público e todos os domínios autorizados">{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}Testar conexão</button>
+          <button type="button" disabled={saving || !changed} onClick={save} className="btn-filled inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold" style={{ backgroundColor: theme.secondary, color: '#fff' }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar configurações</button>
         </div>
       </div>
     </div>

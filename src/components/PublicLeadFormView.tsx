@@ -92,6 +92,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   const [config, setConfig] = useState<PublicFormConfig>(DEFAULT_CONFIG);
   const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState('');
+  const formThemeStyle = useMemo(() => ({
+    '--sol-form-primary': config.primaryColor,
+    '--sol-form-secondary': config.secondaryColor,
+  } as React.CSSProperties), [config.primaryColor, config.secondaryColor]);
 
   const queryContext = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -278,7 +282,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   if (submitted) {
     return (
-      <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={{ backgroundColor: queryContext.embedded ? '#F4F7FA' : config.secondaryColor }}>
+      <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={formThemeStyle}>
         {config.customCssEnabled && <style>{config.customCss}</style>}
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
           <section className="sol-form__card sol-form__success w-full rounded-3xl bg-white p-7 text-center shadow-2xl md:p-10">
@@ -306,10 +310,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   }
 
   return (
-    <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={{ backgroundColor: config.secondaryColor }}>
+    <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={formThemeStyle}>
       {config.customCssEnabled && <style>{config.customCss}</style>}
       <div className={`mx-auto grid max-w-7xl ${queryContext.embedded ? 'min-h-0' : 'min-h-screen lg:grid-cols-[0.85fr_1.15fr]'}`}>
-        <aside className={`sol-form__header ${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`} style={{ backgroundColor: config.secondaryColor }}>
+        <aside className={`sol-form__header ${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`}>
           {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-12 max-w-[240px] object-contain object-left" referrerPolicy="no-referrer" /> : <p className="text-sm font-extrabold uppercase tracking-[.12em]">{config.companyName}</p>}
           <div className="max-w-md">
             <h1 className="sol-form__title text-4xl font-extrabold leading-tight tracking-[-0.035em]">{config.headline}</h1>
@@ -323,8 +327,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
         <section className={`bg-[#F4F7FA] ${queryContext.embedded ? 'px-3 py-3 sm:px-4' : 'px-4 py-6 sm:px-8 lg:flex lg:items-center lg:px-14 lg:py-12'}`}>
           <div className="mx-auto w-full max-w-2xl">
-            <div className={`mb-7 items-center justify-between ${queryContext.embedded ? 'flex' : 'flex lg:hidden'}`}>
-              {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor="#F4F7FA" className="h-10 w-auto" />}
+            <div className={`sol-form__header mb-6 rounded-2xl p-5 shadow-lg ${queryContext.embedded ? 'block' : 'block lg:hidden'}`}>
+              {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor={config.secondaryColor} className="h-10 w-auto" />}
+              <h1 className="sol-form__title mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
+              <p className="sol-form__subtitle mt-2 text-sm leading-5 text-white/75">{config.subheadline}</p>
             </div>
 
             <div className="sol-form__progress mb-6 flex items-center gap-3">
@@ -349,24 +355,24 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="sm:col-span-2">
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Nome completo *</span>
+                    <label className="sol-form__field sm:col-span-2">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Nome completo *</span>
                       <input value={form.name} onChange={(event) => setField('name', event.target.value)} autoComplete="name" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Como podemos chamar você?" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">WhatsApp com DDD *</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">WhatsApp com DDD *</span>
                       <input value={form.phone} onChange={(event) => setField('phone', event.target.value)} autoComplete="tel" inputMode="tel" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="(00) 00000-0000" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">E-mail</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">E-mail</span>
                       <input value={form.email} onChange={(event) => setField('email', event.target.value)} autoComplete="email" inputMode="email" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="voce@email.com" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Cidade *</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Cidade *</span>
                       <input value={form.city} onChange={(event) => setField('city', event.target.value)} autoComplete="address-level2" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Sua cidade" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Estado *</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Estado *</span>
                       <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option>
                         {config.serviceStates.map((state) => (
@@ -374,16 +380,16 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                         ))}
                       </select>
                     </label>
-                    <label className="sm:col-span-2">
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Tipo de imóvel *</span>
+                    <label className="sol-form__field sm:col-span-2">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Tipo de imóvel *</span>
                       <select value={form.propertyType} onChange={(event) => setField('propertyType', event.target.value as PublicFormData['propertyType'])} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option>Residencial</option><option>Comercial</option><option>Rural</option><option>Industrial</option>
                       </select>
                     </label>
                   </div>
 
-                  <button type="button" onClick={continueToEnergy} className="sol-form__button btn-filled mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
-                    Continuar <ArrowRight className="h-4 w-4" />
+                  <button type="button" onClick={continueToEnergy} className="sol-form__button mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white shadow-lg shadow-blue-600/20">
+                    {config.submitLabel} <ArrowRight className="h-4 w-4" />
                   </button>
                 </>
               ) : (
@@ -395,32 +401,32 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Valor médio da conta (R$)</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Valor médio da conta (R$)</span>
                       <input value={form.averageMonthlyBill} onChange={(event) => setField('averageMonthlyBill', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 450" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Consumo médio (kWh/mês)</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Consumo médio (kWh/mês)</span>
                       <input value={form.averageConsumptionKWh} onChange={(event) => setField('averageConsumptionKWh', event.target.value)} inputMode="decimal" type="number" min="0" step="0.01" className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 380" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Distribuidora</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Distribuidora</span>
                       <input value={form.distributor} onChange={(event) => setField('distributor', event.target.value)} className="sol-form__input h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: CPFL, Cemig, Copel" />
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Situação do imóvel</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Situação do imóvel</span>
                       <select value={form.propertyStatus} onChange={(event) => setField('propertyStatus', event.target.value as PublicFormData['propertyStatus'])} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option><option>Próprio</option><option>Alugado</option><option>Em construção</option><option>Outro</option>
                       </select>
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Prazo para instalação</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Prazo para instalação</span>
                       <select value={form.installationTimeframe} onChange={(event) => setField('installationTimeframe', event.target.value)} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Ainda não sei</option><option>Até 30 dias</option><option>1 a 3 meses</option><option>3 a 6 meses</option><option>Mais de 6 meses</option>
                       </select>
                     </label>
-                    <label>
-                      <span className="mb-1.5 block text-xs font-bold text-slate-700">Melhor horário para contato</span>
+                    <label className="sol-form__field">
+                      <span className="sol-form__label mb-1.5 block text-xs font-bold text-slate-700">Melhor horário para contato</span>
                       <select value={form.preferredContactTime} onChange={(event) => setField('preferredContactTime', event.target.value)} className="sol-form__select h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Qualquer horário</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
                       </select>
@@ -435,8 +441,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   <input value={form.website} onChange={(event) => setField('website', event.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[10000px] h-px w-px opacity-0" />
 
                   <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-                    <button type="button" onClick={() => setStep(1)} className="sol-form__secondary-button btn-outline flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-600 sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
-                    <button type="submit" disabled={submitting} className="sol-form__button btn-filled flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20" style={{ backgroundColor: config.primaryColor }}>
+                    <button type="button" onClick={() => setStep(1)} className="sol-form__secondary-button flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-600 sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
+                    <button type="submit" disabled={submitting} className="sol-form__button flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20">
                       {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <>{config.submitLabel} <ArrowRight className="h-4 w-4" /></>}
                     </button>
                   </div>
