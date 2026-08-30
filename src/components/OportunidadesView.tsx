@@ -21,6 +21,7 @@ import {
   Save,
   Search,
   Target,
+  Trash2,
   UserCheck,
   UserRound,
   UserX,
@@ -39,6 +40,7 @@ import {
 import {
   completeLeadTask,
   createLeadTask,
+  deleteLostLead,
   ensureLeadCaptureForm,
   fetchLeadActivities,
   fetchLeads,
@@ -398,6 +400,28 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
     } catch (lostError) {
       console.error('mark lead lost error', lostError);
       onShowToast(errorMessage(lostError, 'Não foi possível encerrar o lead.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteLostLead = async () => {
+    if (!selectedLead || selectedLead.status !== 'perdido' || actionLoading) return;
+
+    const confirmed = window.confirm(
+      `Excluir permanentemente a oportunidade de ${selectedLead.name}? As tarefas e o histórico desta oportunidade também serão removidos. Esta ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      await deleteLostLead(selectedLead.id);
+      setLeads((current) => current.filter((lead) => lead.id !== selectedLead.id));
+      setSelectedLeadId(null);
+      onShowToast('Oportunidade perdida excluída permanentemente.');
+    } catch (deleteError) {
+      console.error('delete lost lead error', deleteError);
+      onShowToast(errorMessage(deleteError, 'Não foi possível excluir a oportunidade.'));
     } finally {
       setActionLoading(false);
     }
@@ -871,6 +895,26 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
                   ))}
                 </div>
               </section>
+
+              {selectedLead.status === 'perdido' && (
+                <section className="rounded-xl border border-red-500/35 bg-red-500/10 p-4">
+                  <h3 className="flex items-center gap-2 text-xs font-extrabold text-red-300">
+                    <Trash2 className="h-4 w-4" /> Excluir oportunidade perdida
+                  </h3>
+                  <p className="mt-2 text-[11px] leading-5" style={{ color: mutedText }}>
+                    Remove permanentemente esta oportunidade, suas tarefas e seu histórico. Cliente e unidade consumidora já vinculados serão preservados.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteLostLead()}
+                    disabled={actionLoading}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-red-500/60 text-xs font-extrabold text-red-300 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Excluir oportunidade
+                  </button>
+                </section>
+              )}
             </div>
           </aside>
         </div>

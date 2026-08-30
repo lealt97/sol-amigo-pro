@@ -31,7 +31,7 @@ type PublicFormData = {
   installationTimeframe: string;
   preferredContactTime: string;
   consent: boolean;
-  website: string;
+  companyFax: string;
 };
 
 type PublicFormConfig = {
@@ -80,7 +80,7 @@ const INITIAL_FORM: PublicFormData = {
   installationTimeframe: '',
   preferredContactTime: '',
   consent: false,
-  website: '',
+  companyFax: '',
 };
 
 export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToken }) => {
@@ -441,7 +441,18 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     <span className="text-xs leading-5 text-slate-600">Autorizo o contato da equipe para atender esta solicitação e concordo com o tratamento dos dados informados para essa finalidade.{config.privacyUrl && <> Consulte a <a href={config.privacyUrl} target="_blank" rel="noreferrer" className="font-bold underline">política de privacidade</a>.</>}</span>
                   </label>
 
-                  <input value={form.website} onChange={(event) => setField('website', event.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[10000px] h-px w-px opacity-0" />
+                  <input
+                    type="text"
+                    name="sol_amigo_confirmation_field"
+                    value={form.companyFax}
+                    onChange={(event) => setField('companyFax', event.target.value)}
+                    tabIndex={-1}
+                    autoComplete="new-password"
+                    aria-hidden="true"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    className="absolute -left-[10000px] h-px w-px opacity-0"
+                  />
 
                   <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
                     <button type="button" onClick={() => setStep(1)} className="sol-form__secondary-button flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-600 sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>

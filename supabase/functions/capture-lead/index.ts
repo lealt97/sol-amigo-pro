@@ -166,8 +166,8 @@ Deno.serve(async (req: Request) => {
       }
       input = body as Record<string, unknown>;
 
-      // Campo-isca: navegadores reais não o preenchem; bots genéricos costumam preencher.
-      if (asText(input.website, 200)) return json({ success: true }, 202, requestOrigin);
+      // Campo-isca com nome incomum para evitar preenchimento automático por navegadores.
+      if (asText(input.companyFax, 200)) return json({ success: true }, 202, requestOrigin);
     }
 
     const requestUrl = new URL(req.url);
