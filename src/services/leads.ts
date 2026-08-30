@@ -211,6 +211,21 @@ export const qualifyLead = async (
 export const markLeadLost = async (id: string, reason: string): Promise<Lead> =>
   leadFromRpc('mark_lead_lost', { p_lead_id: id, p_reason: reason });
 
+export const deleteLostLead = async (id: string): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const { data, error } = await supabase
+    .from('leads')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
+    .eq('status', 'perdido')
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error('Somente oportunidades perdidas podem ser excluídas.');
+};
+
 export const fetchLeadTasks = async (leadId: string): Promise<LeadTask[]> => {
   const userId = await getCurrentUserId();
   const { data, error } = await supabase
