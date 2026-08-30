@@ -327,25 +327,28 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
         <section className={`bg-[#F4F7FA] ${queryContext.embedded ? 'px-3 py-3 sm:px-4' : 'px-4 py-6 sm:px-8 lg:flex lg:items-center lg:px-14 lg:py-12'}`}>
           <div className="mx-auto w-full max-w-2xl">
-            <div className={`sol-form__header mb-6 rounded-2xl p-5 shadow-lg ${queryContext.embedded ? 'block' : 'block lg:hidden'}`}>
-              {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor={config.secondaryColor} className="h-10 w-auto" />}
-              <h1 className="sol-form__title mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
-              <p className="sol-form__subtitle mt-2 text-sm leading-5 text-white/75">{config.subheadline}</p>
-            </div>
+            <div className="sol-form__card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+              <div className={`sol-form__header p-5 sm:p-7 ${queryContext.embedded ? 'block' : 'block lg:hidden'}`}>
+                {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor={config.secondaryColor} className="h-10 w-auto" />}
+                <h1 className="sol-form__title mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
+                <p className="sol-form__subtitle mt-2 text-sm leading-5 text-white/75">{config.subheadline}</p>
+              </div>
 
-            <div className="sol-form__progress mb-6 flex items-center gap-3">
-              {[1, 2].map((item) => (
-                <React.Fragment key={item}>
-                  <div className="flex items-center gap-2">
-                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-extrabold ${step >= item ? 'text-white' : 'bg-slate-200 text-slate-500'}`} style={step >= item ? { backgroundColor: config.primaryColor } : undefined}>{item}</span>
-                    <span className={`hidden text-xs font-bold sm:inline ${step >= item ? 'text-[#0E2337]' : 'text-slate-400'}`}>{item === 1 ? 'Seus dados' : 'Consumo de energia'}</span>
-                  </div>
-                  {item === 1 && <div className="h-px flex-1 bg-slate-200" />}
-                </React.Fragment>
-              ))}
-            </div>
+              <div className="px-5 pt-5 sm:px-8 sm:pt-7">
+                <div className="sol-form__progress flex items-center gap-3">
+                  {[1, 2].map((item) => (
+                    <React.Fragment key={item}>
+                      <div className="flex items-center gap-2">
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-extrabold ${step >= item ? 'text-white' : 'bg-slate-200 text-slate-500'}`} style={step >= item ? { backgroundColor: config.primaryColor } : undefined}>{item}</span>
+                        <span className={`hidden text-xs font-bold sm:inline ${step >= item ? 'text-[#0E2337]' : 'text-slate-400'}`}>{item === 1 ? 'Seus dados' : 'Consumo de energia'}</span>
+                      </div>
+                      {item === 1 && <div className="h-px flex-1 bg-slate-200" />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
 
-            <form onSubmit={handleSubmit} className="sol-form__card rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-8">
+              <form onSubmit={handleSubmit} className="p-5 pt-6 sm:p-8 sm:pt-7">
               {step === 1 ? (
                 <>
                   <div className="mb-6">
@@ -450,7 +453,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               )}
 
               {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
-            </form>
+              </form>
+            </div>
 
             <p className="mt-5 flex items-center justify-center gap-2 text-center text-[11px] text-slate-500"><LockKeyhole className="h-3.5 w-3.5" /> Seus dados não serão vendidos ou compartilhados para publicidade.</p>
             {config.showPoweredBy && <p className="sol-form__powered-by mt-2 text-center text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
