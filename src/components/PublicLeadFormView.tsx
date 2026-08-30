@@ -7,7 +7,6 @@ import {
   Loader2,
   LockKeyhole,
   MessageCircle,
-  SunMedium,
   Zap,
 } from 'lucide-react';
 import { SUPABASE_URL, supabase } from '../lib/supabase';
@@ -313,9 +312,6 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
         <aside className={`sol-form__header ${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`} style={{ backgroundColor: config.secondaryColor }}>
           {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-12 max-w-[240px] object-contain object-left" referrerPolicy="no-referrer" /> : <p className="text-sm font-extrabold uppercase tracking-[.12em]">{config.companyName}</p>}
           <div className="max-w-md">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FACB5C] text-[#0E2337]">
-              <SunMedium className="h-7 w-7" />
-            </div>
             <h1 className="sol-form__title text-4xl font-extrabold leading-tight tracking-[-0.035em]">{config.headline}</h1>
             <p className="sol-form__subtitle mt-5 text-sm leading-6 text-white/75">{config.subheadline}</p>
           </div>
@@ -329,7 +325,6 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
           <div className="mx-auto w-full max-w-2xl">
             <div className={`mb-7 items-center justify-between ${queryContext.embedded ? 'flex' : 'flex lg:hidden'}`}>
               {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor="#F4F7FA" className="h-10 w-auto" />}
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FACB5C] text-[#0E2337]"><SunMedium className="h-5 w-5" /></div>
             </div>
 
             <div className="sol-form__progress mb-6 flex items-center gap-3">
