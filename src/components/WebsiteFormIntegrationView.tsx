@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Braces,
@@ -14,15 +14,12 @@ import {
   MapPin,
   MonitorSmartphone,
   Image,
-  Pipette,
   Plus,
   RefreshCw,
   RotateCcw,
   Save,
   ShieldCheck,
   Trash2,
-  Upload,
-  X,
 } from 'lucide-react';
 import type { ThemeConfig, WebsiteFormSettings } from '../types';
 import {
@@ -35,6 +32,7 @@ import {
 import type { ProfileBrandLogo } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
 import { CUSTOM_FORM_CSS_EXAMPLE, CUSTOM_FORM_CSS_LIMIT, validateCustomFormCss } from '../utils/customFormCss';
+import { ResponsiveColorField } from './ResponsiveColorField';
 
 interface WebsiteFormIntegrationViewProps {
   theme: ThemeConfig;
@@ -47,252 +45,6 @@ const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
 ).replace(/\/?$/, '/');
 const CAPTURE_ENDPOINT = 'https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead';
-
-type EyeDropperConstructor = new () => {
-  open: () => Promise<{ sRGBHex: string }>;
-};
-
-type ResponsiveColorFieldProps = {
-  label: string;
-  value: string;
-  borderColor: string;
-  accentColor: string;
-  onChange: (color: string) => void;
-};
-
-const rgbToHex = (red: number, green: number, blue: number) => `#${[red, green, blue]
-  .map((channel) => channel.toString(16).padStart(2, '0'))
-  .join('')}`.toUpperCase();
-
-const ResponsiveColorField: React.FC<ResponsiveColorFieldProps> = ({
-  label,
-  value,
-  borderColor,
-  accentColor,
-  onChange,
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [imageSource, setImageSource] = useState('');
-  const [pickerError, setPickerError] = useState('');
-  const [pickedColor, setPickedColor] = useState(value);
-  const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
-  const [nativePicking, setNativePicking] = useState(false);
-
-  useEffect(() => {
-    if (!fallbackOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [fallbackOpen]);
-
-  useEffect(() => {
-    if (!imageSource || !fallbackOpen) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const imageElement = new window.Image();
-    imageElement.onload = () => {
-      const maximumDimension = 1600;
-      const scale = Math.min(1, maximumDimension / Math.max(imageElement.naturalWidth, imageElement.naturalHeight));
-      canvas.width = Math.max(1, Math.round(imageElement.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(imageElement.naturalHeight * scale));
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      if (!context) {
-        setPickerError('Não foi possível preparar a imagem para selecionar a cor.');
-        return;
-      }
-      context.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
-      setPickerError('');
-    };
-    imageElement.onerror = () => setPickerError('Não foi possível abrir essa imagem. Escolha outra captura ou foto.');
-    imageElement.src = imageSource;
-  }, [fallbackOpen, imageSource]);
-
-  const openFallback = () => {
-    setPickedColor(value);
-    setMarker(null);
-    setPickerError('');
-    setFallbackOpen(true);
-  };
-
-  const openEyeDropper = async () => {
-    const EyeDropper = (window as Window & { EyeDropper?: EyeDropperConstructor }).EyeDropper;
-    if (!EyeDropper) {
-      openFallback();
-      return;
-    }
-
-    setNativePicking(true);
-    try {
-      const result = await new EyeDropper().open();
-      onChange(result.sRGBHex.toUpperCase());
-    } catch (dropperError) {
-      if (!(dropperError instanceof DOMException) || dropperError.name !== 'AbortError') {
-        openFallback();
-      }
-    } finally {
-      setNativePicking(false);
-    }
-  };
-
-  const loadImage = (file: File | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setPickerError('Escolha um arquivo de imagem.');
-      return;
-    }
-    if (file.size > 12 * 1024 * 1024) {
-      setPickerError('A imagem precisa ter no máximo 12 MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageSource(typeof reader.result === 'string' ? reader.result : '');
-      setMarker(null);
-      setPickerError('');
-    };
-    reader.onerror = () => setPickerError('Não foi possível ler essa imagem.');
-    reader.readAsDataURL(file);
-  };
-
-  const pickFromCanvas = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !context || !canvas.width || !canvas.height) return;
-
-    const bounds = canvas.getBoundingClientRect();
-    const relativeX = Math.min(Math.max(event.clientX - bounds.left, 0), bounds.width);
-    const relativeY = Math.min(Math.max(event.clientY - bounds.top, 0), bounds.height);
-    const pixelX = Math.min(canvas.width - 1, Math.floor((relativeX / bounds.width) * canvas.width));
-    const pixelY = Math.min(canvas.height - 1, Math.floor((relativeY / bounds.height) * canvas.height));
-    const [red, green, blue] = context.getImageData(pixelX, pixelY, 1, 1).data;
-
-    setPickedColor(rgbToHex(red, green, blue));
-    setMarker({
-      x: bounds.width ? (relativeX / bounds.width) * 100 : 0,
-      y: bounds.height ? (relativeY / bounds.height) * 100 : 0,
-    });
-  };
-
-  const confirmFallbackColor = () => {
-    onChange(pickedColor.toUpperCase());
-    setFallbackOpen(false);
-  };
-
-  return (
-    <div>
-      <span className="mb-1.5 block text-xs font-bold">{label}</span>
-      <div className="flex gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={(event) => onChange(event.target.value.toUpperCase())}
-          className="h-[42px] w-12 shrink-0 rounded-lg border bg-transparent p-1"
-          style={{ borderColor }}
-          aria-label={`Selecionar ${label.toLowerCase()}`}
-        />
-        <input
-          className="crm-input min-w-0 flex-1 font-mono"
-          value={value}
-          maxLength={7}
-          inputMode="text"
-          autoCapitalize="characters"
-          onChange={(event) => onChange(event.target.value.toUpperCase())}
-          aria-label={`${label} em hexadecimal`}
-        />
-        <button
-          type="button"
-          onClick={openEyeDropper}
-          disabled={nativePicking}
-          className="btn-outline inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border"
-          style={{ borderColor }}
-          aria-label={`Usar conta-gotas para ${label.toLowerCase()}`}
-          title="Usar conta-gotas"
-        >
-          <Pipette className={`h-4 w-4 ${nativePicking ? 'animate-pulse' : ''}`} />
-        </button>
-      </div>
-
-      {fallbackOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center" role="presentation">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`mobile-color-picker-${label.replaceAll(' ', '-').toLowerCase()}`}
-            className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-[#0E2337] p-4 text-white shadow-2xl sm:p-5"
-            style={{ borderColor }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 id={`mobile-color-picker-${label.replaceAll(' ', '-').toLowerCase()}`} className="font-extrabold">Conta-gotas — {label}</h3>
-                <p className="mt-1 text-xs leading-5 text-white/65">Escolha uma captura de tela ou foto e toque na cor desejada.</p>
-              </div>
-              <button type="button" onClick={() => setFallbackOpen(false)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20" aria-label="Fechar conta-gotas"><X className="h-4 w-4" /></button>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event) => {
-                loadImage(event.target.files?.[0]);
-                event.target.value = '';
-              }}
-            />
-
-            {!imageSource ? (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-5 flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/25 bg-white/5 p-6 text-center"
-              >
-                <Upload className="h-7 w-7" style={{ color: accentColor }} />
-                <span className="mt-3 text-sm font-extrabold">Escolher captura ou foto</span>
-                <span className="mt-1 text-[11px] text-white/55">PNG, JPG ou WEBP de até 12 MB</span>
-              </button>
-            ) : (
-              <div className="mt-5">
-                <div className="relative overflow-hidden rounded-xl border border-white/20 bg-black/30">
-                  <canvas
-                    ref={canvasRef}
-                    onPointerDown={pickFromCanvas}
-                    className="block max-h-[55dvh] w-full touch-none object-contain"
-                    aria-label="Imagem para selecionar uma cor"
-                  />
-                  {marker && (
-                    <span
-                      className="pointer-events-none absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white shadow-[0_0_0_2px_rgba(0,0,0,.55)]"
-                      style={{ left: `${marker.x}%`, top: `${marker.y}%`, backgroundColor: pickedColor }}
-                    />
-                  )}
-                </div>
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-2 text-xs font-bold"><Upload className="h-4 w-4" /> Trocar imagem</button>
-              </div>
-            )}
-
-            {pickerError && <p className="mt-3 rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-xs text-red-100">{pickerError}</p>}
-
-            <div className="mt-5 flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3">
-              <span className="h-10 w-10 shrink-0 rounded-lg border border-white/25" style={{ backgroundColor: pickedColor }} />
-              <div className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-[.1em] text-white/50">Cor selecionada</span><strong className="font-mono text-sm">{pickedColor}</strong></div>
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setFallbackOpen(false)} className="btn-outline h-11 flex-1 rounded-lg border border-white/20 text-xs font-bold">Cancelar</button>
-              <button type="button" onClick={confirmFallbackColor} disabled={!marker} className="btn-filled h-11 flex-1 rounded-lg text-xs font-extrabold" style={{ backgroundColor: accentColor, color: '#0E2337' }}>Usar esta cor</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const copyText = async (value: string) => {
   if (navigator.clipboard?.writeText) {
