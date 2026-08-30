@@ -15,13 +15,24 @@
   var appBase = new URL("./", scriptUrl).toString();
   var appOrigin = scriptUrl.origin;
   var endpoint = "https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead";
-  var mode = script.dataset.mode === "modal" ? "modal" : "inline";
-  var color = /^#[0-9a-f]{6}$/i.test(script.dataset.color || "")
+  var fallbackMode = script.dataset.mode === "modal" ? "modal" : "inline";
+  var fallbackColor = /^#[0-9a-f]{6}$/i.test(script.dataset.color || "")
     ? script.dataset.color
     : "#0076DD";
-  var buttonLabel = (script.dataset.buttonLabel || "Simular economia solar").slice(0, 60);
-  var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
+  var fallbackButtonLabel = (script.dataset.buttonLabel || "Simular economia solar").slice(0, 60);
   var siteOrigin = window.location.origin;
+
+  function initializeWidget(publicConfig) {
+  var mode = publicConfig && publicConfig.widgetMode === "modal" ? "modal"
+    : publicConfig && publicConfig.widgetMode === "inline" ? "inline"
+    : fallbackMode;
+  var color = publicConfig && /^#[0-9a-f]{6}$/i.test(publicConfig.primaryColor || "")
+    ? publicConfig.primaryColor
+    : fallbackColor;
+  var buttonLabel = publicConfig && typeof publicConfig.submitLabel === "string" && publicConfig.submitLabel.trim()
+    ? publicConfig.submitLabel.trim().slice(0, 60)
+    : fallbackButtonLabel;
+  var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
   var query = new URLSearchParams({
     captacao: token,
     embed: "1",
@@ -211,4 +222,26 @@
         }, appOrigin);
       });
   });
+  }
+
+  var configUrl = new URL(endpoint);
+  configUrl.searchParams.set("formToken", token);
+  configUrl.searchParams.set("siteOrigin", siteOrigin);
+
+  fetch(configUrl, {
+    method: "GET",
+    credentials: "omit",
+    cache: "no-store",
+    referrerPolicy: "strict-origin-when-cross-origin",
+  })
+    .then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (body) {
+        if (!response.ok) throw new Error(body.error || "Formulário indisponível.");
+        return body;
+      });
+    })
+    .then(initializeWidget)
+    .catch(function (error) {
+      console.warn("Sol Amigo PRO: " + (error && error.message ? error.message : "não foi possível carregar a configuração do formulário."));
+    });
 })();
