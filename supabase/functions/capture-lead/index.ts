@@ -82,6 +82,7 @@ const getClientAddress = (req: Request) => {
 
 const PROPERTY_TYPES = new Set(["Residencial", "Comercial", "Rural", "Industrial"]);
 const PROPERTY_STATUSES = new Set(["Próprio", "Alugado", "Em construção", "Outro"]);
+const ACCIDENTAL_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SAFE_CSS_SELECTORS = new Set([
@@ -299,34 +300,39 @@ Deno.serve(async (req: Request) => {
       return json({ error: "É necessário autorizar o contato." }, 400, requestOrigin);
     }
 
-    const duplicateCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: phoneMatch, error: phoneMatchError } = await admin
+    const averageMonthlyBill = asOptionalNumber(input.averageMonthlyBill);
+    const averageConsumptionKWh = asOptionalNumber(input.averageConsumptionKWh);
+    const distributor = asOptionalText(input.distributor, 120);
+    const installationTimeframe = asOptionalText(input.installationTimeframe, 80);
+    const preferredContactTime = asOptionalText(input.preferredContactTime, 80);
+    const submissionFingerprint = await sha256(JSON.stringify([
+      form.id,
+      name.toLowerCase(),
+      phoneNormalized,
+      email,
+      city.toLowerCase(),
+      state,
+      propertyType,
+      propertyStatus,
+      averageMonthlyBill,
+      averageConsumptionKWh,
+      distributor?.toLowerCase() ?? null,
+      installationTimeframe?.toLowerCase() ?? null,
+      preferredContactTime?.toLowerCase() ?? null,
+    ]));
+
+    const duplicateCutoff = new Date(Date.now() - ACCIDENTAL_DUPLICATE_WINDOW_MS).toISOString();
+    const { data: duplicate, error: duplicateError } = await admin
       .from("leads")
       .select("id")
       .eq("user_id", form.user_id)
-      .eq("phone_normalized", phoneNormalized)
+      .eq("submission_fingerprint", submissionFingerprint)
       .gte("created_at", duplicateCutoff)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (phoneMatchError) throw phoneMatchError;
-
-    let duplicate = phoneMatch;
-    if (!duplicate && email) {
-      const { data: emailMatch, error: emailMatchError } = await admin
-        .from("leads")
-        .select("id")
-        .eq("user_id", form.user_id)
-        .ilike("email", email)
-        .gte("created_at", duplicateCutoff)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (emailMatchError) throw emailMatchError;
-      duplicate = emailMatch;
-    }
+    if (duplicateError) throw duplicateError;
 
     const now = new Date().toISOString();
     if (duplicate) {
@@ -360,9 +366,6 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, duplicate: true }, 200, requestOrigin);
     }
 
-    const averageMonthlyBill = asOptionalNumber(input.averageMonthlyBill);
-    const averageConsumptionKWh = asOptionalNumber(input.averageConsumptionKWh);
-
     const { data: lead, error: leadError } = await admin
       .from("leads")
       .insert({
@@ -377,10 +380,11 @@ Deno.serve(async (req: Request) => {
         property_type: propertyType,
         average_monthly_bill: averageMonthlyBill,
         average_consumption_kwh: averageConsumptionKWh,
-        distributor: asOptionalText(input.distributor, 120),
+        distributor,
         property_status: propertyStatus,
-        installation_timeframe: asOptionalText(input.installationTimeframe, 80),
-        preferred_contact_time: asOptionalText(input.preferredContactTime, 80),
+        installation_timeframe: installationTimeframe,
+        preferred_contact_time: preferredContactTime,
+        submission_fingerprint: submissionFingerprint,
         source: asOptionalText(input.source, 120) ?? "Formulário do site",
         landing_page: asOptionalText(input.landingPage, 500),
         utm_source: asOptionalText(input.utmSource, 160),
