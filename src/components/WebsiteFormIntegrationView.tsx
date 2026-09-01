@@ -46,6 +46,34 @@ const PUBLIC_APP_URL = (
 ).replace(/\/?$/, '/');
 const CAPTURE_ENDPOINT = 'https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead';
 
+const CSS_EDITOR_PAIRS: Record<string, string> = {
+  '{': '}',
+  '[': ']',
+  '(': ')',
+  '"': '"',
+  "'": "'",
+};
+
+const CSS_EDITOR_CLOSING_CHARACTERS = new Set(Object.values(CSS_EDITOR_PAIRS));
+
+const CUSTOM_FORM_CLASS_DESCRIPTIONS = [
+  ['.sol-form', 'Formulário inteiro e sua largura geral.'],
+  ['.sol-form__card', 'Caixa principal que envolve todo o formulário.'],
+  ['.sol-form__header', 'Cabeçalho interno com logo, título e subtítulo.'],
+  ['.sol-form__title', 'Título principal do formulário.'],
+  ['.sol-form__subtitle', 'Texto de apoio abaixo do título.'],
+  ['.sol-form__field', 'Bloco que agrupa uma etiqueta e seu campo.'],
+  ['.sol-form__label', 'Nome ou etiqueta exibida acima de um campo.'],
+  ['.sol-form__input', 'Campos de texto, telefone, e-mail e cidade.'],
+  ['.sol-form__select', 'Campos de seleção, como estado e tipo de imóvel.'],
+  ['.sol-form__button', 'Botão principal de avançar ou enviar.'],
+  ['.sol-form__secondary-button', 'Botão secundário, como voltar.'],
+  ['.sol-form__progress', 'Indicador de progresso entre as etapas.'],
+  ['.sol-form__consent', 'Texto e caixa de autorização de contato.'],
+  ['.sol-form__success', 'Mensagem exibida após o envio bem-sucedido.'],
+  ['.sol-form__powered-by', 'Crédito “Criado com Sol Amigo PRO”.'],
+] as const;
+
 const copyText = async (value: string) => {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -161,6 +189,113 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   ) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
     setError('');
+  };
+
+  const replaceCssEditorSelection = (
+    editor: HTMLTextAreaElement,
+    replacement: string,
+    selectionStart: number,
+    selectionEnd = selectionStart,
+  ) => {
+    const nextCss = `${editor.value.slice(0, editor.selectionStart)}${replacement}${editor.value.slice(editor.selectionEnd)}`;
+    if (nextCss.length > CUSTOM_FORM_CSS_LIMIT) return;
+    setField('customCss', nextCss);
+    window.requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(selectionStart, selectionEnd);
+    });
+  };
+
+  const insertCssEditorPair = (editor: HTMLTextAreaElement, opening: string) => {
+    const closing = CSS_EDITOR_PAIRS[opening];
+    if (!closing) return false;
+    const { selectionStart, selectionEnd, value } = editor;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+    replaceCssEditorSelection(
+      editor,
+      `${opening}${selectedText}${closing}`,
+      selectionStart + 1,
+      selectionEnd + 1,
+    );
+    return true;
+  };
+
+  const handleCssEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const editor = event.currentTarget;
+    const { selectionStart, selectionEnd, value } = editor;
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      replaceCssEditorSelection(editor, '  ', selectionStart + 2);
+      return;
+    }
+
+    if (
+      CSS_EDITOR_CLOSING_CHARACTERS.has(event.key)
+      && selectionStart === selectionEnd
+      && value[selectionStart] === event.key
+    ) {
+      event.preventDefault();
+      editor.setSelectionRange(selectionStart + 1, selectionStart + 1);
+      return;
+    }
+
+    if (CSS_EDITOR_PAIRS[event.key]) {
+      event.preventDefault();
+      insertCssEditorPair(editor, event.key);
+      return;
+    }
+
+    if (
+      event.key === 'Backspace'
+      && selectionStart === selectionEnd
+      && selectionStart > 0
+      && CSS_EDITOR_PAIRS[value[selectionStart - 1]] === value[selectionStart]
+    ) {
+      event.preventDefault();
+      const nextCss = `${value.slice(0, selectionStart - 1)}${value.slice(selectionStart + 1)}`;
+      setField('customCss', nextCss);
+      window.requestAnimationFrame(() => {
+        editor.focus();
+        editor.setSelectionRange(selectionStart - 1, selectionStart - 1);
+      });
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+      const currentIndent = value.slice(lineStart, selectionStart).match(/^\s*/)?.[0] ?? '';
+      const isInsideBraces = value[selectionStart - 1] === '{' && value[selectionStart] === '}';
+      const replacement = isInsideBraces
+        ? `\n${currentIndent}  \n${currentIndent}`
+        : `\n${currentIndent}`;
+      const cursorPosition = selectionStart + 1 + currentIndent.length + (isInsideBraces ? 2 : 0);
+      replaceCssEditorSelection(editor, replacement, cursorPosition);
+    }
+  };
+
+  const handleCssEditorBeforeInput = (event: React.FormEvent<HTMLTextAreaElement>) => {
+    const nativeEvent = event.nativeEvent as InputEvent;
+    const insertedText = nativeEvent.data;
+    if (nativeEvent.inputType !== 'insertText' || !insertedText || insertedText.length !== 1) return;
+
+    const editor = event.currentTarget;
+    if (
+      CSS_EDITOR_CLOSING_CHARACTERS.has(insertedText)
+      && editor.selectionStart === editor.selectionEnd
+      && editor.value[editor.selectionStart] === insertedText
+    ) {
+      event.preventDefault();
+      const nextPosition = editor.selectionStart + 1;
+      editor.setSelectionRange(nextPosition, nextPosition);
+      return;
+    }
+
+    if (CSS_EDITOR_PAIRS[insertedText]) {
+      event.preventDefault();
+      insertCssEditorPair(editor, insertedText);
+    }
   };
 
   const setFormActive = (active: boolean) => {
@@ -635,12 +770,17 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
                 <div>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold">Editor CSS</span>
+                    <span>
+                      <span className="block text-xs font-bold">Editor CSS</span>
+                      <span className="mt-0.5 block text-[10px] opacity-55">Fechamento automático, indentação com Tab e recuo inteligente com Enter.</span>
+                    </span>
                     <span className="text-[11px] opacity-60">{draft.customCss.length.toLocaleString('pt-BR')}/{CUSTOM_FORM_CSS_LIMIT.toLocaleString('pt-BR')}</span>
                   </div>
                   <textarea
                     value={draft.customCss}
                     onChange={(event) => setField('customCss', event.target.value)}
+                    onKeyDown={handleCssEditorKeyDown}
+                    onBeforeInput={handleCssEditorBeforeInput}
                     maxLength={CUSTOM_FORM_CSS_LIMIT}
                     spellCheck={false}
                     className="min-h-72 w-full rounded-xl border bg-[#091A29] p-4 font-mono text-xs leading-5 text-slate-100 outline-none"
@@ -666,7 +806,15 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
                 <details className="rounded-xl border p-3 text-xs" style={{ borderColor: theme.border }}>
                   <summary className="cursor-pointer font-bold">Classes disponíveis</summary>
-                  <code className="mt-3 block whitespace-pre-wrap font-mono text-[11px] leading-5 opacity-70">.sol-form{`\n`}.sol-form__card{`\n`}.sol-form__header{`\n`}.sol-form__title{`\n`}.sol-form__subtitle{`\n`}.sol-form__field{`\n`}.sol-form__label{`\n`}.sol-form__input{`\n`}.sol-form__select{`\n`}.sol-form__button{`\n`}.sol-form__secondary-button{`\n`}.sol-form__progress{`\n`}.sol-form__consent{`\n`}.sol-form__success{`\n`}.sol-form__powered-by</code>
+                  <p className="mt-2 text-[11px] leading-5 opacity-60">Use uma classe por regra para alterar somente aquela parte do formulário.</p>
+                  <dl className="mt-3 divide-y" style={{ borderColor: theme.border }}>
+                    {CUSTOM_FORM_CLASS_DESCRIPTIONS.map(([className, description]) => (
+                      <div key={className} className="grid gap-1 py-2.5 sm:grid-cols-[minmax(180px,auto)_1fr] sm:gap-4">
+                        <dt><code className="font-mono text-[11px] font-bold" style={{ color: theme.accent }}>{className}</code></dt>
+                        <dd className="text-[11px] leading-5 opacity-70">{description}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </details>
               </div>
             )}
