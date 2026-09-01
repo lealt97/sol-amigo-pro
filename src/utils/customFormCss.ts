@@ -23,6 +23,13 @@ export const CUSTOM_FORM_CSS_EXAMPLE = `.sol-form__card {
   border-radius: 14px;
   background-color: #FACB5C;
   color: #0E2337;
+}
+
+.sol-form__image {
+  height: 560px;
+  border-radius: 18px;
+  object-fit: cover;
+  object-position: center;
 }`;
 
 const ALLOWED_SELECTORS = new Set([
@@ -30,6 +37,7 @@ const ALLOWED_SELECTORS = new Set([
   '.sol-form__subtitle', '.sol-form__field', '.sol-form__label', '.sol-form__input',
   '.sol-form__select', '.sol-form__button', '.sol-form__secondary-button',
   '.sol-form__progress', '.sol-form__consent', '.sol-form__success', '.sol-form__icon',
+  '.sol-form__image',
   '.sol-form__powered-by',
 ]);
 
@@ -42,7 +50,10 @@ const ALLOWED_PROPERTIES = new Set([
   'text-decoration', 'text-transform', 'width',
 ]);
 
-const ICON_ONLY_PROPERTIES = new Set(['height']);
+const SELECTOR_ONLY_PROPERTIES: Record<string, Set<string>> = {
+  '.sol-form__icon': new Set(['height']),
+  '.sol-form__image': new Set(['height', 'object-fit', 'object-position']),
+};
 
 export const validateCustomFormCss = (css: string): string[] => {
   const errors: string[] = [];
@@ -74,13 +85,25 @@ export const validateCustomFormCss = (css: string): string[] => {
       }
       const property = declaration.slice(0, separator).trim().toLowerCase();
       const value = declaration.slice(separator + 1).trim();
-      const iconOnlyPropertyAllowed = ICON_ONLY_PROPERTIES.has(property)
-        && baseSelectors.every((selector) => selector === '.sol-form__icon');
-      if (!ALLOWED_PROPERTIES.has(property) && !iconOnlyPropertyAllowed) {
+      const selectorOnlyPropertyAllowed = baseSelectors.length > 0
+        && baseSelectors.every((selector) => SELECTOR_ONLY_PROPERTIES[selector]?.has(property));
+      if (!ALLOWED_PROPERTIES.has(property) && !selectorOnlyPropertyAllowed) {
         errors.push(`Propriedade não permitida: ${property}`);
       }
-      if (property === 'height' && !/^(?:[2-9]\d|1[0-5]\d|160)px$/i.test(value)) {
-        errors.push('A altura do ícone deve estar entre 20px e 160px.');
+      if (property === 'height') {
+        if (baseSelectors.every((selector) => selector === '.sol-form__icon') && !/^(?:[2-9]\d|1[0-5]\d|160)px$/i.test(value)) {
+          errors.push('A altura do ícone deve estar entre 20px e 160px.');
+        } else if (baseSelectors.every((selector) => selector === '.sol-form__image') && !/^(?:1[6-9]\d|[2-7]\d{2}|800)px$/i.test(value)) {
+          errors.push('A altura da foto deve estar entre 160px e 800px.');
+        } else if (!baseSelectors.every((selector) => selector === '.sol-form__icon') && !baseSelectors.every((selector) => selector === '.sol-form__image')) {
+          errors.push('A propriedade height só pode ser usada separadamente em .sol-form__icon ou .sol-form__image.');
+        }
+      }
+      if (property === 'object-fit' && !/^(cover|contain)$/i.test(value)) {
+        errors.push('O ajuste da foto deve ser cover ou contain.');
+      }
+      if (property === 'object-position' && !/^(center|top|bottom|left|right)( (center|top|bottom|left|right))?$/i.test(value)) {
+        errors.push('A posição da foto deve usar palavras como center, top, bottom, left ou right.');
       }
       if (!value || /!important|var\s*\(|calc\s*\(|attr\s*\(|data:|https?:/i.test(value)) {
         errors.push(`Valor não permitido em ${property}.`);

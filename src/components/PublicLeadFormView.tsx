@@ -10,7 +10,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { SUPABASE_URL, supabase } from '../lib/supabase';
-import { BrandLogo } from './BrandLogo';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_NAMES } from '../data/brazilStates';
 
 interface PublicLeadFormViewProps {
@@ -37,6 +36,7 @@ type PublicFormData = {
 type PublicFormConfig = {
   companyName: string;
   logoUrl: string | null;
+  sideImageUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
   headline: string;
@@ -53,6 +53,7 @@ type PublicFormConfig = {
 const DEFAULT_CONFIG: PublicFormConfig = {
   companyName: 'Especialista em energia solar',
   logoUrl: null,
+  sideImageUrl: null,
   primaryColor: '#0076DD',
   secondaryColor: '#0E2337',
   headline: 'Descubra quanto você pode economizar com energia solar.',
@@ -312,28 +313,28 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   return (
     <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={formThemeStyle}>
       {config.customCssEnabled && <style>{config.customCss}</style>}
-      <div className={`mx-auto grid max-w-7xl ${queryContext.embedded ? 'min-h-0' : 'min-h-screen lg:grid-cols-[0.85fr_1.15fr]'}`}>
-        <aside className={`sol-form__header ${queryContext.embedded ? 'hidden' : 'hidden p-12 text-white lg:flex lg:flex-col lg:justify-between'}`}>
-          {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-12 max-w-[240px] object-contain object-left" referrerPolicy="no-referrer" /> : <p className="text-sm font-extrabold uppercase tracking-[.12em]">{config.companyName}</p>}
-          <div className="max-w-md">
-            <h1 className="sol-form__title text-4xl font-extrabold leading-tight tracking-[-0.035em]">{config.headline}</h1>
-            <p className="sol-form__subtitle mt-5 text-sm leading-6 text-white/75">{config.subheadline}</p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-white/60">
-            <LockKeyhole className="h-4 w-4" />
-            Dados protegidos e usados somente para este atendimento.
-          </div>
-        </aside>
-
-        <section className={`bg-[#F4F7FA] ${queryContext.embedded ? 'px-3 py-3 sm:px-4' : 'px-4 py-6 sm:px-8 lg:flex lg:items-center lg:px-14 lg:py-12'}`}>
-          <div className="mx-auto w-full max-w-2xl">
+      <div className={`mx-auto flex max-w-7xl items-center justify-center bg-[#F4F7FA] ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`}>
+        <section className={`w-full ${config.sideImageUrl ? 'max-w-6xl' : 'max-w-2xl'}`}>
             <div className="sol-form__card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
-              <div className={`sol-form__header p-5 sm:p-7 ${queryContext.embedded ? 'block' : 'block lg:hidden'}`}>
-                {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : queryContext.embedded ? <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span> : <BrandLogo backgroundColor={config.secondaryColor} className="h-10 w-auto" />}
+              <div className="sol-form__header p-5 sm:p-7 lg:px-9 lg:py-8">
+                {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span>}
                 <h1 className="sol-form__title mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
                 <p className="sol-form__subtitle mt-2 text-sm leading-5 text-white/75">{config.subheadline}</p>
               </div>
 
+              <div className={config.sideImageUrl ? 'lg:grid lg:grid-cols-[minmax(260px,0.78fr)_minmax(0,1.22fr)]' : ''}>
+                {config.sideImageUrl && (
+                  <div className="hidden min-h-full overflow-hidden bg-slate-100 lg:block">
+                    <img
+                      src={config.sideImageUrl}
+                      alt="Projeto de energia solar"
+                      className="sol-form__image h-full min-h-[560px] w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+
+                <div className="min-w-0">
               <div className="px-5 pt-5 sm:px-8 sm:pt-7">
                 <div className="sol-form__progress flex items-center gap-3">
                   {[1, 2].map((item) => (
@@ -465,11 +466,12 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
               {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
               </form>
+                </div>
+              </div>
             </div>
 
             <p className="mt-5 flex items-center justify-center gap-2 text-center text-[11px] text-slate-500"><LockKeyhole className="h-3.5 w-3.5" /> Seus dados não serão vendidos ou compartilhados para publicidade.</p>
             {config.showPoweredBy && <p className="sol-form__powered-by mt-2 text-center text-[10px] font-semibold text-slate-400">Tecnologia Sol Amigo PRO</p>}
-          </div>
         </section>
       </div>
     </div>

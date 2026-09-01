@@ -26,11 +26,12 @@ import type { ThemeConfig, WebsiteFormSettings } from '../types';
 import {
   fetchWebsiteFormSettings,
   fetchProfileBrandLogos,
+  fetchProfileFormImages,
   normalizeWebsiteOrigin,
   rotateWebsiteFormToken,
   saveWebsiteFormSettings,
 } from '../services/websiteFormIntegration';
-import type { ProfileBrandLogo } from '../services/websiteFormIntegration';
+import type { ProfileBrandLogo, ProfileFormImage } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import type { FormTemplate } from '../data/formTemplates';
@@ -75,6 +76,7 @@ const CUSTOM_FORM_CLASS_DESCRIPTIONS = [
   ['.sol-form__consent', 'Texto e caixa de autorização de contato.'],
   ['.sol-form__success', 'Mensagem exibida após o envio bem-sucedido.'],
   ['.sol-form__icon', 'Caixa dos ícones de energia e confirmação.'],
+  ['.sol-form__image', 'Foto lateral exibida somente na versão para computador.'],
   ['.sol-form__powered-by', 'Crédito “Criado com Sol Amigo PRO”.'],
 ] as const;
 
@@ -114,6 +116,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [saved, setSaved] = useState<WebsiteFormSettings | null>(null);
   const [draft, setDraft] = useState<WebsiteFormSettings | null>(null);
   const [profileLogos, setProfileLogos] = useState<ProfileBrandLogo[]>([]);
+  const [profileFormImages, setProfileFormImages] = useState<ProfileFormImage[]>([]);
   const [domainInput, setDomainInput] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
@@ -159,12 +162,17 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         console.warn('Não foi possível carregar os logos do perfil:', logoError);
         return [];
       }),
+      fetchProfileFormImages().catch((imageError) => {
+        console.warn('Não foi possível carregar as fotos do formulário:', imageError);
+        return [];
+      }),
     ])
-      .then(([settings, logos]) => {
+      .then(([settings, logos, formImages]) => {
         if (!mounted) return;
         setSaved(settings);
         setDraft(settings);
         setProfileLogos(logos);
+        setProfileFormImages(formImages);
       })
       .catch(() => mounted && setError('Não foi possível carregar a integração.'))
       .finally(() => mounted && setLoading(false));
@@ -360,6 +368,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.primaryColor)) throw new Error('A cor principal é inválida.');
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.secondaryColor)) throw new Error('A cor secundária é inválida.');
     validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
+    validateHttpsUrl(settings.sideImageUrl, 'A foto lateral');
     const cssErrors = validateCustomFormCss(settings.customCss);
     if (cssErrors.length) throw new Error(cssErrors[0]);
   };
@@ -859,6 +868,52 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   </div>
                 )}
               </fieldset>
+              <fieldset className="sm:col-span-2">
+                <legend className="text-xs font-bold">Foto lateral no computador</legend>
+                <p className="mt-1 text-[11px] leading-5 opacity-60">
+                  A foto aparece à esquerda, abaixo do título, somente em telas grandes. No celular ela fica oculta.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={() => setField('sideImageUrl', '')}
+                    aria-pressed={!draft.sideImageUrl}
+                    className="flex min-h-28 items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold"
+                    style={{ borderColor: !draft.sideImageUrl ? theme.secondary : theme.border, boxShadow: !draft.sideImageUrl ? `0 0 0 2px ${theme.secondary}25` : undefined }}
+                  >
+                    <Image className="h-4 w-4 opacity-60" /> Sem foto
+                    {!draft.sideImageUrl && <Check className="h-4 w-4" style={{ color: theme.accent }} />}
+                  </button>
+                  {profileFormImages.map((image) => {
+                    const selected = draft.sideImageUrl === image.url;
+                    return (
+                      <button
+                        key={image.id}
+                        type="button"
+                        onClick={() => setField('sideImageUrl', image.url)}
+                        aria-pressed={selected}
+                        className="relative min-h-28 overflow-hidden rounded-xl border text-left"
+                        style={{ borderColor: selected ? theme.secondary : theme.border, boxShadow: selected ? `0 0 0 2px ${theme.secondary}25` : undefined }}
+                      >
+                        <img src={image.url} alt={image.label} className="h-24 w-full object-cover" />
+                        <span className="block px-3 py-2 text-[10px] font-bold">{image.label}</span>
+                        {selected && <span className="absolute right-2 top-2 rounded-full bg-white p-1"><Check className="h-3.5 w-3.5" style={{ color: theme.secondary }} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!profileFormImages.length && (
+                  <p className="mt-3 rounded-lg border border-dashed p-3 text-xs opacity-65" style={{ borderColor: theme.border }}>
+                    Nenhuma foto cadastrada. Envie uma em Configurações → Perfil → Fotos do formulário.
+                  </p>
+                )}
+                {draft.sideImageUrl && !profileFormImages.some((image) => image.url === draft.sideImageUrl) && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-xs">
+                    <span>O formulário ainda usa uma foto antiga. Escolha uma foto do perfil ou “Sem foto”.</span>
+                    <img src={draft.sideImageUrl} alt="Foto lateral atual antiga" className="h-12 w-16 rounded object-cover" />
+                  </div>
+                )}
+              </fieldset>
               <ResponsiveColorField label="Cor principal" value={draft.primaryColor} borderColor={theme.border} accentColor={theme.accent} onChange={(color) => setField('primaryColor', color)} />
               <ResponsiveColorField label="Cor secundária" value={draft.secondaryColor} borderColor={theme.border} accentColor={theme.accent} onChange={(color) => setField('secondaryColor', color)} />
               <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>
@@ -966,12 +1021,19 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 <h3 className="sol-form__title text-lg font-extrabold leading-tight">{draft.headline}</h3>
                 <p className="sol-form__subtitle mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
               </div>
-              <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
-                <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
-                <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
-                <div className="sol-form__select rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
-                <button type="button" className="sol-form__button h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2">{draft.submitLabel}</button>
-                {draft.showPoweredBy && <p className="sol-form__powered-by text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
+              <div className={draft.sideImageUrl ? 'grid grid-cols-[0.72fr_1.28fr]' : ''}>
+                {draft.sideImageUrl && (
+                  <div className="min-h-full overflow-hidden bg-slate-100">
+                    <img src={draft.sideImageUrl} alt="Prévia da foto lateral" className="sol-form__image h-full min-h-56 w-full object-cover" />
+                  </div>
+                )}
+                <div className="grid min-w-0 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
+                  <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400 sm:col-span-2">Nome completo</div>
+                  <div className="sol-form__input rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">WhatsApp</div>
+                  <div className="sol-form__select rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-400">Estado</div>
+                  <button type="button" className="sol-form__button h-10 w-full rounded-lg text-xs font-extrabold text-white sm:col-span-2">{draft.submitLabel}</button>
+                  {draft.showPoweredBy && <p className="sol-form__powered-by text-center text-[9px] text-slate-400 sm:col-span-2">Tecnologia Sol Amigo PRO</p>}
+                </div>
               </div>
             </div>
             </div>

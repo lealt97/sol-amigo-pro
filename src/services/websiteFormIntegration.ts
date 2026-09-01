@@ -9,6 +9,12 @@ export interface ProfileBrandLogo {
   background: 'dark' | 'light';
 }
 
+export interface ProfileFormImage {
+  id: string;
+  label: string;
+  url: string;
+}
+
 const FORM_COLUMNS = [
   'id',
   'public_token',
@@ -20,6 +26,7 @@ const FORM_COLUMNS = [
   'widget_mode',
   'company_name',
   'logo_url',
+  'side_image_url',
   'primary_color',
   'secondary_color',
   'headline',
@@ -43,6 +50,7 @@ type WebsiteFormRow = {
   widget_mode: WebsiteFormSettings['widgetMode'];
   company_name: string;
   logo_url: string | null;
+  side_image_url: string | null;
   primary_color: string;
   secondary_color: string;
   headline: string;
@@ -66,6 +74,7 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
   widgetMode: row.widget_mode,
   companyName: row.company_name,
   logoUrl: row.logo_url ?? '',
+  sideImageUrl: row.side_image_url ?? '',
   primaryColor: row.primary_color,
   secondaryColor: row.secondary_color,
   headline: row.headline,
@@ -86,6 +95,7 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   widget_mode: settings.widgetMode,
   company_name: settings.companyName.trim(),
   logo_url: settings.logoUrl.trim() || null,
+  side_image_url: settings.sideImageUrl.trim() || null,
   primary_color: settings.primaryColor.toUpperCase(),
   secondary_color: settings.secondaryColor.toUpperCase(),
   headline: settings.headline.trim(),
@@ -129,6 +139,36 @@ export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
       }];
     })
   );
+};
+
+export const fetchProfileFormImages = async (): Promise<ProfileFormImage[]> => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!data.user) return [];
+
+  const stored = data.user.user_metadata?.form_images ?? [];
+  const expectedPath = `/storage/v1/object/public/account-assets/${data.user.id}/form-images/`;
+  const projectHost = new URL(SUPABASE_URL).hostname;
+
+  return [0, 1, 2].flatMap((index) => {
+    const value = String(stored[index] ?? '').trim();
+    if (!value) return [];
+
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:' || url.hostname !== projectHost || !url.pathname.startsWith(expectedPath)) {
+        return [];
+      }
+    } catch {
+      return [];
+    }
+
+    return [{
+      id: `form-image-${index + 1}`,
+      label: `Foto ${index + 1}`,
+      url: value,
+    }];
+  });
 };
 
 export const normalizeWebsiteOrigin = (value: string): string => {
