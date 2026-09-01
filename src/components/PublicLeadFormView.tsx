@@ -286,7 +286,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
         {config.customCssEnabled && <style>{config.customCss}</style>}
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
           <section className="sol-form__card sol-form__success w-full rounded-3xl bg-white p-7 text-center shadow-2xl md:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#B4BF8A]/25" style={{ color: config.primaryColor }}>
+            <div className="sol-form__icon mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#B4BF8A]/25" style={{ color: config.primaryColor }}>
               <CheckCircle2 className="h-9 w-9" />
             </div>
             <h1 className="mt-6 text-2xl font-extrabold tracking-tight md:text-3xl">Recebemos sua solicitação!</h1>
@@ -398,7 +398,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               ) : (
                 <>
                   <div className="mb-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FACB5C]/35 text-[#0E2337]"><Zap className="h-5 w-5" /></div>
+                    <div className="sol-form__icon flex h-10 w-10 items-center justify-center rounded-xl bg-[#FACB5C]/35 text-[#0E2337]"><Zap className="h-5 w-5" /></div>
                     <h2 className="mt-4 text-2xl font-extrabold tracking-tight">Agora, sobre seu consumo</h2>
                     <p className="mt-2 text-sm text-slate-500">Informe o que você souber. Um dos dois primeiros campos é suficiente.</p>
                   </div>

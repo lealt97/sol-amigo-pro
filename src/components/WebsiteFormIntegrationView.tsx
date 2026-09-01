@@ -74,6 +74,7 @@ const CUSTOM_FORM_CLASS_DESCRIPTIONS = [
   ['.sol-form__progress', 'Indicador de progresso entre as etapas.'],
   ['.sol-form__consent', 'Texto e caixa de autorização de contato.'],
   ['.sol-form__success', 'Mensagem exibida após o envio bem-sucedido.'],
+  ['.sol-form__icon', 'Caixa dos ícones de energia e confirmação.'],
   ['.sol-form__powered-by', 'Crédito “Criado com Sol Amigo PRO”.'],
 ] as const;
 
