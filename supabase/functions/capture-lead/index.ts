@@ -90,6 +90,7 @@ const SAFE_CSS_SELECTORS = new Set([
   ".sol-form__subtitle", ".sol-form__field", ".sol-form__label", ".sol-form__input",
   ".sol-form__select", ".sol-form__button", ".sol-form__secondary-button",
   ".sol-form__progress", ".sol-form__consent", ".sol-form__success", ".sol-form__icon",
+  ".sol-form__image",
   ".sol-form__powered-by",
 ]);
 const SAFE_CSS_PROPERTIES = new Set([
@@ -100,7 +101,10 @@ const SAFE_CSS_PROPERTIES = new Set([
   "padding-bottom", "padding-left", "padding-right", "padding-top", "text-align",
   "text-decoration", "text-transform", "width",
 ]);
-const ICON_ONLY_CSS_PROPERTIES = new Set(["height"]);
+const SELECTOR_ONLY_CSS_PROPERTIES: Record<string, Set<string>> = {
+  ".sol-form__icon": new Set(["height"]),
+  ".sol-form__image": new Set(["height", "object-fit", "object-position"]),
+};
 
 const isSafeCustomCss = (css: string) => {
   if (!css || css.length > 20_000 || /\/\*|@|url\s*\(|expression\s*\(|javascript\s*:|\\|<|>/i.test(css)) return false;
@@ -116,11 +120,27 @@ const isSafeCustomCss = (css: string) => {
       if (separator < 1) return false;
       const property = declaration.slice(0, separator).trim().toLowerCase();
       const value = declaration.slice(separator + 1).trim();
-      const iconOnlyPropertyAllowed = ICON_ONLY_CSS_PROPERTIES.has(property)
-        && baseSelectors.every((selector) => selector === ".sol-form__icon");
-      if ((!SAFE_CSS_PROPERTIES.has(property) && !iconOnlyPropertyAllowed)
+      const selectorOnlyPropertyAllowed = baseSelectors.length > 0
+        && baseSelectors.every((selector) => SELECTOR_ONLY_CSS_PROPERTIES[selector]?.has(property));
+      const iconHeightInvalid = property === "height"
+        && baseSelectors.every((selector) => selector === ".sol-form__icon")
+        && !/^(?:[2-9]\d|1[0-5]\d|160)px$/i.test(value);
+      const imageHeightInvalid = property === "height"
+        && baseSelectors.every((selector) => selector === ".sol-form__image")
+        && !/^(?:1[6-9]\d|[2-7]\d{2}|800)px$/i.test(value);
+      const mixedHeightInvalid = property === "height"
+        && !baseSelectors.every((selector) => selector === ".sol-form__icon")
+        && !baseSelectors.every((selector) => selector === ".sol-form__image");
+      const objectFitInvalid = property === "object-fit" && !/^(cover|contain)$/i.test(value);
+      const objectPositionInvalid = property === "object-position"
+        && !/^(center|top|bottom|left|right)( (center|top|bottom|left|right))?$/i.test(value);
+      if ((!SAFE_CSS_PROPERTIES.has(property) && !selectorOnlyPropertyAllowed)
         || !value
-        || (property === "height" && !/^(?:[2-9]\d|1[0-5]\d|160)px$/i.test(value))
+        || iconHeightInvalid
+        || imageHeightInvalid
+        || mixedHeightInvalid
+        || objectFitInvalid
+        || objectPositionInvalid
         || /!important|var\s*\(|calc\s*\(|attr\s*\(|data:|https?:/i.test(value)) return false;
     }
   }
@@ -137,6 +157,7 @@ type CaptureForm = {
   widget_mode: "inline" | "modal";
   company_name: string;
   logo_url: string | null;
+  side_image_url: string | null;
   primary_color: string;
   secondary_color: string;
   headline: string;
@@ -192,7 +213,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: formData, error: formError } = await admin
       .from("lead_capture_forms")
-      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
+      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, side_image_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
       .eq("public_token", formToken)
       .maybeSingle();
 
@@ -217,6 +238,7 @@ Deno.serve(async (req: Request) => {
       return json({
         companyName: form.company_name,
         logoUrl: form.logo_url,
+        sideImageUrl: form.side_image_url,
         primaryColor: form.primary_color,
         secondaryColor: form.secondary_color,
         headline: form.headline,

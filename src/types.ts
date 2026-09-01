@@ -215,6 +215,7 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   widgetMode: 'inline' | 'modal';
   companyName: string;
   logoUrl: string;
+  sideImageUrl: string;
   primaryColor: string;
   secondaryColor: string;
   headline: string;
