@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Globe2,
   KeyRound,
+  LayoutTemplate,
   Loader2,
   MapPin,
   MonitorSmartphone,
@@ -31,6 +32,8 @@ import {
 } from '../services/websiteFormIntegration';
 import type { ProfileBrandLogo } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
+import { FORM_TEMPLATES } from '../data/formTemplates';
+import type { FormTemplate } from '../data/formTemplates';
 import { CUSTOM_FORM_CSS_EXAMPLE, CUSTOM_FORM_CSS_LIMIT, validateCustomFormCss } from '../utils/customFormCss';
 import { ResponsiveColorField } from './ResponsiveColorField';
 
@@ -39,7 +42,7 @@ interface WebsiteFormIntegrationViewProps {
   onShowToast: (message: string) => void;
 }
 
-type CollapsibleSection = 'domains' | 'states' | 'display' | 'branding' | 'css';
+type CollapsibleSection = 'domains' | 'states' | 'display' | 'templates' | 'branding' | 'css';
 
 const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
@@ -117,6 +120,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     domains: false,
     states: false,
     display: false,
+    templates: false,
     branding: false,
     css: false,
   });
@@ -126,7 +130,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   const setAllSectionsCollapsed = (collapsed: boolean) => {
-    setCollapsedSections({ domains: collapsed, states: collapsed, display: collapsed, branding: collapsed, css: collapsed });
+    setCollapsedSections({ domains: collapsed, states: collapsed, display: collapsed, templates: collapsed, branding: collapsed, css: collapsed });
   };
 
   const collapseButton = (section: CollapsibleSection, label: string) => {
@@ -307,6 +311,23 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     setError('');
   };
 
+  const applyFormTemplate = (template: FormTemplate) => {
+    setDraft((current) => current ? {
+      ...current,
+      primaryColor: template.primaryColor,
+      secondaryColor: template.secondaryColor,
+      headline: template.headline,
+      subheadline: template.subheadline,
+      submitLabel: template.submitLabel,
+      successMessage: template.successMessage,
+      customCssEnabled: true,
+      customCss: template.customCss,
+    } : current);
+    setCollapsedSections((current) => ({ ...current, branding: false, css: false }));
+    setError('');
+    onShowToast(`Modelo “${template.name}” aplicado. Salve para publicar.`);
+  };
+
   const addDomain = () => {
     if (!draft) return;
     try {
@@ -455,6 +476,15 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     '--sol-form-primary': draft.primaryColor,
     '--sol-form-secondary': draft.secondaryColor,
   } as React.CSSProperties;
+  const activeFormTemplateId = FORM_TEMPLATES.find((template) => (
+    template.primaryColor === draft.primaryColor
+    && template.secondaryColor === draft.secondaryColor
+    && template.headline === draft.headline
+    && template.subheadline === draft.subheadline
+    && template.submitLabel === draft.submitLabel
+    && template.successMessage === draft.successMessage
+    && template.customCss === draft.customCss
+  ))?.id;
 
   return (
     <div id="integracoes-page" className="mx-auto max-w-6xl space-y-5">
@@ -632,9 +662,100 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
+                <LayoutTemplate className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+                <div>
+                  <h3 className="font-bold">3. Escolha um modelo pronto</h3>
+                  <p className="mt-1 text-xs leading-5 opacity-65">
+                    Aplique um visual completo em um clique. Logo, empresa, domínios e estados atendidos serão preservados.
+                  </p>
+                </div>
+              </div>
+              {collapseButton('templates', 'modelos prontos')}
+            </div>
+
+            {!collapsedSections.templates && (
+              <div className="mt-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {FORM_TEMPLATES.map((template) => {
+                    const selected = activeFormTemplateId === template.id;
+                    const preview = template.preview;
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => applyFormTemplate(template)}
+                        aria-pressed={selected}
+                        className="group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                        style={{
+                          borderColor: selected ? theme.secondary : theme.border,
+                          boxShadow: selected ? `0 0 0 2px ${theme.secondary}30` : undefined,
+                        }}
+                      >
+                        <span className="block p-3" style={{ backgroundColor: preview.canvas }}>
+                          <span
+                            className="mx-auto block max-w-[260px] overflow-hidden border shadow-md"
+                            style={{
+                              backgroundColor: preview.card,
+                              borderColor: preview.inputBorder,
+                              borderRadius: preview.radius,
+                            }}
+                          >
+                            <span className="block p-3" style={{ backgroundColor: preview.header, color: preview.headerText }}>
+                              <span className="block text-[7px] font-extrabold uppercase tracking-[.12em] opacity-80">Sua empresa solar</span>
+                              <span className="mt-2 block text-[12px] font-extrabold leading-tight">{template.headline}</span>
+                              <span className="mt-1 block h-1.5 w-3/4 rounded-full opacity-70" style={{ backgroundColor: preview.mutedText }} />
+                            </span>
+                            <span className="grid gap-1.5 p-3">
+                              <span className="h-6 rounded border" style={{ backgroundColor: preview.input, borderColor: preview.inputBorder }} />
+                              <span className="h-6 rounded border" style={{ backgroundColor: preview.input, borderColor: preview.inputBorder }} />
+                              <span
+                                className="mt-1 flex h-7 items-center justify-center px-2 text-[7px] font-extrabold uppercase tracking-[.05em]"
+                                style={{
+                                  backgroundColor: preview.button,
+                                  color: preview.buttonText,
+                                  borderRadius: Math.max(5, preview.radius - 5),
+                                }}
+                              >
+                                {template.submitLabel}
+                              </span>
+                            </span>
+                          </span>
+                        </span>
+                        <span className="block p-4">
+                          <span className="flex items-start justify-between gap-3">
+                            <span>
+                              <span className="block text-sm font-extrabold">{template.name}</span>
+                              <span className="mt-1 block text-[11px] leading-5 opacity-60">{template.description}</span>
+                            </span>
+                            {selected && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-extrabold uppercase" style={{ backgroundColor: `${theme.secondary}22`, color: theme.accent }}>
+                                <Check className="h-3 w-3" /> Aplicado
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-3 flex items-center gap-1.5 text-[10px] font-bold opacity-65">
+                            <span className="h-3 w-3 rounded-full border border-white/30" style={{ backgroundColor: template.primaryColor }} />
+                            <span className="h-3 w-3 rounded-full border border-white/30" style={{ backgroundColor: template.secondaryColor }} />
+                            <span className="ml-1">{selected ? 'Modelo selecionado' : 'Aplicar este modelo'}</span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-4 rounded-xl border border-dashed p-3 text-[11px] leading-5 opacity-65" style={{ borderColor: theme.border }}>
+                  O modelo não é salvo automaticamente. Você pode ajustar cores, textos e CSS depois de aplicá-lo e conferir tudo na prévia.
+                </p>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
                 <Code2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
                 <div>
-                <h3 className="font-bold">3. Escolha como exibir</h3>
+                <h3 className="font-bold">4. Escolha como exibir</h3>
                 <p className="mt-1 text-xs leading-5 opacity-65">Funciona em WordPress, Wix e páginas HTML que aceitam código personalizado.</p>
                 </div>
               </div>
@@ -681,7 +802,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
-                <div><h3 className="font-bold">4. Personalize sua marca</h3><p className="mt-1 text-xs opacity-65">Estas cores são próprias do formulário e não alteram o tema do CRM.</p></div>
+                <div><h3 className="font-bold">5. Personalize sua marca</h3><p className="mt-1 text-xs opacity-65">Estas cores são próprias do formulário e não alteram o tema do CRM.</p></div>
               </div>
               {collapseButton('branding', 'personalização da marca')}
             </div>
@@ -754,7 +875,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               <div className="flex items-start gap-3">
                 <Braces className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.secondary }} />
                 <div>
-                  <h3 className="font-bold">5. CSS avançado</h3>
+                  <h3 className="font-bold">6. CSS avançado</h3>
                   <p className="mt-1 text-xs leading-5 opacity-65">Personalização visual restrita às classes públicas e propriedades seguras do formulário.</p>
                 </div>
               </div>
