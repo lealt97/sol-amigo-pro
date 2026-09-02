@@ -309,7 +309,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   if (submitted) {
     return (
-      <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={formThemeStyle}>
+      <div id="public-lead-form-page" className={`sol-form sol-form__page ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4 text-[#0E2337]`} style={formThemeStyle}>
         {config.customCssEnabled && <style>{config.customCss}</style>}
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
           <section className="sol-form__card sol-form__success w-full rounded-3xl bg-white p-7 text-center shadow-2xl md:p-10">
@@ -339,7 +339,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   return (
     <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={formThemeStyle}>
       {config.customCssEnabled && <style>{config.customCss}</style>}
-      <div className={`mx-auto flex max-w-7xl items-center justify-center bg-[#F4F7FA] ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`}>
+      <div className={`sol-form__page mx-auto flex max-w-7xl items-center justify-center bg-[#F4F7FA] ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`}>
         <section className={`w-full ${config.sideImageUrls.length ? 'max-w-6xl' : 'max-w-2xl'}`}>
             <div className="sol-form__card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
               <div className="sol-form__header p-5 sm:p-7 lg:px-9 lg:py-8">

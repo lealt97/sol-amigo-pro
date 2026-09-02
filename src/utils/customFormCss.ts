@@ -5,6 +5,10 @@ export const CUSTOM_FORM_CSS_EXAMPLE = `.sol-form__card {
   box-shadow: 0 18px 45px rgba(14, 35, 55, 0.16);
 }
 
+.sol-form__page {
+  background-color: #F4F7FA;
+}
+
 .sol-form__input,
 .sol-form__select {
   border-radius: 10px;
@@ -33,7 +37,7 @@ export const CUSTOM_FORM_CSS_EXAMPLE = `.sol-form__card {
 }`;
 
 const ALLOWED_SELECTORS = new Set([
-  '.sol-form', '.sol-form__card', '.sol-form__header', '.sol-form__title',
+  '.sol-form', '.sol-form__page', '.sol-form__card', '.sol-form__header', '.sol-form__title',
   '.sol-form__subtitle', '.sol-form__field', '.sol-form__label', '.sol-form__input',
   '.sol-form__select', '.sol-form__button', '.sol-form__secondary-button',
   '.sol-form__progress', '.sol-form__consent', '.sol-form__success', '.sol-form__icon',

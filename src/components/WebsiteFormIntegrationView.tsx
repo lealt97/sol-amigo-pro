@@ -63,6 +63,7 @@ const CSS_EDITOR_CLOSING_CHARACTERS = new Set(Object.values(CSS_EDITOR_PAIRS));
 
 const CUSTOM_FORM_CLASS_DESCRIPTIONS = [
   ['.sol-form', 'Formulário inteiro e sua largura geral.'],
+  ['.sol-form__page', 'Área externa ao redor da caixa do formulário.'],
   ['.sol-form__card', 'Caixa principal que envolve todo o formulário.'],
   ['.sol-form__header', 'Cabeçalho interno com logo, título e subtítulo.'],
   ['.sol-form__title', 'Título principal do formulário.'],
@@ -1101,7 +1102,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               </div>
             )}
             <p className="mt-4 text-[10px] font-bold uppercase tracking-[.1em] opacity-50">{draft.widgetMode === 'modal' ? 'Formulário ao abrir' : 'Primeira etapa incorporada'}</p>
-            <div className="sol-form mt-4" style={previewThemeStyle}>
+            <div className="sol-form sol-form__page mt-4 rounded-2xl bg-[#F4F7FA] p-3" style={previewThemeStyle}>
             <div className="sol-form__card overflow-hidden rounded-2xl bg-[#F4F7FA] text-[#0E2337] shadow-xl">
               <div className="sol-form__header p-4">
                 {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-3 h-8 max-w-[180px] object-contain object-left" /> : <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}

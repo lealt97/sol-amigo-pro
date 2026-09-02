@@ -100,7 +100,7 @@ const ACCIDENTAL_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SAFE_CSS_SELECTORS = new Set([
-  ".sol-form", ".sol-form__card", ".sol-form__header", ".sol-form__title",
+  ".sol-form", ".sol-form__page", ".sol-form__card", ".sol-form__header", ".sol-form__title",
   ".sol-form__subtitle", ".sol-form__field", ".sol-form__label", ".sol-form__input",
   ".sol-form__select", ".sol-form__button", ".sol-form__secondary-button",
   ".sol-form__progress", ".sol-form__consent", ".sol-form__success", ".sol-form__icon",
