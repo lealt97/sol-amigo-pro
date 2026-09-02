@@ -64,6 +64,20 @@ const normalizeOrigin = (value: unknown): string | null => {
   }
 };
 
+const normalizePublicImageUrls = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const raw = asText(item, 700);
+    if (!raw) return [];
+    try {
+      const url = new URL(raw);
+      return url.protocol === "https:" ? [url.toString()] : [];
+    } catch {
+      return [];
+    }
+  }).slice(0, 3);
+};
+
 const sha256 = async (value: string) => {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -158,6 +172,8 @@ type CaptureForm = {
   company_name: string;
   logo_url: string | null;
   side_image_url: string | null;
+  side_image_urls: string[];
+  side_image_rotation_enabled: boolean;
   primary_color: string;
   secondary_color: string;
   headline: string;
@@ -213,7 +229,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: formData, error: formError } = await admin
       .from("lead_capture_forms")
-      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, side_image_url, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
+      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, side_image_url, side_image_urls, side_image_rotation_enabled, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
       .eq("public_token", formToken)
       .maybeSingle();
 
@@ -235,10 +251,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const customCssSafe = isSafeCustomCss(form.custom_css ?? "");
+      const configuredImages = normalizePublicImageUrls(form.side_image_urls);
+      const legacyImages = normalizePublicImageUrls(form.side_image_url ? [form.side_image_url] : []);
+      const sideImageUrls = configuredImages.length ? configuredImages : legacyImages;
       return json({
         companyName: form.company_name,
         logoUrl: form.logo_url,
-        sideImageUrl: form.side_image_url,
+        sideImageUrls,
+        sideImageRotationEnabled: form.side_image_rotation_enabled && sideImageUrls.length > 1,
         primaryColor: form.primary_color,
         secondaryColor: form.secondary_color,
         headline: form.headline,
