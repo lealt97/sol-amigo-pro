@@ -9,12 +9,6 @@ export interface ProfileBrandLogo {
   background: 'dark' | 'light';
 }
 
-export interface ProfileFormImage {
-  id: string;
-  label: string;
-  url: string;
-}
-
 const FORM_COLUMNS = [
   'id',
   'public_token',
@@ -27,6 +21,8 @@ const FORM_COLUMNS = [
   'company_name',
   'logo_url',
   'side_image_url',
+  'side_image_urls',
+  'side_image_rotation_enabled',
   'primary_color',
   'secondary_color',
   'headline',
@@ -51,6 +47,8 @@ type WebsiteFormRow = {
   company_name: string;
   logo_url: string | null;
   side_image_url: string | null;
+  side_image_urls: string[];
+  side_image_rotation_enabled: boolean;
   primary_color: string;
   secondary_color: string;
   headline: string;
@@ -74,7 +72,12 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
   widgetMode: row.widget_mode,
   companyName: row.company_name,
   logoUrl: row.logo_url ?? '',
-  sideImageUrl: row.side_image_url ?? '',
+  sideImageUrls: row.side_image_urls?.length
+    ? row.side_image_urls
+    : row.side_image_url
+      ? [row.side_image_url]
+      : [],
+  sideImageRotationEnabled: row.side_image_rotation_enabled ?? false,
   primaryColor: row.primary_color,
   secondaryColor: row.secondary_color,
   headline: row.headline,
@@ -95,7 +98,9 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   widget_mode: settings.widgetMode,
   company_name: settings.companyName.trim(),
   logo_url: settings.logoUrl.trim() || null,
-  side_image_url: settings.sideImageUrl.trim() || null,
+  side_image_url: settings.sideImageUrls[0] ?? null,
+  side_image_urls: settings.sideImageUrls,
+  side_image_rotation_enabled: settings.sideImageRotationEnabled && settings.sideImageUrls.length > 1,
   primary_color: settings.primaryColor.toUpperCase(),
   secondary_color: settings.secondaryColor.toUpperCase(),
   headline: settings.headline.trim(),
@@ -141,34 +146,41 @@ export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
   );
 };
 
-export const fetchProfileFormImages = async (): Promise<ProfileFormImage[]> => {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  if (!data.user) return [];
+const FORM_IMAGE_MAX_FILE_SIZE = 5 * 1024 * 1024;
+const FORM_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
-  const stored = data.user.user_metadata?.form_images ?? [];
-  const expectedPath = `/storage/v1/object/public/account-assets/${data.user.id}/form-images/`;
-  const projectHost = new URL(SUPABASE_URL).hostname;
+export const uploadWebsiteFormImage = async (file: File, index: number): Promise<string> => {
+  if (!Number.isInteger(index) || index < 0 || index > 2) {
+    throw new Error('O formulário aceita no máximo três fotos.');
+  }
+  if (!FORM_IMAGE_TYPES.includes(file.type)) {
+    throw new Error('Formato não suportado. Use PNG, JPG ou WEBP.');
+  }
+  if (file.size > FORM_IMAGE_MAX_FILE_SIZE) {
+    throw new Error('A foto deve ter no máximo 5 MB.');
+  }
 
-  return [0, 1, 2].flatMap((index) => {
-    const value = String(stored[index] ?? '').trim();
-    if (!value) return [];
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw new Error('Sua sessão expirou. Entre novamente.');
 
-    try {
-      const url = new URL(value);
-      if (url.protocol !== 'https:' || url.hostname !== projectHost || !url.pathname.startsWith(expectedPath)) {
-        return [];
-      }
-    } catch {
-      return [];
-    }
+  const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const objectPath = `${userData.user.id}/form-images/${crypto.randomUUID()}-${index + 1}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from('account-assets')
+    .upload(objectPath, file, {
+      upsert: false,
+      cacheControl: '3600',
+      contentType: file.type,
+    });
 
-    return [{
-      id: `form-image-${index + 1}`,
-      label: `Foto ${index + 1}`,
-      url: value,
-    }];
-  });
+  if (uploadError) throw uploadError;
+
+  const { data: publicData } = supabase.storage
+    .from('account-assets')
+    .getPublicUrl(objectPath);
+
+  return `${publicData.publicUrl}?v=${Date.now()}`;
 };
 
 export const normalizeWebsiteOrigin = (value: string): string => {

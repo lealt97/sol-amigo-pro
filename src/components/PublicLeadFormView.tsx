@@ -36,7 +36,8 @@ type PublicFormData = {
 type PublicFormConfig = {
   companyName: string;
   logoUrl: string | null;
-  sideImageUrl: string | null;
+  sideImageUrls: string[];
+  sideImageRotationEnabled: boolean;
   primaryColor: string;
   secondaryColor: string;
   headline: string;
@@ -53,7 +54,8 @@ type PublicFormConfig = {
 const DEFAULT_CONFIG: PublicFormConfig = {
   companyName: 'Especialista em energia solar',
   logoUrl: null,
-  sideImageUrl: null,
+  sideImageUrls: [],
+  sideImageRotationEnabled: false,
   primaryColor: '#0076DD',
   secondaryColor: '#0E2337',
   headline: 'Descubra quanto você pode economizar com energia solar.',
@@ -91,6 +93,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [config, setConfig] = useState<PublicFormConfig>(DEFAULT_CONFIG);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState('');
   const formThemeStyle = useMemo(() => ({
@@ -125,7 +128,17 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
         if (!response.ok) throw new Error(body.error || 'Formulário indisponível.');
         return body as PublicFormConfig;
       })
-      .then((nextConfig) => mounted && setConfig(nextConfig))
+      .then((nextConfig) => {
+        if (!mounted) return;
+        setConfig({
+          ...DEFAULT_CONFIG,
+          ...nextConfig,
+          sideImageUrls: Array.isArray(nextConfig.sideImageUrls)
+            ? nextConfig.sideImageUrls.filter((url): url is string => typeof url === 'string' && url.startsWith('https://')).slice(0, 3)
+            : [],
+          sideImageRotationEnabled: nextConfig.sideImageRotationEnabled === true,
+        });
+      })
       .catch((loadError) => mounted && setConfigError(loadError instanceof Error ? loadError.message : 'Formulário indisponível.'))
       .finally(() => mounted && setConfigLoading(false));
 
@@ -133,6 +146,19 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
       mounted = false;
     };
   }, [formToken, queryContext.siteOrigin]);
+
+  const sideImageKey = config.sideImageUrls.join('|');
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+    if (!config.sideImageRotationEnabled || config.sideImageUrls.length < 2) return;
+
+    const interval = window.setInterval(() => {
+      setActiveImageIndex((current) => (current + 1) % config.sideImageUrls.length);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [config.sideImageRotationEnabled, sideImageKey]);
 
   useEffect(() => {
     if (!queryContext.widget || !queryContext.siteOrigin || window.parent === window) return;
@@ -314,7 +340,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     <div id="public-lead-form-page" className={`sol-form ${queryContext.embedded ? 'min-h-0' : 'min-h-screen'} text-[#0E2337]`} style={formThemeStyle}>
       {config.customCssEnabled && <style>{config.customCss}</style>}
       <div className={`mx-auto flex max-w-7xl items-center justify-center bg-[#F4F7FA] ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`}>
-        <section className={`w-full ${config.sideImageUrl ? 'max-w-6xl' : 'max-w-2xl'}`}>
+        <section className={`w-full ${config.sideImageUrls.length ? 'max-w-6xl' : 'max-w-2xl'}`}>
             <div className="sol-form__card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
               <div className="sol-form__header p-5 sm:p-7 lg:px-9 lg:py-8">
                 {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span>}
@@ -322,15 +348,18 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                 <p className="sol-form__subtitle mt-2 text-sm leading-5 text-white/75">{config.subheadline}</p>
               </div>
 
-              <div className={config.sideImageUrl ? 'lg:grid lg:grid-cols-[minmax(260px,0.78fr)_minmax(0,1.22fr)]' : ''}>
-                {config.sideImageUrl && (
-                  <div className="hidden min-h-full overflow-hidden bg-slate-100 lg:block">
-                    <img
-                      src={config.sideImageUrl}
-                      alt="Projeto de energia solar"
-                      className="sol-form__image h-full min-h-[560px] w-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
+              <div className={config.sideImageUrls.length ? 'lg:grid lg:grid-cols-[minmax(260px,0.78fr)_minmax(0,1.22fr)]' : ''}>
+                {config.sideImageUrls.length > 0 && (
+                  <div className="relative hidden min-h-[560px] overflow-hidden bg-slate-100 lg:block">
+                    {config.sideImageUrls.map((imageUrl, index) => (
+                      <img
+                        key={imageUrl}
+                        src={imageUrl}
+                        alt={index === activeImageIndex ? 'Projeto de energia solar' : ''}
+                        className={`sol-form__image absolute inset-0 h-full min-h-[560px] w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${index === activeImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                        referrerPolicy="no-referrer"
+                      />
+                    ))}
                   </div>
                 )}
 

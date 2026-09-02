@@ -28,8 +28,7 @@ type BrandLogos = {
 
 type AssetTarget =
   | { type: 'avatar' }
-  | { type: 'logo'; variant: LogoVariant; index: number }
-  | { type: 'form-image'; index: number };
+  | { type: 'logo'; variant: LogoVariant; index: number };
 
 const EMPTY_LOGOS: BrandLogos = {
   dark: ['', '', ''],
@@ -85,7 +84,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
   const [createdAt, setCreatedAt] = useState('');
   const [profilePhoto, setProfilePhoto] = useState('');
   const [brandLogos, setBrandLogos] = useState<BrandLogos>(EMPTY_LOGOS);
-  const [formImages, setFormImages] = useState<string[]>(['', '', '']);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -115,7 +113,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
         dark: [0, 1, 2].map((index) => String(storedLogos.dark?.[index] ?? '')),
         light: [0, 1, 2].map((index) => String(storedLogos.light?.[index] ?? '')),
       });
-      setFormImages([0, 1, 2].map((index) => String(metadata.form_images?.[index] ?? '')));
       setCreatedAt(
         data.user.created_at
           ? new Date(data.user.created_at).toLocaleDateString('pt-BR')
@@ -196,9 +193,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
 
     const uploadKey = target.type === 'avatar'
       ? 'avatar'
-      : target.type === 'logo'
-        ? `${target.variant}-${target.index}`
-        : `form-image-${target.index}`;
+      : `${target.variant}-${target.index}`;
 
     setUploading(uploadKey);
     setError('');
@@ -210,9 +205,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
       const userId = userData.user.id;
       const objectPath = target.type === 'avatar'
         ? `${userId}/profile/avatar`
-        : target.type === 'logo'
-          ? `${userId}/logos/${target.variant}-${target.index + 1}`
-          : `${userId}/form-images/image-${target.index + 1}`;
+        : `${userId}/logos/${target.variant}-${target.index + 1}`;
 
       const { error: uploadError } = await supabase.storage
         .from('account-assets')
@@ -241,7 +234,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
         if (metadataError) throw metadataError;
         setProfilePhoto(versionedUrl);
         onShowToast('Foto de perfil atualizada.');
-      } else if (target.type === 'logo') {
+      } else {
         const nextLogos: BrandLogos = {
           dark: [...brandLogos.dark],
           light: [...brandLogos.light],
@@ -257,19 +250,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
         if (metadataError) throw metadataError;
         setBrandLogos(nextLogos);
         onShowToast(`Logo ${target.index + 1} atualizado.`);
-      } else {
-        const nextImages = [...formImages];
-        nextImages[target.index] = versionedUrl;
-
-        const { error: metadataError } = await supabase.auth.updateUser({
-          data: {
-            ...currentMetadata,
-            form_images: nextImages,
-          },
-        });
-        if (metadataError) throw metadataError;
-        setFormImages(nextImages);
-        onShowToast(`Foto do formulário ${target.index + 1} atualizada.`);
       }
     } catch (uploadError) {
       console.error('Erro ao enviar arquivo:', uploadError);
@@ -384,25 +364,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
               description="Use versões escuras ou com contraste adequado para superfícies claras."
               variant="light"
               logos={brandLogos.light}
-              uploading={uploading}
-              theme={theme}
-              onUpload={uploadAsset}
-            />
-          </section>
-
-          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-            <div className="mb-5">
-              <div className="flex items-center gap-2">
-                <Camera className="h-5 w-5" style={{ color: theme.secondary }} />
-                <h3 className="font-bold">Fotos do formulário</h3>
-              </div>
-              <p className="mt-1 text-sm opacity-60">
-                Cadastre até 3 fotos para usar na lateral do formulário no computador. PNG, JPG ou WEBP, até 5 MB.
-              </p>
-            </div>
-
-            <FormImageGroup
-              images={formImages}
               uploading={uploading}
               theme={theme}
               onUpload={uploadAsset}
@@ -598,59 +559,5 @@ const LogoGroup: React.FC<LogoGroupProps> = ({
         );
       })}
     </div>
-  </div>
-);
-
-interface FormImageGroupProps {
-  images: string[];
-  uploading: string | null;
-  theme: ThemeConfig;
-  onUpload: (file: File, target: AssetTarget) => Promise<void>;
-}
-
-const FormImageGroup: React.FC<FormImageGroupProps> = ({ images, uploading, theme, onUpload }) => (
-  <div className="grid gap-4 md:grid-cols-3">
-    {[0, 1, 2].map((index) => {
-      const uploadKey = `form-image-${index}`;
-      const image = images[index];
-      const isBusy = uploading === uploadKey;
-
-      return (
-        <div key={uploadKey} className="overflow-hidden rounded-xl border" style={{ borderColor: theme.border }}>
-          <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-slate-100">
-            {image ? (
-              <img src={image} alt={`Foto do formulário ${index + 1}`} className="h-full w-full object-cover" />
-            ) : (
-              <div className="text-center text-slate-500">
-                <Camera className="mx-auto h-7 w-7" />
-                <span className="mt-2 block text-xs">Foto {index + 1}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 p-3">
-            <span className="text-xs font-semibold">Foto {index + 1}</span>
-            <label
-              className="theme-interactive inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold"
-              style={{ borderColor: theme.border }}
-            >
-              {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              {isBusy ? 'Enviando' : image ? 'Trocar' : 'Enviar'}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                disabled={uploading !== null}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = '';
-                  if (file) void onUpload(file, { type: 'form-image', index });
-                }}
-              />
-            </label>
-          </div>
-        </div>
-      );
-    })}
   </div>
 );

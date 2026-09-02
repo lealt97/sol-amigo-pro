@@ -21,17 +21,18 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import type { ThemeConfig, WebsiteFormSettings } from '../types';
 import {
   fetchWebsiteFormSettings,
   fetchProfileBrandLogos,
-  fetchProfileFormImages,
   normalizeWebsiteOrigin,
   rotateWebsiteFormToken,
   saveWebsiteFormSettings,
+  uploadWebsiteFormImage,
 } from '../services/websiteFormIntegration';
-import type { ProfileBrandLogo, ProfileFormImage } from '../services/websiteFormIntegration';
+import type { ProfileBrandLogo } from '../services/websiteFormIntegration';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilStates';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import type { FormTemplate } from '../data/formTemplates';
@@ -116,7 +117,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [saved, setSaved] = useState<WebsiteFormSettings | null>(null);
   const [draft, setDraft] = useState<WebsiteFormSettings | null>(null);
   const [profileLogos, setProfileLogos] = useState<ProfileBrandLogo[]>([]);
-  const [profileFormImages, setProfileFormImages] = useState<ProfileFormImage[]>([]);
+  const [uploadingImage, setUploadingImage] = useState<number | null>(null);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
   const [domainInput, setDomainInput] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
@@ -162,17 +164,12 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         console.warn('Não foi possível carregar os logos do perfil:', logoError);
         return [];
       }),
-      fetchProfileFormImages().catch((imageError) => {
-        console.warn('Não foi possível carregar as fotos do formulário:', imageError);
-        return [];
-      }),
     ])
-      .then(([settings, logos, formImages]) => {
+      .then(([settings, logos]) => {
         if (!mounted) return;
         setSaved(settings);
         setDraft(settings);
         setProfileLogos(logos);
-        setProfileFormImages(formImages);
       })
       .catch(() => mounted && setError('Não foi possível carregar a integração.'))
       .finally(() => mounted && setLoading(false));
@@ -180,6 +177,20 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       mounted = false;
     };
   }, []);
+
+  const previewImageKey = draft?.sideImageUrls.join('|') ?? '';
+
+  useEffect(() => {
+    setPreviewImageIndex(0);
+    const imageCount = draft?.sideImageUrls.length ?? 0;
+    if (!draft?.sideImageRotationEnabled || imageCount < 2) return;
+
+    const interval = window.setInterval(() => {
+      setPreviewImageIndex((current) => (current + 1) % imageCount);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [draft?.sideImageRotationEnabled, previewImageKey]);
 
   const changed = useMemo(
     () => Boolean(saved && draft && JSON.stringify(saved) !== JSON.stringify(draft)),
@@ -201,6 +212,38 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     value: WebsiteFormSettings[K]
   ) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
+    setError('');
+  };
+
+  const uploadFormImage = async (file: File, index: number) => {
+    try {
+      setUploadingImage(index);
+      setError('');
+      const url = await uploadWebsiteFormImage(file, index);
+      setDraft((current) => {
+        if (!current) return current;
+        const nextImages = [...current.sideImageUrls];
+        nextImages[index] = url;
+        return { ...current, sideImageUrls: nextImages.slice(0, 3) };
+      });
+      onShowToast(`Foto ${index + 1} enviada. Salve para publicar.`);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível enviar a foto.');
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const removeFormImage = (index: number) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const nextImages = current.sideImageUrls.filter((_, imageIndex) => imageIndex !== index);
+      return {
+        ...current,
+        sideImageUrls: nextImages,
+        sideImageRotationEnabled: nextImages.length > 1 && current.sideImageRotationEnabled,
+      };
+    });
     setError('');
   };
 
@@ -368,7 +411,11 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.primaryColor)) throw new Error('A cor principal é inválida.');
     if (!/^#[0-9A-Fa-f]{6}$/.test(settings.secondaryColor)) throw new Error('A cor secundária é inválida.');
     validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
-    validateHttpsUrl(settings.sideImageUrl, 'A foto lateral');
+    if (settings.sideImageUrls.length > 3) throw new Error('Use no máximo três fotos laterais.');
+    settings.sideImageUrls.forEach((url, index) => validateHttpsUrl(url, `A foto ${index + 1}`));
+    if (settings.sideImageRotationEnabled && settings.sideImageUrls.length < 2) {
+      throw new Error('Adicione pelo menos duas fotos para ativar a alternância.');
+    }
     const cssErrors = validateCustomFormCss(settings.customCss);
     if (cssErrors.length) throw new Error(cssErrors[0]);
   };
@@ -871,47 +918,87 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               <fieldset className="sm:col-span-2">
                 <legend className="text-xs font-bold">Foto lateral no computador</legend>
                 <p className="mt-1 text-[11px] leading-5 opacity-60">
-                  A foto aparece à esquerda, abaixo do título, somente em telas grandes. No celular ela fica oculta.
+                  Envie até 3 fotos. Elas aparecem à esquerda, abaixo do título, somente em telas grandes. PNG, JPG ou WEBP, até 5 MB.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <button
-                    type="button"
-                    onClick={() => setField('sideImageUrl', '')}
-                    aria-pressed={!draft.sideImageUrl}
-                    className="flex min-h-28 items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold"
-                    style={{ borderColor: !draft.sideImageUrl ? theme.secondary : theme.border, boxShadow: !draft.sideImageUrl ? `0 0 0 2px ${theme.secondary}25` : undefined }}
-                  >
-                    <Image className="h-4 w-4 opacity-60" /> Sem foto
-                    {!draft.sideImageUrl && <Check className="h-4 w-4" style={{ color: theme.accent }} />}
-                  </button>
-                  {profileFormImages.map((image) => {
-                    const selected = draft.sideImageUrl === image.url;
-                    return (
-                      <button
-                        key={image.id}
-                        type="button"
-                        onClick={() => setField('sideImageUrl', image.url)}
-                        aria-pressed={selected}
-                        className="relative min-h-28 overflow-hidden rounded-xl border text-left"
-                        style={{ borderColor: selected ? theme.secondary : theme.border, boxShadow: selected ? `0 0 0 2px ${theme.secondary}25` : undefined }}
-                      >
-                        <img src={image.url} alt={image.label} className="h-24 w-full object-cover" />
-                        <span className="block px-3 py-2 text-[10px] font-bold">{image.label}</span>
-                        {selected && <span className="absolute right-2 top-2 rounded-full bg-white p-1"><Check className="h-3.5 w-3.5" style={{ color: theme.secondary }} /></span>}
-                      </button>
-                    );
-                  })}
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {draft.sideImageUrls.map((imageUrl, index) => (
+                    <div key={`${imageUrl}-${index}`} className="overflow-hidden rounded-xl border" style={{ borderColor: theme.border }}>
+                      <img src={imageUrl} alt={`Foto lateral ${index + 1}`} className="h-28 w-full object-cover" />
+                      <div className="flex items-center justify-between gap-2 p-2.5">
+                        <span className="text-[10px] font-bold">Foto {index + 1}</span>
+                        <div className="flex items-center gap-1.5">
+                          <label className="theme-interactive inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1.5 text-[10px] font-bold" style={{ borderColor: theme.border }}>
+                            {uploadingImage === index ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            {uploadingImage === index ? 'Enviando' : 'Trocar'}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={uploadingImage !== null}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                event.target.value = '';
+                                if (file) void uploadFormImage(file, index);
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeFormImage(index)}
+                            disabled={uploadingImage !== null}
+                            aria-label={`Remover foto ${index + 1}`}
+                            className="theme-interactive rounded-lg border p-1.5 text-red-300"
+                            style={{ borderColor: theme.border }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {draft.sideImageUrls.length < 3 && (
+                    <label
+                      className="theme-interactive flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-center"
+                      style={{ borderColor: theme.secondary }}
+                    >
+                      {uploadingImage === draft.sideImageUrls.length ? <Loader2 className="h-6 w-6 animate-spin" /> : <Image className="h-6 w-6 opacity-65" />}
+                      <span className="text-xs font-bold">
+                        {uploadingImage === draft.sideImageUrls.length ? 'Enviando foto...' : 'Adicionar foto'}
+                      </span>
+                      <span className="text-[10px] opacity-55">{draft.sideImageUrls.length + 1} de 3</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={uploadingImage !== null}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (file) void uploadFormImage(file, draft.sideImageUrls.length);
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
-                {!profileFormImages.length && (
-                  <p className="mt-3 rounded-lg border border-dashed p-3 text-xs opacity-65" style={{ borderColor: theme.border }}>
-                    Nenhuma foto cadastrada. Envie uma em Configurações → Perfil → Fotos do formulário.
-                  </p>
-                )}
-                {draft.sideImageUrl && !profileFormImages.some((image) => image.url === draft.sideImageUrl) && (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-xs">
-                    <span>O formulário ainda usa uma foto antiga. Escolha uma foto do perfil ou “Sem foto”.</span>
-                    <img src={draft.sideImageUrl} alt="Foto lateral atual antiga" className="h-12 w-16 rounded object-cover" />
-                  </div>
+                {draft.sideImageUrls.length > 0 && (
+                  <label className="mt-3 flex items-start gap-3 rounded-xl border p-3" style={{ borderColor: theme.border }}>
+                    <input
+                      type="checkbox"
+                      checked={draft.sideImageRotationEnabled}
+                      disabled={draft.sideImageUrls.length < 2}
+                      onChange={(event) => setField('sideImageRotationEnabled', event.target.checked)}
+                      className="mt-0.5"
+                      style={{ accentColor: theme.secondary }}
+                    />
+                    <span>
+                      <span className="block text-xs font-bold">Alternar fotos automaticamente</span>
+                      <span className="mt-1 block text-[10px] leading-4 opacity-60">
+                        {draft.sideImageUrls.length < 2
+                          ? 'Adicione pelo menos duas fotos para ativar.'
+                          : 'Troca a foto a cada 5 segundos com uma transição suave de opacidade.'}
+                      </span>
+                    </span>
+                  </label>
                 )}
               </fieldset>
               <ResponsiveColorField label="Cor principal" value={draft.primaryColor} borderColor={theme.border} accentColor={theme.accent} onChange={(color) => setField('primaryColor', color)} />
@@ -1021,10 +1108,17 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 <h3 className="sol-form__title text-lg font-extrabold leading-tight">{draft.headline}</h3>
                 <p className="sol-form__subtitle mt-2 text-[11px] leading-4 opacity-75">{draft.subheadline}</p>
               </div>
-              <div className={draft.sideImageUrl ? 'grid grid-cols-[0.72fr_1.28fr]' : ''}>
-                {draft.sideImageUrl && (
-                  <div className="min-h-full overflow-hidden bg-slate-100">
-                    <img src={draft.sideImageUrl} alt="Prévia da foto lateral" className="sol-form__image h-full min-h-56 w-full object-cover" />
+              <div className={draft.sideImageUrls.length ? 'grid grid-cols-[0.72fr_1.28fr]' : ''}>
+                {draft.sideImageUrls.length > 0 && (
+                  <div className="relative min-h-56 overflow-hidden bg-slate-100">
+                    {draft.sideImageUrls.map((imageUrl, index) => (
+                      <img
+                        key={imageUrl}
+                        src={imageUrl}
+                        alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''}
+                        className={`sol-form__image absolute inset-0 h-full min-h-56 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${index === previewImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                      />
+                    ))}
                   </div>
                 )}
                 <div className="grid min-w-0 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
