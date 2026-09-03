@@ -99,66 +99,22 @@ const PROPERTY_STATUSES = new Set(["Próprio", "Alugado", "Em construção", "Ou
 const ACCIDENTAL_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SAFE_CSS_SELECTORS = new Set([
-  ".sol-form", ".sol-form__page", ".sol-form__card", ".sol-form__header", ".sol-form__title",
-  ".sol-form__subtitle", ".sol-form__field", ".sol-form__label", ".sol-form__input",
-  ".sol-form__select", ".sol-form__button", ".sol-form__secondary-button",
-  ".sol-form__progress", ".sol-form__consent", ".sol-form__success", ".sol-form__icon",
-  ".sol-form__image",
-  ".sol-form__powered-by",
-]);
-const SAFE_CSS_PROPERTIES = new Set([
-  "background", "background-color", "border", "border-color", "border-radius",
-  "border-style", "border-width", "box-shadow", "color", "font-family", "font-size",
-  "font-style", "font-weight", "letter-spacing", "line-height", "margin", "margin-bottom",
-  "margin-left", "margin-right", "margin-top", "max-width", "min-height", "padding",
-  "padding-bottom", "padding-left", "padding-right", "padding-top", "text-align",
-  "text-decoration", "text-transform", "width",
-]);
-const SELECTOR_ONLY_CSS_PROPERTIES: Record<string, Set<string>> = {
-  ".sol-form__icon": new Set(["height"]),
-  ".sol-form__image": new Set(["height", "object-fit", "object-position"]),
-};
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const THEME_COLOR_KEYS = [
+  "pageBackground", "cardBackground", "headerBackground", "headerText",
+  "headerMutedText", "bodyText", "mutedText", "inputBackground", "inputBorder",
+  "inputText", "primaryButtonBackground", "primaryButtonText",
+  "secondaryButtonBackground", "secondaryButtonText", "progressActive",
+  "progressInactive", "consentBackground", "successBackground", "successAccent",
+  "errorBackground", "errorAccent",
+] as const;
 
-const isSafeCustomCss = (css: string) => {
-  if (!css || css.length > 20_000 || /\/\*|@|url\s*\(|expression\s*\(|javascript\s*:|\\|<|>/i.test(css)) return false;
-  if (css.replace(/[^{}]+\{[^{}]*\}/g, "").trim()) return false;
-  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = match[1].split(",").map((item) => item.trim()).filter(Boolean);
-    const baseSelectors = selectors.map((selector) => selector.replace(/:(hover|focus|focus-visible)$/i, ""));
-    for (const baseSelector of baseSelectors) {
-      if (!SAFE_CSS_SELECTORS.has(baseSelector)) return false;
-    }
-    for (const declaration of match[2].split(";").map((item) => item.trim()).filter(Boolean)) {
-      const separator = declaration.indexOf(":");
-      if (separator < 1) return false;
-      const property = declaration.slice(0, separator).trim().toLowerCase();
-      const value = declaration.slice(separator + 1).trim();
-      const selectorOnlyPropertyAllowed = baseSelectors.length > 0
-        && baseSelectors.every((selector) => SELECTOR_ONLY_CSS_PROPERTIES[selector]?.has(property));
-      const iconHeightInvalid = property === "height"
-        && baseSelectors.every((selector) => selector === ".sol-form__icon")
-        && !/^(?:[2-9]\d|1[0-5]\d|160)px$/i.test(value);
-      const imageHeightInvalid = property === "height"
-        && baseSelectors.every((selector) => selector === ".sol-form__image")
-        && !/^(?:1[6-9]\d|[2-7]\d{2}|800)px$/i.test(value);
-      const mixedHeightInvalid = property === "height"
-        && !baseSelectors.every((selector) => selector === ".sol-form__icon")
-        && !baseSelectors.every((selector) => selector === ".sol-form__image");
-      const objectFitInvalid = property === "object-fit" && !/^(cover|contain)$/i.test(value);
-      const objectPositionInvalid = property === "object-position"
-        && !/^(center|top|bottom|left|right)( (center|top|bottom|left|right))?$/i.test(value);
-      if ((!SAFE_CSS_PROPERTIES.has(property) && !selectorOnlyPropertyAllowed)
-        || !value
-        || iconHeightInvalid
-        || imageHeightInvalid
-        || mixedHeightInvalid
-        || objectFitInvalid
-        || objectPositionInvalid
-        || /!important|var\s*\(|calc\s*\(|attr\s*\(|data:|https?:/i.test(value)) return false;
-    }
-  }
-  return true;
+const normalizeThemeColors = (value: unknown) => {
+  const candidate = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(THEME_COLOR_KEYS.flatMap((key) => {
+    const color = asText(candidate[key], 7).toUpperCase();
+    return HEX_COLOR_PATTERN.test(color) ? [[key, color]] : [];
+  }));
 };
 
 type CaptureForm = {
@@ -174,16 +130,17 @@ type CaptureForm = {
   side_image_url: string | null;
   side_image_urls: string[];
   side_image_rotation_enabled: boolean;
+  color_mode: "automatic" | "detailed";
   primary_color: string;
   secondary_color: string;
+  surface_color: string;
+  theme_colors: Record<string, unknown>;
   headline: string;
   subheadline: string;
   submit_label: string;
   success_message: string;
   privacy_url: string | null;
   show_powered_by: boolean;
-  custom_css_enabled: boolean;
-  custom_css: string;
 };
 
 Deno.serve(async (req: Request) => {
@@ -229,7 +186,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: formData, error: formError } = await admin
       .from("lead_capture_forms")
-      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, side_image_url, side_image_urls, side_image_rotation_enabled, primary_color, secondary_color, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by, custom_css_enabled, custom_css")
+      .select("id, user_id, active, widget_enabled, allowed_origins, service_states, widget_mode, company_name, logo_url, side_image_url, side_image_urls, side_image_rotation_enabled, color_mode, primary_color, secondary_color, surface_color, theme_colors, headline, subheadline, submit_label, success_message, privacy_url, show_powered_by")
       .eq("public_token", formToken)
       .maybeSingle();
 
@@ -250,7 +207,6 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Este domínio não está autorizado para usar o formulário." }, 403, requestOrigin, true);
       }
 
-      const customCssSafe = isSafeCustomCss(form.custom_css ?? "");
       const configuredImages = normalizePublicImageUrls(form.side_image_urls);
       const legacyImages = normalizePublicImageUrls(form.side_image_url ? [form.side_image_url] : []);
       const sideImageUrls = configuredImages.length ? configuredImages : legacyImages;
@@ -259,8 +215,11 @@ Deno.serve(async (req: Request) => {
         logoUrl: form.logo_url,
         sideImageUrls,
         sideImageRotationEnabled: form.side_image_rotation_enabled && sideImageUrls.length > 1,
+        colorMode: form.color_mode === "detailed" ? "detailed" : "automatic",
         primaryColor: form.primary_color,
         secondaryColor: form.secondary_color,
+        surfaceColor: form.surface_color,
+        themeColors: normalizeThemeColors(form.theme_colors),
         headline: form.headline,
         subheadline: form.subheadline,
         submitLabel: form.submit_label,
@@ -268,8 +227,6 @@ Deno.serve(async (req: Request) => {
         privacyUrl: form.privacy_url,
         showPoweredBy: form.show_powered_by,
         serviceStates: form.service_states,
-        customCssEnabled: form.custom_css_enabled && customCssSafe,
-        customCss: customCssSafe ? form.custom_css : "",
         widgetMode: form.widget_mode,
       }, 200, requestOrigin, true);
     }
