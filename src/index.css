@@ -129,13 +129,35 @@ a[href]:hover {
   filter: none !important;
 }
 
+/* Botão de perigo / ação de exclusão: padrão branco com texto/ícone/borda vermelhos, e hover com o estilo original preenchido em vermelho */
+.btn-danger-outline {
+  background-color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.btn-danger-outline svg {
+  color: #dc2626 !important;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.btn-danger-outline:hover:not(:disabled) svg {
+  color: #ffffff !important;
+}
+
 #app-topbar {
   background-color: var(--primary) !important;
   color: var(--primary-fg) !important;
   border-color: var(--border) !important;
 }
 
-#app-topbar #topbar-sidebar-toggle-btn {
+#app-topbar #topbar-sidebar-toggle-btn,
+#app-topbar #topbar-mobile-menu-btn {
   color: var(--primary-fg) !important;
   background-color: color-mix(in srgb, var(--primary-fg) 10%, transparent) !important;
   border-color: var(--border) !important;

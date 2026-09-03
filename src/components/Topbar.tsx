@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, HelpCircle, Menu } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
+import { BrandLogo } from './BrandLogo';
 
 interface TopbarProps {
   activePage: PageKey;
@@ -31,6 +32,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
 
 export const Topbar: React.FC<TopbarProps> = ({
   activePage,
+  theme,
   onOpenMobileMenu,
   onOpenHelp,
 }) => {
@@ -45,7 +47,15 @@ export const Topbar: React.FC<TopbarProps> = ({
       id="app-topbar"
       className="h-14 border-b border-[#30363D] flex items-center justify-between px-4 md:px-6 bg-[#161B22] text-[#C9D1D9] shrink-0 select-none z-30 sticky top-0"
     >
-      <div className="flex items-center space-x-3 md:space-x-4 min-w-0">
+      <div className="flex items-center space-x-2.5 md:space-x-4 min-w-0">
+        <div id="topbar-mobile-logo" className="md:hidden flex items-center shrink-0">
+          <BrandLogo
+            orientation="vertical"
+            backgroundColor={theme?.primary || '#161B22'}
+            className="w-7 h-7 object-contain"
+          />
+        </div>
+
         <button
           id="topbar-mobile-menu-btn"
           onClick={onOpenMobileMenu}

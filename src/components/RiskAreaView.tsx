@@ -91,31 +91,32 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
       )}
 
       <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
-            <div>
-              <h3 className="font-bold">Excluir conta definitivamente</h3>
-              <p className="mt-1 max-w-2xl text-sm opacity-65">
-                Exclui sua conta de acesso, clientes cadastrados e arquivos de perfil armazenados. Esta ação não pode ser desfeita.
-              </p>
-              {email && <p className="mt-2 text-xs opacity-50">Conta: {email}</p>}
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+          <div className="w-full">
+            <h3 className="font-bold">Excluir conta definitivamente</h3>
+            <p className="mt-1 max-w-2xl text-sm opacity-65">
+              Exclui sua conta de acesso, clientes cadastrados e arquivos de perfil armazenados. Esta ação não pode ser desfeita.
+            </p>
+            {email && <p className="mt-2 text-xs opacity-50">Conta: {email}</p>}
+
+            <div className="mt-4 flex justify-start">
+              <button
+                type="button"
+                id="btn-excluir-minha-conta"
+                onClick={() => {
+                  setConfirmOpen(true);
+                  setConfirmation('');
+                  setPassword('');
+                  setError('');
+                }}
+                className="btn-danger-outline inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir minha conta
+              </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setConfirmOpen(true);
-              setConfirmation('');
-              setPassword('');
-              setError('');
-            }}
-            className="btn-filled inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white"
-          >
-            <Trash2 className="h-4 w-4" />
-            Excluir minha conta
-          </button>
         </div>
       </section>
 

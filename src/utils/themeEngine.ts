@@ -152,6 +152,32 @@ export const THEME_PRESETS: ThemePreset[] = [
       text: '#2F343B',
     },
   },
+  {
+    id: 'aurora-magenta',
+    name: 'Aurora Magenta',
+    description: 'Elegância e personalidade com tons de magenta e rosa floral',
+    theme: {
+      primary: '#4A0E2E',
+      secondary: '#E11D48',
+      background: '#F5D0E0',
+      accent: '#F472B6',
+      border: '#D48BAA',
+      text: '#3D0B26',
+    },
+  },
+  {
+    id: 'brasa-solar',
+    name: 'Brasa Solar',
+    description: 'Energia incandescente com contraste marcante de preto e grafite',
+    theme: {
+      primary: '#121214',
+      secondary: '#F97316',
+      background: '#1E1E24',
+      accent: '#FB923C',
+      border: '#44444C',
+      text: '#F4F4F5',
+    },
+  },
 ];
 
 export const DEFAULT_PDF_SETTINGS: PdfSettingsConfig = {

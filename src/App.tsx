@@ -87,19 +87,34 @@ export default function App() {
     let mounted = true;
 
     const restoreSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 4000)
+        );
+        const { data } = await Promise.race([
+          supabase.auth.getSession(),
+          timeoutPromise,
+        ]);
+        if (!mounted) return;
 
-      if (!data.session) {
-        setIsAuthenticated(false);
-        setAuthLoading(false);
-        return;
+        if (!data?.session) {
+          setIsAuthenticated(false);
+          return;
+        }
+
+        const needsMfa = await resolveMfaRequirement();
+        if (!mounted) return;
+        if (!needsMfa) setIsAuthenticated(true);
+      } catch (err) {
+        console.warn('Erro ao restaurar sessão:', err);
+        if (mounted) {
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (mounted) {
+          setAuthLoading(false);
+        }
       }
-
-      const needsMfa = await resolveMfaRequirement();
-      if (!mounted) return;
-      if (!needsMfa) setIsAuthenticated(true);
-      setAuthLoading(false);
     };
 
     void restoreSession();

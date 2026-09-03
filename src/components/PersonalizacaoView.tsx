@@ -304,7 +304,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
                   </span>
                 )}
 
-                <div className="mb-3 flex gap-1.5">
+                <div className="mb-3 flex items-center">
                   {[
                     preset.theme.primary,
                     preset.theme.secondary,
@@ -315,8 +315,13 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
                   ].map((color, index) => (
                     <span
                       key={`${preset.id}-${index}`}
-                      className="h-5 w-5 rounded-full border"
-                      style={{ backgroundColor: color, borderColor: preset.theme.border }}
+                      className="relative h-5 w-5 shrink-0 rounded-full border shadow-xs"
+                      style={{
+                        backgroundColor: color,
+                        borderColor: preset.theme.border,
+                        marginLeft: index === 0 ? 0 : '-7px',
+                        zIndex: index + 1,
+                      }}
                     />
                   ))}
                 </div>
