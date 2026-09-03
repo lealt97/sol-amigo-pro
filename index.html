@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sol Amigo Pro - Propostas FV & CRM Solar</title>
     <meta name="description" content="Plataforma SaaS para gestão de propostas fotovoltaicas, CRM de energia solar, motor de cores e personalização de relatórios e PDFs." />
+    <script>
+      if (new URLSearchParams(window.location.search).get('embed') === '1') {
+        document.documentElement.classList.add('sol-amigo-embedded');
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Lato:wght@300;400;700;900&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -30,6 +35,12 @@
       }
       #boot-fallback strong { font-size: 16px; }
       #boot-fallback span { font-size: 12px; opacity: .68; }
+      html.sol-amigo-embedded,
+      html.sol-amigo-embedded body,
+      html.sol-amigo-embedded #root,
+      html.sol-amigo-embedded #boot-fallback {
+        background: transparent !important;
+      }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
     </style>
   </head>
