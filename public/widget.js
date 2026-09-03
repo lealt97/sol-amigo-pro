@@ -222,7 +222,7 @@
     if (message.type === "sol-amigo:resize") {
       var requestedHeight = Number(message.height);
       if (Number.isFinite(requestedHeight)) {
-        frame.style.height = Math.max(520, Math.min(1400, requestedHeight)) + "px";
+        frame.style.height = Math.max(240, Math.min(1400, Math.ceil(requestedHeight))) + "px";
       }
       return;
     }

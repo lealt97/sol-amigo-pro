@@ -17,6 +17,7 @@ import {
   DEFAULT_FORM_SECONDARY,
   DEFAULT_FORM_SURFACE,
   DEFAULT_FORM_THEME_COLORS,
+  mixHexColors,
   normalizeFormThemeColors,
   resolveFormTheme,
 } from '../utils/formTheme';
@@ -130,6 +131,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     };
   }, []);
   const resolvedTheme = useMemo(() => resolveFormTheme(config), [config]);
+  const successTint = useMemo(
+    () => mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12),
+    [resolvedTheme.successAccent, resolvedTheme.successBackground]
+  );
   const formThemeStyle = useMemo(() => ({
     '--form-page': resolvedTheme.pageBackground,
     '--form-card': resolvedTheme.cardBackground,
@@ -152,7 +157,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     '--form-success-accent': resolvedTheme.successAccent,
     '--form-error': resolvedTheme.errorBackground,
     '--form-error-accent': resolvedTheme.errorAccent,
-    backgroundColor: resolvedTheme.pageBackground,
+    backgroundColor: queryContext.embedded ? 'transparent' : resolvedTheme.pageBackground,
     color: resolvedTheme.bodyText,
     fontFamily: queryContext.siteFont || 'Inter, ui-sans-serif, system-ui, sans-serif',
   } as React.CSSProperties), [queryContext.siteFont, resolvedTheme]);
@@ -241,14 +246,18 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     }
 
     const publishHeight = () => {
+      const page = document.getElementById('public-lead-form-page');
+      const measuredHeight = page
+        ? Math.max(page.scrollHeight, page.getBoundingClientRect().height)
+        : document.body.scrollHeight;
       window.parent.postMessage(
-        { type: 'sol-amigo:resize', height: document.documentElement.scrollHeight },
+        { type: 'sol-amigo:resize', height: Math.ceil(measuredHeight) },
         hostOrigin
       );
     };
     publishHeight();
     const observer = new ResizeObserver(publishHeight);
-    observer.observe(document.body);
+    observer.observe(document.getElementById('public-lead-form-page') ?? document.body);
     return () => observer.disconnect();
   }, [queryContext.siteOrigin, queryContext.widget, step, submitted, configLoading]);
 
@@ -335,7 +344,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   if (configLoading) {
     return (
-      <div id="public-lead-form-page" data-sol-amigo-form className="flex min-h-screen items-center justify-center" style={formThemeStyle}>
+      <div id="public-lead-form-page" data-sol-amigo-form className={`flex items-center justify-center ${queryContext.embedded ? 'min-h-0 py-6' : 'min-h-screen'}`} style={formThemeStyle}>
         <div className="flex items-center gap-2 text-sm font-semibold"><Loader2 className="h-5 w-5 animate-spin" /> Preparando formulário...</div>
       </div>
     );
@@ -343,7 +352,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   if (configError) {
     return (
-      <div id="public-lead-form-page" data-sol-amigo-form className="flex min-h-screen items-center justify-center px-4" style={formThemeStyle}>
+      <div id="public-lead-form-page" data-sol-amigo-form className={`flex items-center justify-center px-4 ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen'}`} style={formThemeStyle}>
         <div className="max-w-md rounded-2xl border p-7 text-center shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
           <AlertTriangle className="mx-auto h-8 w-8" style={{ color: resolvedTheme.errorAccent }} />
           <h1 className="mt-4 text-xl font-extrabold">Formulário indisponível</h1>
@@ -357,20 +366,20 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4`} style={formThemeStyle}>
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
-          <section className="w-full rounded-3xl p-7 text-center shadow-2xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, color: resolvedTheme.bodyText }}>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ backgroundColor: resolvedTheme.consentBackground, color: resolvedTheme.successAccent }}>
+          <section className="w-full rounded-3xl border p-7 text-center shadow-xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, borderColor: resolvedTheme.inputBorder, color: resolvedTheme.bodyText }}>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.successAccent }}>
               <CheckCircle2 className="h-9 w-9" />
             </div>
             <h1 className="mt-6 text-2xl font-extrabold tracking-tight md:text-3xl">Recebemos sua solicitação!</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6" style={{ color: resolvedTheme.mutedText }}>
               {config.successMessage}
             </p>
-            <div className="mt-7 rounded-2xl p-4 text-left" style={{ backgroundColor: resolvedTheme.consentBackground }}>
+            <div className="mt-7 rounded-2xl border p-4 text-left" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.bodyText }}>
               <div className="flex items-start gap-3">
                 <MessageCircle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: resolvedTheme.successAccent }} />
                 <div>
                   <p className="text-sm font-bold">Próximo passo</p>
-                  <p className="mt-1 text-xs leading-5" style={{ color: resolvedTheme.mutedText }}>Vamos confirmar seus dados e preparar uma análise inicial do seu consumo.</p>
+                  <p className="mt-1 text-xs leading-5" style={{ color: resolvedTheme.bodyText }}>Vamos confirmar seus dados e preparar uma análise inicial do seu consumo.</p>
                 </div>
               </div>
             </div>
@@ -383,7 +392,10 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
 
   return (
     <div id="public-lead-form-page" data-sol-amigo-form className={queryContext.embedded ? 'min-h-0' : 'min-h-screen'} style={formThemeStyle}>
-      <div className={`mx-auto flex max-w-7xl items-center justify-center ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`} style={{ backgroundColor: resolvedTheme.pageBackground }}>
+      <div
+        className={`mx-auto flex max-w-7xl items-center justify-center ${queryContext.embedded ? 'min-h-0 px-3 py-3 sm:px-4' : 'min-h-screen px-4 py-6 sm:px-8 lg:px-12 lg:py-12'}`}
+        style={{ backgroundColor: queryContext.embedded ? 'transparent' : resolvedTheme.pageBackground }}
+      >
         <section className={`w-full ${config.sideImageUrls.length ? 'max-w-6xl' : 'max-w-2xl'}`}>
             <div className="overflow-hidden rounded-3xl border shadow-xl shadow-slate-900/5" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
               <div className="p-5 sm:p-7 lg:px-9 lg:py-8" style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}>
@@ -529,8 +541,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   />
 
                   <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-                    <button type="button" data-secondary-action onClick={() => setStep(1)} className="flex h-12 items-center justify-center gap-2 rounded-xl border px-5 text-sm font-bold sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
-                    <button type="submit" data-primary-action disabled={submitting} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold shadow-lg">
+                    <button type="button" data-secondary-action onClick={() => setStep(1)} className="flex h-12 w-full flex-none items-center justify-center gap-2 rounded-xl border px-5 text-sm font-bold sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
+                    <button type="submit" data-primary-action disabled={submitting} className="flex h-12 w-full flex-none items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold shadow-lg sm:flex-1">
                       {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <>{config.submitLabel} <ArrowRight className="h-4 w-4" /></>}
                     </button>
                   </div>

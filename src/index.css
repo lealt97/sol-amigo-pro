@@ -38,6 +38,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html.sol-amigo-embedded,
+html.sol-amigo-embedded body,
+html.sol-amigo-embedded #root {
+  min-height: 0;
+  background: transparent !important;
+}
+
 button:not(:disabled),
 a[href],
 select:not(:disabled),
@@ -220,6 +227,7 @@ main > #area-risco-page {
 }
 
 [data-sol-amigo-form] [data-primary-action] {
+  min-height: 3rem;
   background-color: var(--form-action);
   color: var(--form-action-text);
   font-family: inherit;
@@ -231,6 +239,7 @@ main > #area-risco-page {
 }
 
 [data-sol-amigo-form] [data-secondary-action] {
+  min-height: 3rem;
   background-color: var(--form-secondary-action);
   border-color: var(--form-input-border);
   color: var(--form-secondary-text);
