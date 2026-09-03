@@ -197,32 +197,49 @@ main > #area-risco-page {
   color: color-mix(in srgb, var(--text) 42%, transparent);
 }
 
-/* Public lead form theme defaults. Custom CSS is injected after this stylesheet,
-   so every selector exposed by the editor can override these values. */
-.sol-form {
-  background-color: var(--sol-form-secondary, #0E2337);
+/* Tema interno do formulário público. Os atributos não são uma API de CSS:
+   recebem apenas os tokens validados do motor de cores. */
+[data-sol-amigo-form] input:not([type='checkbox']),
+[data-sol-amigo-form] select {
+  background-color: var(--form-input);
+  border-color: var(--form-input-border);
+  color: var(--form-input-text);
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.sol-form__header {
-  background-color: var(--sol-form-secondary, #0E2337);
-  color: #fff;
+[data-sol-amigo-form] input:not([type='checkbox'])::placeholder {
+  color: var(--form-muted);
+  opacity: 0.8;
 }
 
-.sol-form__button {
-  background-color: var(--sol-form-primary, #0076DD);
+[data-sol-amigo-form] input:not([type='checkbox']):focus,
+[data-sol-amigo-form] select:focus {
+  border-color: var(--form-action);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--form-action) 14%, transparent);
+}
+
+[data-sol-amigo-form] [data-primary-action] {
+  background-color: var(--form-action);
+  color: var(--form-action-text);
+  font-family: inherit;
   transition: filter 160ms ease, transform 160ms ease;
 }
 
-.sol-form__button:hover {
+[data-sol-amigo-form] [data-primary-action]:hover {
   filter: brightness(0.94);
 }
 
-.sol-form__secondary-button {
-  transition: background-color 160ms ease, border-color 160ms ease;
+[data-sol-amigo-form] [data-secondary-action] {
+  background-color: var(--form-secondary-action);
+  border-color: var(--form-input-border);
+  color: var(--form-secondary-text);
+  font-family: inherit;
+  transition: filter 160ms ease;
 }
 
-.sol-form__secondary-button:hover {
-  background-color: #f1f5f9;
+[data-sol-amigo-form] [data-secondary-action]:hover {
+  filter: brightness(0.97);
 }
 
 #clientes-page select option,

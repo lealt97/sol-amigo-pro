@@ -22,24 +22,70 @@
   var fallbackButtonLabel = (script.dataset.buttonLabel || "Simular economia solar").slice(0, 60);
   var siteOrigin = window.location.origin;
 
+  function findTarget() {
+    var selector = script.dataset.target;
+    if (!selector) return null;
+    try {
+      return document.querySelector(selector);
+    } catch (_error) {
+      console.warn("Sol Amigo PRO: seletor de destino inválido.");
+      return null;
+    }
+  }
+
+  function detectHostFont(target) {
+    var source = target || script.parentElement || document.body || document.documentElement;
+    if (!source || !window.getComputedStyle) return "";
+    var family = window.getComputedStyle(source).fontFamily || "";
+    family = family.trim().slice(0, 200);
+    return /^[\p{L}\p{N}\s,'"-]+$/u.test(family) ? family : "";
+  }
+
+  function relativeLuminance(hex) {
+    var channels = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(function (value) {
+      var channel = parseInt(value, 16) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  }
+
+  function readableTextColor(background) {
+    var luminance = relativeLuminance(background);
+    var darkLuminance = relativeLuminance("#0B1725");
+    var darkContrast = (luminance + 0.05) / (darkLuminance + 0.05);
+    var lightContrast = 1.05 / (luminance + 0.05);
+    return darkContrast >= lightContrast ? "#0B1725" : "#FFFFFF";
+  }
+
   function initializeWidget(publicConfig) {
-  var mode = publicConfig && publicConfig.widgetMode === "modal" ? "modal"
-    : publicConfig && publicConfig.widgetMode === "inline" ? "inline"
-    : fallbackMode;
-  var color = publicConfig && /^#[0-9a-f]{6}$/i.test(publicConfig.primaryColor || "")
-    ? publicConfig.primaryColor
-    : fallbackColor;
-  var buttonLabel = publicConfig && typeof publicConfig.submitLabel === "string" && publicConfig.submitLabel.trim()
-    ? publicConfig.submitLabel.trim().slice(0, 60)
-    : fallbackButtonLabel;
-  var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
-  var query = new URLSearchParams({
-    captacao: token,
-    embed: "1",
-    widget: "1",
-    site_origin: siteOrigin,
-  });
-  var frameUrl = appBase + "?" + query.toString();
+    var mode = publicConfig && publicConfig.widgetMode === "modal" ? "modal"
+      : publicConfig && publicConfig.widgetMode === "inline" ? "inline"
+      : fallbackMode;
+    var detailedTheme = publicConfig && publicConfig.colorMode === "detailed" && publicConfig.themeColors
+      ? publicConfig.themeColors
+      : null;
+    var color = detailedTheme && /^#[0-9a-f]{6}$/i.test(detailedTheme.primaryButtonBackground || "")
+      ? detailedTheme.primaryButtonBackground
+      : publicConfig && /^#[0-9a-f]{6}$/i.test(publicConfig.primaryColor || "")
+      ? publicConfig.primaryColor
+      : fallbackColor;
+    var buttonTextColor = detailedTheme && /^#[0-9a-f]{6}$/i.test(detailedTheme.primaryButtonText || "")
+      ? detailedTheme.primaryButtonText
+      : readableTextColor(color);
+    var buttonLabel = publicConfig && typeof publicConfig.submitLabel === "string" && publicConfig.submitLabel.trim()
+      ? publicConfig.submitLabel.trim().slice(0, 60)
+      : fallbackButtonLabel;
+    var target = findTarget();
+    var hostFont = detectHostFont(target);
+    var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
+    var query = new URLSearchParams({
+      captacao: token,
+      embed: "1",
+      widget: "1",
+      site_origin: siteOrigin,
+    });
+    if (hostFont) query.set("site_font", hostFont);
+    var frameUrl = appBase + "?" + query.toString();
 
   var frame = document.createElement("iframe");
   frame.id = frameId;
@@ -66,17 +112,6 @@
   var modal = null;
   var openButton = null;
 
-  function findTarget() {
-    var selector = script.dataset.target;
-    if (!selector) return null;
-    try {
-      return document.querySelector(selector);
-    } catch (_error) {
-      console.warn("Sol Amigo PRO: seletor de destino inválido.");
-      return null;
-    }
-  }
-
   function closeModal() {
     if (!modal) return;
     modal.style.display = "none";
@@ -85,7 +120,6 @@
   }
 
   if (mode === "inline") {
-    var target = findTarget();
     if (target) target.appendChild(shell);
     else script.parentNode.insertBefore(shell, script.nextSibling);
   } else {
@@ -102,8 +136,11 @@
     openButton.style.border = "0";
     openButton.style.borderRadius = "999px";
     openButton.style.background = color;
-    openButton.style.color = "#fff";
-    openButton.style.font = "700 14px/1.2 ui-sans-serif, system-ui, sans-serif";
+    openButton.style.color = buttonTextColor;
+    openButton.style.fontFamily = hostFont || "ui-sans-serif, system-ui, sans-serif";
+    openButton.style.fontSize = "14px";
+    openButton.style.fontWeight = "700";
+    openButton.style.lineHeight = "1.2";
     openButton.style.boxShadow = "0 14px 35px rgba(15, 23, 42, .28)";
     openButton.style.cursor = "pointer";
 
@@ -139,7 +176,10 @@
     closeButton.style.borderRadius = "50%";
     closeButton.style.background = "rgba(14, 35, 55, .9)";
     closeButton.style.color = "#fff";
-    closeButton.style.font = "400 25px/1 ui-sans-serif, system-ui, sans-serif";
+    closeButton.style.fontFamily = hostFont || "ui-sans-serif, system-ui, sans-serif";
+    closeButton.style.fontSize = "25px";
+    closeButton.style.fontWeight = "400";
+    closeButton.style.lineHeight = "1";
     closeButton.style.cursor = "pointer";
 
     dialog.appendChild(closeButton);

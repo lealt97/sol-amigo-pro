@@ -208,6 +208,32 @@ export interface LeadCaptureForm {
   active: boolean;
 }
 
+export type FormColorMode = 'automatic' | 'detailed';
+
+export interface FormThemeColors {
+  pageBackground: string;
+  cardBackground: string;
+  headerBackground: string;
+  headerText: string;
+  headerMutedText: string;
+  bodyText: string;
+  mutedText: string;
+  inputBackground: string;
+  inputBorder: string;
+  inputText: string;
+  primaryButtonBackground: string;
+  primaryButtonText: string;
+  secondaryButtonBackground: string;
+  secondaryButtonText: string;
+  progressActive: string;
+  progressInactive: string;
+  consentBackground: string;
+  successBackground: string;
+  successAccent: string;
+  errorBackground: string;
+  errorAccent: string;
+}
+
 export interface WebsiteFormSettings extends LeadCaptureForm {
   widgetEnabled: boolean;
   allowedOrigins: string[];
@@ -217,16 +243,17 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   logoUrl: string;
   sideImageUrls: string[];
   sideImageRotationEnabled: boolean;
+  colorMode: FormColorMode;
   primaryColor: string;
   secondaryColor: string;
+  surfaceColor: string;
+  themeColors: FormThemeColors;
   headline: string;
   subheadline: string;
   submitLabel: string;
   successMessage: string;
   privacyUrl: string;
   showPoweredBy: boolean;
-  customCssEnabled: boolean;
-  customCss: string;
 }
 
 export type QualificationStatus = 'pendente' | 'qualificado' | 'nao_qualificado';

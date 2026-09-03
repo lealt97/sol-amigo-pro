@@ -1,6 +1,7 @@
 import type { WebsiteFormSettings } from '../types';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { ensureLeadCaptureForm } from './leads';
+import { createAutomaticFormTheme, normalizeFormThemeColors } from '../utils/formTheme';
 
 export interface ProfileBrandLogo {
   id: string;
@@ -23,16 +24,17 @@ const FORM_COLUMNS = [
   'side_image_url',
   'side_image_urls',
   'side_image_rotation_enabled',
+  'color_mode',
   'primary_color',
   'secondary_color',
+  'surface_color',
+  'theme_colors',
   'headline',
   'subheadline',
   'submit_label',
   'success_message',
   'privacy_url',
   'show_powered_by',
-  'custom_css_enabled',
-  'custom_css',
 ].join(', ');
 
 type WebsiteFormRow = {
@@ -49,46 +51,51 @@ type WebsiteFormRow = {
   side_image_url: string | null;
   side_image_urls: string[];
   side_image_rotation_enabled: boolean;
+  color_mode: WebsiteFormSettings['colorMode'];
   primary_color: string;
   secondary_color: string;
+  surface_color: string;
+  theme_colors: unknown;
   headline: string;
   subheadline: string;
   submit_label: string;
   success_message: string;
   privacy_url: string | null;
   show_powered_by: boolean;
-  custom_css_enabled: boolean;
-  custom_css: string;
 };
 
-const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => ({
-  id: row.id,
-  publicToken: row.public_token,
-  name: row.name,
-  active: row.active,
-  widgetEnabled: row.widget_enabled,
-  allowedOrigins: row.allowed_origins ?? [],
-  serviceStates: row.service_states ?? [],
-  widgetMode: row.widget_mode,
-  companyName: row.company_name,
-  logoUrl: row.logo_url ?? '',
-  sideImageUrls: row.side_image_urls?.length
-    ? row.side_image_urls
-    : row.side_image_url
-      ? [row.side_image_url]
-      : [],
-  sideImageRotationEnabled: row.side_image_rotation_enabled ?? false,
-  primaryColor: row.primary_color,
-  secondaryColor: row.secondary_color,
-  headline: row.headline,
-  subheadline: row.subheadline,
-  submitLabel: row.submit_label,
-  successMessage: row.success_message,
-  privacyUrl: row.privacy_url ?? '',
-  showPoweredBy: row.show_powered_by,
-  customCssEnabled: row.custom_css_enabled,
-  customCss: row.custom_css ?? '',
-});
+const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
+  const automaticTheme = createAutomaticFormTheme(row.primary_color, row.secondary_color, row.surface_color);
+  return {
+    id: row.id,
+    publicToken: row.public_token,
+    name: row.name,
+    active: row.active,
+    widgetEnabled: row.widget_enabled,
+    allowedOrigins: row.allowed_origins ?? [],
+    serviceStates: row.service_states ?? [],
+    widgetMode: row.widget_mode,
+    companyName: row.company_name,
+    logoUrl: row.logo_url ?? '',
+    sideImageUrls: row.side_image_urls?.length
+      ? row.side_image_urls
+      : row.side_image_url
+        ? [row.side_image_url]
+        : [],
+    sideImageRotationEnabled: row.side_image_rotation_enabled ?? false,
+    colorMode: row.color_mode === 'detailed' ? 'detailed' : 'automatic',
+    primaryColor: row.primary_color,
+    secondaryColor: row.secondary_color,
+    surfaceColor: row.surface_color,
+    themeColors: normalizeFormThemeColors(row.theme_colors, automaticTheme),
+    headline: row.headline,
+    subheadline: row.subheadline,
+    submitLabel: row.submit_label,
+    successMessage: row.success_message,
+    privacyUrl: row.privacy_url ?? '',
+    showPoweredBy: row.show_powered_by,
+  };
+};
 
 const toUpdate = (settings: WebsiteFormSettings) => ({
   active: settings.active,
@@ -101,16 +108,17 @@ const toUpdate = (settings: WebsiteFormSettings) => ({
   side_image_url: settings.sideImageUrls[0] ?? null,
   side_image_urls: settings.sideImageUrls,
   side_image_rotation_enabled: settings.sideImageRotationEnabled && settings.sideImageUrls.length > 1,
+  color_mode: settings.colorMode,
   primary_color: settings.primaryColor.toUpperCase(),
   secondary_color: settings.secondaryColor.toUpperCase(),
+  surface_color: settings.surfaceColor.toUpperCase(),
+  theme_colors: settings.themeColors,
   headline: settings.headline.trim(),
   subheadline: settings.subheadline.trim(),
   submit_label: settings.submitLabel.trim(),
   success_message: settings.successMessage.trim(),
   privacy_url: settings.privacyUrl.trim() || null,
   show_powered_by: settings.showPoweredBy,
-  custom_css_enabled: settings.customCssEnabled,
-  custom_css: settings.customCss,
 });
 
 export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
