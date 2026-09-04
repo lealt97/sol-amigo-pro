@@ -4,7 +4,10 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(() => ({
-  base: '/',
+  // GitHub Pages publishes this project below /sol-amigo-pro/.
+  // Keeping the base here prevents the generated assets from pointing to
+  // the domain root (/assets), where they do not exist.
+  base: '/sol-amigo-pro/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

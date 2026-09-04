@@ -34,7 +34,28 @@
         animation: boot-spin .8s linear infinite;
       }
       #boot-fallback strong { font-size: 16px; }
-      #boot-fallback span { font-size: 12px; opacity: .68; }
+      #boot-fallback span {
+        max-width: 320px;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: center;
+        opacity: .68;
+      }
+      #boot-fallback button {
+        display: none;
+        min-height: 42px;
+        padding: 0 18px;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 10px;
+        background: #fff;
+        color: #0E2337;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #boot-fallback.is-error .spinner { display: none; }
+      #boot-fallback.is-error button { display: inline-flex; align-items: center; }
       html.sol-amigo-embedded,
       html.sol-amigo-embedded body,
       html.sol-amigo-embedded #root,
@@ -50,8 +71,20 @@
         <div class="spinner" aria-hidden="true"></div>
         <strong>Sol Amigo Pro</strong>
         <span>Carregando o sistema...</span>
+        <button type="button" onclick="window.location.reload()">Tentar novamente</button>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.setTimeout(function () {
+        var fallback = document.getElementById('boot-fallback');
+        if (!fallback) return;
+
+        fallback.classList.add('is-error');
+        fallback.querySelector('strong').textContent = 'Não foi possível carregar o sistema';
+        fallback.querySelector('span').textContent =
+          'Verifique sua conexão e tente novamente. Se o problema continuar, aguarde alguns minutos.';
+      }, 8000);
+    </script>
   </body>
 </html>
