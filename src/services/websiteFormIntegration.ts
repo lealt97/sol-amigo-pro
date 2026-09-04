@@ -2,6 +2,7 @@ import type { WebsiteFormSettings } from '../types';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { ensureLeadCaptureForm } from './leads';
 import { createAutomaticFormTheme, normalizeFormThemeColors } from '../utils/formTheme';
+import { encodeSuccessPayload, parseSuccessDetails } from '../utils/formSuccess';
 
 export interface ProfileBrandLogo {
   id: string;
@@ -66,6 +67,12 @@ type WebsiteFormRow = {
 
 const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
   const automaticTheme = createAutomaticFormTheme(row.primary_color, row.secondary_color, row.surface_color);
+  const successDetails = parseSuccessDetails(
+    row.success_message,
+    row.theme_colors && typeof row.theme_colors === 'object'
+      ? (row.theme_colors as Record<string, unknown>)._success
+      : undefined
+  );
   return {
     id: row.id,
     publicToken: row.public_token,
@@ -91,35 +98,58 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
     headline: row.headline,
     subheadline: row.subheadline,
     submitLabel: row.submit_label,
-    successMessage: row.success_message,
+    successMessage: successDetails.message,
+    successTitle: successDetails.title,
+    nextStepTitle: successDetails.nextStepTitle,
+    nextStepDescription: successDetails.nextStepDescription,
+    showNextStep: successDetails.showNextStep,
+    actionButtonLabel: successDetails.actionButtonLabel,
+    actionButtonUrl: successDetails.actionButtonUrl,
     privacyUrl: row.privacy_url ?? '',
     showPoweredBy: row.show_powered_by,
   };
 };
 
-const toUpdate = (settings: WebsiteFormSettings) => ({
-  active: settings.active,
-  widget_enabled: settings.widgetEnabled,
-  allowed_origins: settings.allowedOrigins,
-  service_states: settings.serviceStates,
-  widget_mode: settings.widgetMode,
-  company_name: settings.companyName.trim(),
-  logo_url: settings.logoUrl.trim() || null,
-  side_image_url: settings.sideImageUrls[0] ?? null,
-  side_image_urls: settings.sideImageUrls,
-  side_image_rotation_enabled: settings.sideImageRotationEnabled && settings.sideImageUrls.length > 1,
-  color_mode: settings.colorMode,
-  primary_color: settings.primaryColor.toUpperCase(),
-  secondary_color: settings.secondaryColor.toUpperCase(),
-  surface_color: settings.surfaceColor.toUpperCase(),
-  theme_colors: settings.themeColors,
-  headline: settings.headline.trim(),
-  subheadline: settings.subheadline.trim(),
-  submit_label: settings.submitLabel.trim(),
-  success_message: settings.successMessage.trim(),
-  privacy_url: settings.privacyUrl.trim() || null,
-  show_powered_by: settings.showPoweredBy,
-});
+const toUpdate = (settings: WebsiteFormSettings) => {
+  const { successMessage: encodedSuccessMessage, fullPayload } = encodeSuccessPayload({
+    title: settings.successTitle,
+    message: settings.successMessage,
+    nextStepTitle: settings.nextStepTitle,
+    nextStepDescription: settings.nextStepDescription,
+    showNextStep: settings.showNextStep,
+    actionButtonLabel: settings.actionButtonLabel,
+    actionButtonUrl: settings.actionButtonUrl,
+  });
+
+  const themeColorsToPersist = {
+    ...settings.themeColors,
+    _success: fullPayload,
+  };
+
+  return {
+    active: settings.active,
+    widget_enabled: settings.widgetEnabled,
+    allowed_origins: settings.allowedOrigins,
+    service_states: settings.serviceStates,
+    widget_mode: settings.widgetMode,
+    company_name: settings.companyName.trim(),
+    logo_url: settings.logoUrl.trim() || null,
+    side_image_url: settings.sideImageUrls[0] ?? null,
+    side_image_urls: settings.sideImageUrls,
+    side_image_rotation_enabled: settings.sideImageRotationEnabled && settings.sideImageUrls.length > 1,
+    color_mode: settings.colorMode,
+    primary_color: settings.primaryColor.toUpperCase(),
+    secondary_color: settings.secondaryColor.toUpperCase(),
+    surface_color: settings.surfaceColor.toUpperCase(),
+    theme_colors: themeColorsToPersist,
+    headline: settings.headline.trim(),
+    subheadline: settings.subheadline.trim(),
+    submit_label: settings.submitLabel.trim(),
+    success_message: encodedSuccessMessage,
+    privacy_url: settings.privacyUrl.trim() || null,
+    show_powered_by: settings.showPoweredBy,
+  };
+};
 
 export const fetchProfileBrandLogos = async (): Promise<ProfileBrandLogo[]> => {
   const { data, error } = await supabase.auth.getUser();

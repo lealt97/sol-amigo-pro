@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle, Check, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
-  Eye, EyeOff, Globe2, Image, KeyRound, Laptop, Loader2, MapPin, Maximize2,
-  Minimize2, MonitorSmartphone, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
+  AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
+  Eye, EyeOff, Globe2, GripHorizontal, Image, KeyRound, Laptop, Loader2, MapPin, Maximize2, MessageCircle,
+  Minimize2, MonitorSmartphone, Palette, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
   Smartphone, Trash2, Type, X,
 } from 'lucide-react';
 import type { FormColorMode, FormThemeColors, ThemeConfig, WebsiteFormSettings } from '../types';
+import { getContrastFg } from '../utils/themeEngine';
 import {
   fetchProfileBrandLogos, fetchWebsiteFormSettings, normalizeWebsiteOrigin,
   rotateWebsiteFormToken, saveWebsiteFormSettings, uploadWebsiteFormImage,
@@ -15,8 +16,12 @@ import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_GROUPS } from '../data/brazilState
 import {
   createAutomaticFormTheme, DEFAULT_FORM_PRIMARY, DEFAULT_FORM_SECONDARY,
   DEFAULT_FORM_SURFACE, DEFAULT_FORM_THEME_COLORS, FORM_THEME_COLOR_GROUPS,
-  isHexColor, resolveFormTheme,
+  isHexColor, mixHexColors, resolveFormTheme,
 } from '../utils/formTheme';
+import {
+  DEFAULT_NEXT_STEP_DESC, DEFAULT_NEXT_STEP_TITLE,
+  DEFAULT_SUCCESS_MESSAGE, DEFAULT_SUCCESS_TITLE,
+} from '../utils/formSuccess';
 import { ResponsiveColorField } from './ResponsiveColorField';
 
 interface WebsiteFormIntegrationViewProps {
@@ -24,7 +29,7 @@ interface WebsiteFormIntegrationViewProps {
   onShowToast: (message: string) => void;
 }
 
-type CollapsibleSection = 'integration' | 'states' | 'appearance';
+type CollapsibleSection = 'integration' | 'states' | 'appearance' | 'success';
 
 const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
@@ -76,11 +81,103 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     integration: false,
     states: true,
     appearance: false,
+    success: false,
   });
   const [rightTab, setRightTab] = useState<'preview' | 'access'>('preview');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewStage, setPreviewStage] = useState<'form' | 'success'>('form');
   const [floatingPreviewOpen, setFloatingPreviewOpen] = useState(false);
   const [floatingMinimized, setFloatingMinimized] = useState(false);
+  const [floatingPosition, setFloatingPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const floatingRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{
+    pointerX: number;
+    pointerY: number;
+    initialBoxX: number;
+    initialBoxY: number;
+  } | null>(null);
+
+  const handleDragPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button') || target?.closest('input') || target?.closest('a')) {
+      return;
+    }
+
+    const el = floatingRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    dragStartRef.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      initialBoxX: rect.left,
+      initialBoxY: rect.top,
+    };
+    setIsDragging(true);
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDragPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current) return;
+    const el = floatingRef.current;
+    const boxWidth = el?.offsetWidth ?? 390;
+    const boxHeight = el?.offsetHeight ?? 490;
+
+    const deltaX = event.clientX - dragStartRef.current.pointerX;
+    const deltaY = event.clientY - dragStartRef.current.pointerY;
+
+    const rawX = dragStartRef.current.initialBoxX + deltaX;
+    const rawY = dragStartRef.current.initialBoxY + deltaY;
+
+    const maxX = Math.max(8, window.innerWidth - boxWidth - 8);
+    const maxY = Math.max(8, window.innerHeight - boxHeight - 8);
+
+    const clampedX = Math.min(Math.max(8, rawX), maxX);
+    const clampedY = Math.min(Math.max(8, rawY), maxY);
+
+    setFloatingPosition({ x: clampedX, y: clampedY });
+  };
+
+  const handleDragPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartRef.current) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+      dragStartRef.current = null;
+      setIsDragging(false);
+    }
+  };
+
+  const resetFloatingPosition = () => {
+    setFloatingPosition(null);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (!floatingPosition || !floatingRef.current) return;
+      const el = floatingRef.current;
+      const maxX = Math.max(8, window.innerWidth - el.offsetWidth - 8);
+      const maxY = Math.max(8, window.innerHeight - el.offsetHeight - 8);
+      setFloatingPosition((prev) => {
+        if (!prev) return prev;
+        return {
+          x: Math.min(Math.max(8, prev.x), maxX),
+          y: Math.min(Math.max(8, prev.y), maxY),
+        };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [floatingPosition]);
 
   useEffect(() => {
     let mounted = true;
@@ -154,6 +251,26 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     } : current);
     setError('');
     onShowToast('Cores padrão restauradas. Salve para publicar.');
+  };
+
+  const syncWithSystemTheme = () => {
+    if (!draft) return;
+    const isDark = getContrastFg(theme.background) === '#FFFFFF';
+    const newPrimary = theme.secondary;
+    const newSecondary = theme.primary;
+    const newSurface = isDark ? '#0E2337' : '#F4F7FA';
+
+    const autoTheme = createAutomaticFormTheme(newPrimary, newSecondary, newSurface);
+
+    setDraft((current) => current ? {
+      ...current,
+      primaryColor: newPrimary,
+      secondaryColor: newSecondary,
+      surfaceColor: newSurface,
+      themeColors: autoTheme,
+    } : current);
+    setError('');
+    onShowToast('Cores do motor do sistema aplicadas ao formulário.');
   };
 
   const uploadFormImage = async (file: File, index: number) => {
@@ -231,6 +348,14 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     settings.sideImageUrls.forEach((url, index) => validateHttpsUrl(url, `A foto ${index + 1}`));
     if (settings.sideImageRotationEnabled && settings.sideImageUrls.length < 2) {
       throw new Error('Adicione pelo menos duas fotos para ativar a alternância.');
+    }
+    if (settings.actionButtonUrl?.trim()) {
+      try {
+        const parsed = new URL(settings.actionButtonUrl.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+      } catch {
+        throw new Error('O link de destino do botão da tela de sucesso precisa ser uma URL válida (ex: https://wa.me/...).');
+      }
     }
   };
 
@@ -350,6 +475,11 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   }
 
   const resolvedTheme = resolveFormTheme(draft);
+  const successTint = mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12);
+  const isDarkSystem = getContrastFg(theme.background) === '#FFFFFF';
+  const floatingCardBg = isDarkSystem
+    ? `color-mix(in srgb, ${theme.background} 92%, ${theme.primary} 8%)`
+    : `color-mix(in srgb, ${theme.background} 96%, #FFFFFF 4%)`;
   const previewFieldStyle = {
     backgroundColor: resolvedTheme.inputBackground,
     borderColor: resolvedTheme.inputBorder,
@@ -360,29 +490,65 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     return (
       <section
         className={`rounded-2xl border p-4 shadow-sm transition-all ${
-          isFloating ? 'bg-[#0E2337]/95 shadow-2xl backdrop-blur-md' : ''
+          isFloating ? 'shadow-2xl backdrop-blur-md' : ''
         }`}
-        style={{ borderColor: theme.border }}
+        style={{
+          borderColor: theme.border,
+          backgroundColor: isFloating ? floatingCardBg : undefined,
+          color: isFloating ? theme.text : undefined,
+          boxShadow: isFloating
+            ? isDarkSystem
+              ? `0 24px 48px -12px rgba(0,0,0,0.7), 0 0 0 1px ${theme.border}`
+              : `0 24px 48px -12px rgba(0,0,0,0.18), 0 0 0 1px ${theme.border}`
+            : undefined,
+        }}
       >
-        <div className="flex items-center justify-between gap-2">
+        <div
+          className={`flex items-center justify-between gap-2 ${
+            isFloating
+              ? 'cursor-grab active:cursor-grabbing pb-3 mb-1 border-b select-none'
+              : ''
+          }`}
+          style={isFloating ? { borderColor: `${theme.border}80` } : undefined}
+          onPointerDown={isFloating ? handleDragPointerDown : undefined}
+          onPointerMove={isFloating ? handleDragPointerMove : undefined}
+          onPointerUp={isFloating ? handleDragPointerUp : undefined}
+          onPointerCancel={isFloating ? handleDragPointerUp : undefined}
+          title={isFloating ? 'Clique e arraste para posicionar onde quiser na tela' : undefined}
+        >
           <div className="flex items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">
+            {isFloating && (
+              <span
+                className="flex items-center justify-center rounded p-1 opacity-60 hover:opacity-100 transition-opacity"
+                style={{ color: theme.text }}
+                title="Clique e arraste a janela"
+              >
+                <GripHorizontal className="h-4 w-4" />
+              </span>
+            )}
+            <p
+              className="text-xs font-bold uppercase tracking-[.12em]"
+              style={{ color: isFloating ? theme.text : undefined, opacity: isFloating ? 0.85 : 0.6 }}
+            >
               {isFloating ? 'Prévia Flutuante' : 'Prévia do formulário'}
             </p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Ao vivo
-            </span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center rounded-lg border p-0.5" style={{ borderColor: theme.border }}>
+            <div
+              className="flex items-center rounded-lg border p-0.5"
+              style={{ borderColor: theme.border }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => setPreviewDevice('desktop')}
-                className={`rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
-                  previewDevice === 'desktop' ? 'bg-white/15 text-white' : 'opacity-50 hover:opacity-100'
-                }`}
+                className="rounded px-1.5 py-1 text-[11px] font-bold transition-colors"
+                style={{
+                  backgroundColor: previewDevice === 'desktop' ? theme.secondary : 'transparent',
+                  color: previewDevice === 'desktop' ? getContrastFg(theme.secondary) : theme.text,
+                  opacity: previewDevice === 'desktop' ? 1 : 0.6,
+                }}
                 title="Visualização no computador"
               >
                 <Laptop className="h-3.5 w-3.5" />
@@ -390,9 +556,12 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               <button
                 type="button"
                 onClick={() => setPreviewDevice('mobile')}
-                className={`rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
-                  previewDevice === 'mobile' ? 'bg-white/15 text-white' : 'opacity-50 hover:opacity-100'
-                }`}
+                className="rounded px-1.5 py-1 text-[11px] font-bold transition-colors"
+                style={{
+                  backgroundColor: previewDevice === 'mobile' ? theme.secondary : 'transparent',
+                  color: previewDevice === 'mobile' ? getContrastFg(theme.secondary) : theme.text,
+                  opacity: previewDevice === 'mobile' ? 1 : 0.6,
+                }}
                 title="Visualização no celular"
               >
                 <Smartphone className="h-3.5 w-3.5" />
@@ -404,7 +573,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 type="button"
                 onClick={() => setFloatingPreviewOpen(true)}
                 className="hidden sm:inline-flex rounded-lg border p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
-                style={{ borderColor: theme.border }}
+                style={{ borderColor: theme.border, color: theme.text }}
                 title="Destacar prévia flutuante (PIP)"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -412,12 +581,23 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             )}
 
             {isFloating && (
-              <>
+              <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
+                {floatingPosition && (
+                  <button
+                    type="button"
+                    onClick={resetFloatingPosition}
+                    className="rounded-lg border p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                    style={{ borderColor: theme.border, color: theme.text }}
+                    title="Redefinir posição para o canto original"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setFloatingMinimized(!floatingMinimized)}
                   className="rounded-lg border p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
-                  style={{ borderColor: theme.border }}
+                  style={{ borderColor: theme.border, color: theme.text }}
                   title={floatingMinimized ? 'Expandir prévia' : 'Minimizar prévia'}
                 >
                   {floatingMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
@@ -426,19 +606,48 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   type="button"
                   onClick={() => setFloatingPreviewOpen(false)}
                   className="rounded-lg border p-1 text-xs opacity-70 hover:text-red-400 transition-colors"
-                  style={{ borderColor: theme.border }}
+                  style={{ borderColor: theme.border, color: theme.text }}
                   title="Fechar prévia flutuante"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
 
         {(!isFloating || !floatingMinimized) && (
           <div className="mt-3 space-y-3">
-            <div className="flex items-center justify-between text-[10px] opacity-60">
+            {/* Stage Selector: 1ª Etapa (Formulário) vs Tela de Concluído */}
+            <div className="grid grid-cols-2 gap-1 rounded-xl border p-1" style={{ borderColor: theme.border }}>
+              <button
+                type="button"
+                onClick={() => setPreviewStage('form')}
+                className="rounded-lg py-1 text-center text-[11px] font-bold transition-all"
+                style={{
+                  backgroundColor: previewStage === 'form' ? theme.secondary : 'transparent',
+                  color: previewStage === 'form' ? getContrastFg(theme.secondary) : theme.text,
+                  opacity: previewStage === 'form' ? 1 : 0.65,
+                }}
+              >
+                1ª Etapa (Formulário)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewStage('success')}
+                className="flex items-center justify-center gap-1 rounded-lg py-1 text-center text-[11px] font-bold transition-all"
+                style={{
+                  backgroundColor: previewStage === 'success' ? theme.secondary : 'transparent',
+                  color: previewStage === 'success' ? getContrastFg(theme.secondary) : theme.text,
+                  opacity: previewStage === 'success' ? 1 : 0.65,
+                }}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Tela de Concluído
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px]" style={{ color: theme.text, opacity: 0.7 }}>
               <span>{previewDevice === 'desktop' ? 'Layout computador' : 'Layout celular'}</span>
               <span
                 className="rounded-full border px-2 py-0.5 font-bold uppercase tracking-[.08em]"
@@ -448,130 +657,210 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               </span>
             </div>
 
-            {draft.widgetMode === 'modal' && (
+            {previewStage === 'success' ? (
               <div
-                className="relative min-h-24 overflow-hidden rounded-xl border p-3"
-                style={{
-                  borderColor: theme.border,
-                  backgroundColor: resolvedTheme.pageBackground,
-                  color: resolvedTheme.bodyText,
-                }}
+                className={`rounded-2xl p-2.5 transition-all ${
+                  previewDevice === 'mobile' ? 'max-w-[310px] mx-auto' : ''
+                }`}
+                style={{ backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}
               >
-                <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
-                  Exemplo no site (botão flutuante)
-                </p>
-                <div className="mt-2 h-1.5 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
-                <button
-                  type="button"
-                  className="absolute bottom-2.5 right-2.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold shadow-lg"
+                <section
+                  className="w-full rounded-2xl border p-5 text-center shadow-lg"
                   style={{
-                    backgroundColor: resolvedTheme.primaryButtonBackground,
-                    color: resolvedTheme.primaryButtonText,
+                    backgroundColor: resolvedTheme.successBackground,
+                    borderColor: resolvedTheme.inputBorder,
+                    color: resolvedTheme.bodyText,
                   }}
                 >
-                  {draft.submitLabel || 'Simular agora'}
-                </button>
-              </div>
-            )}
-
-            <div
-              className={`rounded-2xl p-2.5 transition-all ${
-                previewDevice === 'mobile' ? 'max-w-[310px] mx-auto' : ''
-              }`}
-              style={{ backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}
-            >
-              <div
-                className="overflow-hidden rounded-xl shadow-lg"
-                style={{ backgroundColor: resolvedTheme.cardBackground }}
-              >
-                <div
-                  className="p-3.5"
-                  style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}
-                >
-                  {draft.logoUrl ? (
-                    <img
-                      src={draft.logoUrl}
-                      alt="Logotipo configurado"
-                      className="mb-2.5 h-7 max-w-[160px] object-contain object-left"
-                    />
-                  ) : (
-                    <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
-                      {draft.companyName || 'Sua Empresa Solar'}
-                    </p>
-                  )}
-                  <h3 className="text-base font-extrabold leading-tight">
-                    {draft.headline || 'Simule sua economia de energia solar'}
+                  <div
+                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border"
+                    style={{
+                      backgroundColor: successTint,
+                      borderColor: resolvedTheme.successAccent,
+                      color: resolvedTheme.successAccent,
+                    }}
+                  >
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+                  <h3 className="mt-4 text-base font-extrabold tracking-tight" style={{ color: resolvedTheme.bodyText }}>
+                    {draft.successTitle || DEFAULT_SUCCESS_TITLE}
                   </h3>
-                  {draft.subheadline && (
-                    <p className="mt-1 text-[10px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>
-                      {draft.subheadline}
+                  <p className="mx-auto mt-2 text-xs leading-5" style={{ color: resolvedTheme.mutedText }}>
+                    {draft.successMessage || DEFAULT_SUCCESS_MESSAGE}
+                  </p>
+                  {draft.showNextStep !== false && (
+                    <div
+                      className="mt-4 rounded-xl border p-3 text-left"
+                      style={{
+                        backgroundColor: successTint,
+                        borderColor: resolvedTheme.successAccent,
+                      }}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: resolvedTheme.successAccent }} />
+                        <div>
+                          <p className="text-xs font-bold" style={{ color: resolvedTheme.bodyText }}>{draft.nextStepTitle || DEFAULT_NEXT_STEP_TITLE}</p>
+                          <p className="mt-1 text-[11px] leading-4" style={{ color: resolvedTheme.mutedText }}>
+                            {draft.nextStepDescription || DEFAULT_NEXT_STEP_DESC}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {draft.actionButtonLabel && draft.actionButtonUrl && (
+                    <div className="mt-4">
+                      <a
+                        href={draft.actionButtonUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold shadow-md transition-transform active:scale-[0.98]"
+                        style={{
+                          backgroundColor: resolvedTheme.primaryButtonBackground,
+                          color: resolvedTheme.primaryButtonText,
+                        }}
+                      >
+                        {draft.actionButtonLabel}
+                      </a>
+                    </div>
+                  )}
+                  {draft.showPoweredBy && (
+                    <p className="mt-4 text-center text-[9px] font-semibold" style={{ color: resolvedTheme.mutedText }}>
+                      Tecnologia Sol Amigo PRO
                     </p>
                   )}
-                </div>
-
-                <div
-                  className={
-                    previewDevice === 'desktop' && draft.sideImageUrls.length > 0
-                      ? 'grid grid-cols-[0.68fr_1.32fr]'
-                      : ''
-                  }
-                >
-                  {previewDevice === 'desktop' && draft.sideImageUrls.length > 0 && (
-                    <div
-                      className="relative min-h-48 overflow-hidden"
-                      style={{ backgroundColor: resolvedTheme.progressInactive }}
-                    >
-                      {draft.sideImageUrls.map((imageUrl, index) => (
-                        <img
-                          key={imageUrl}
-                          src={imageUrl}
-                          alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''}
-                          className={`absolute inset-0 h-full min-h-48 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
-                            index === previewImageIndex ? 'opacity-100' : 'opacity-0'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="grid min-w-0 gap-2 p-3 sm:grid-cols-2">
-                    <div className="rounded-lg border px-2.5 py-2 text-[11px] sm:col-span-2" style={previewFieldStyle}>
-                      Nome completo
-                    </div>
-                    <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
-                      WhatsApp (00) 00000-0000
-                    </div>
-                    <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
-                      Estado (UF)
-                    </div>
+                </section>
+              </div>
+            ) : (
+              <>
+                {draft.widgetMode === 'modal' && (
+                  <div
+                    className="relative min-h-24 overflow-hidden rounded-xl border p-3"
+                    style={{
+                      borderColor: theme.border,
+                      backgroundColor: resolvedTheme.pageBackground,
+                      color: resolvedTheme.bodyText,
+                    }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
+                      Exemplo no site (botão flutuante)
+                    </p>
+                    <div className="mt-2 h-1.5 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
                     <button
                       type="button"
-                      className="h-9 w-full rounded-lg text-[11px] font-extrabold sm:col-span-2 shadow-md transition-transform active:scale-[0.98]"
+                      className="absolute bottom-2.5 right-2.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold shadow-lg"
                       style={{
                         backgroundColor: resolvedTheme.primaryButtonBackground,
                         color: resolvedTheme.primaryButtonText,
                       }}
                     >
-                      {draft.submitLabel || 'Simular economia'}
+                      {draft.submitLabel || 'Simular agora'}
                     </button>
-                    {draft.showPoweredBy && (
-                      <p className="text-center text-[9px] sm:col-span-2" style={{ color: resolvedTheme.mutedText }}>
-                        Tecnologia Sol Amigo PRO
-                      </p>
-                    )}
+                  </div>
+                )}
+
+                <div
+                  className={`rounded-2xl p-2.5 transition-all ${
+                    previewDevice === 'mobile' ? 'max-w-[310px] mx-auto' : ''
+                  }`}
+                  style={{ backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}
+                >
+                  <div
+                    className="overflow-hidden rounded-xl shadow-lg"
+                    style={{ backgroundColor: resolvedTheme.cardBackground }}
+                  >
+                    <div
+                      className="p-3.5"
+                      style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}
+                    >
+                      {draft.logoUrl ? (
+                        <img
+                          src={draft.logoUrl}
+                          alt="Logotipo configurado"
+                          className="mb-2.5 h-7 max-w-[160px] object-contain object-left"
+                        />
+                      ) : (
+                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
+                          {draft.companyName || 'Sua Empresa Solar'}
+                        </p>
+                      )}
+                      <h3 className="text-base font-extrabold leading-tight">
+                        {draft.headline || 'Simule sua economia de energia solar'}
+                      </h3>
+                      {draft.subheadline && (
+                        <p className="mt-1 text-[10px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>
+                          {draft.subheadline}
+                        </p>
+                      )}
+                    </div>
+
+                    <div
+                      className={
+                        previewDevice === 'desktop' && draft.sideImageUrls.length > 0
+                          ? 'grid grid-cols-[0.68fr_1.32fr]'
+                          : ''
+                      }
+                    >
+                      {previewDevice === 'desktop' && draft.sideImageUrls.length > 0 && (
+                        <div
+                          className="relative min-h-48 overflow-hidden"
+                          style={{ backgroundColor: resolvedTheme.progressInactive }}
+                        >
+                          {draft.sideImageUrls.map((imageUrl, index) => (
+                            <img
+                              key={imageUrl}
+                              src={imageUrl}
+                              alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''}
+                              className={`absolute inset-0 h-full min-h-48 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
+                                index === previewImageIndex ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid min-w-0 gap-2 p-3 sm:grid-cols-2">
+                        <div className="rounded-lg border px-2.5 py-2 text-[11px] sm:col-span-2" style={previewFieldStyle}>
+                          Nome completo
+                        </div>
+                        <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                          WhatsApp (00) 00000-0000
+                        </div>
+                        <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                          Estado (UF)
+                        </div>
+                        <button
+                          type="button"
+                          className="h-9 w-full rounded-lg text-[11px] font-extrabold sm:col-span-2 shadow-md transition-transform active:scale-[0.98]"
+                          style={{
+                            backgroundColor: resolvedTheme.primaryButtonBackground,
+                            color: resolvedTheme.primaryButtonText,
+                          }}
+                        >
+                          {draft.submitLabel || 'Simular economia'}
+                        </button>
+                        {draft.showPoweredBy && (
+                          <p className="text-center text-[9px] sm:col-span-2" style={{ color: resolvedTheme.mutedText }}>
+                            Tecnologia Sol Amigo PRO
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {draft.successMessage && (
-              <div
-                className="rounded-xl border p-2.5 text-[10px] leading-4"
-                style={{ borderColor: theme.border }}
-              >
-                <strong className="opacity-90">Após o envio:</strong>{' '}
-                <span className="opacity-70">{draft.successMessage}</span>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewStage('success')}
+                  className="w-full text-left rounded-xl border p-2.5 text-[10px] leading-4 hover:border-sky-500/50 transition-colors flex items-center justify-between"
+                  style={{ borderColor: theme.border }}
+                >
+                  <span className="truncate mr-2">
+                    <strong className="opacity-90">Após o envio:</strong>{' '}
+                    <span className="opacity-70">{draft.successMessage || DEFAULT_SUCCESS_MESSAGE}</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-sky-400 shrink-0">Ver tela &rarr;</span>
+                </button>
+              </>
             )}
           </div>
         )}
@@ -783,7 +1072,25 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 <div className="border-t pt-6" style={{ borderColor: theme.border }}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div><h4 className="text-sm font-bold">Motor de cores</h4><p className="mt-1 text-[11px] leading-5 opacity-60">O modo automático cria um conjunto completo e legível. Use o detalhado somente para controlar cada área.</p></div>
-                    <button type="button" onClick={resetColors} className="btn-outline inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}><RotateCcw className="h-4 w-4" /> Restaurar cores</button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={syncWithSystemTheme}
+                        className="btn-outline inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
+                        style={{ borderColor: theme.border, color: theme.text }}
+                        title="Puxar as cores do motor de cores do sistema (Personalização) para o formulário"
+                      >
+                        <Palette className="h-4 w-4" style={{ color: theme.accent }} /> Usar cores do sistema
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetColors}
+                        className="btn-outline inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold"
+                        style={{ borderColor: theme.border }}
+                      >
+                        <RotateCcw className="h-4 w-4" /> Restaurar padrão
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border p-1.5" style={{ borderColor: theme.border }}>
                     {([['automatic', 'Automático'], ['detailed', 'Detalhado']] as const).map(([mode, label]) => (
@@ -810,6 +1117,167 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 4. Tela de Concluído (Pós-envio) */}
+          <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
+                <div>
+                  <h3 className="font-bold">4. Tela de Concluído (Pós-envio)</h3>
+                  <p className="mt-1 text-xs leading-5 opacity-65">
+                    Personalize o que o lead vê imediatamente após enviar o formulário: título, mensagem de confirmação, próximos passos e botão para falar no WhatsApp.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRightTab('preview');
+                    setPreviewStage('success');
+                    if (window.innerWidth < 1024) setFloatingPreviewOpen(true);
+                  }}
+                  className="btn-outline hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold"
+                  style={{ borderColor: theme.border }}
+                  title="Ver tela de conclusão na prévia"
+                >
+                  <Eye className="h-3.5 w-3.5" /> Ver na prévia
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSection('success')}
+                  className="rounded-lg border p-2"
+                  style={{ borderColor: theme.border }}
+                  aria-expanded={!collapsedSections.success}
+                >
+                  {collapsedSections.success ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {!collapsedSections.success && (
+              <div className="mt-5 space-y-5 border-t pt-5" style={{ borderColor: theme.border }}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="sm:col-span-2">
+                    <span className="mb-1.5 flex items-center justify-between text-xs font-bold">
+                      <span>Título principal de conclusão</span>
+                      <span className="text-[10px] font-normal opacity-50">
+                        {(draft.successTitle || DEFAULT_SUCCESS_TITLE).length}/80
+                      </span>
+                    </span>
+                    <input
+                      className="crm-input"
+                      value={draft.successTitle ?? DEFAULT_SUCCESS_TITLE}
+                      maxLength={80}
+                      placeholder="Ex: Recebemos sua solicitação!"
+                      onChange={(event) => setField('successTitle', event.target.value)}
+                    />
+                  </label>
+
+                  <label className="sm:col-span-2">
+                    <span className="mb-1.5 flex items-center justify-between text-xs font-bold">
+                      <span>Mensagem de apoio / agradecimento</span>
+                      <span className="text-[10px] font-normal opacity-50">
+                        {(draft.successMessage || DEFAULT_SUCCESS_MESSAGE).length}/240
+                      </span>
+                    </span>
+                    <textarea
+                      className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none"
+                      style={{ borderColor: theme.border }}
+                      value={draft.successMessage}
+                      maxLength={240}
+                      placeholder="Ex: Recebemos seus dados. Nossa equipe entrará em contato com a sua análise solar."
+                      onChange={(event) => setField('successMessage', event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                {/* Bloco: Próximo Passo */}
+                <div className="rounded-xl border p-4" style={{ borderColor: theme.border }}>
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div className="flex items-center gap-2.5">
+                      <MessageCircle className="h-4 w-4" style={{ color: theme.accent }} />
+                      <div>
+                        <span className="block text-xs font-bold">Caixa de orientações (“Próximo passo”)</span>
+                        <span className="block text-[11px] opacity-60">
+                          Exibe uma caixinha com instruções e expectativas para o cliente.
+                        </span>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={draft.showNextStep !== false}
+                      onChange={(event) => setField('showNextStep', event.target.checked)}
+                      className="h-4 w-4"
+                      style={{ accentColor: theme.secondary }}
+                    />
+                  </label>
+
+                  {draft.showNextStep !== false && (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 border-t pt-3" style={{ borderColor: theme.border }}>
+                      <label className="sm:col-span-2">
+                        <span className="mb-1 block text-xs font-semibold">Título do bloco</span>
+                        <input
+                          className="crm-input"
+                          value={draft.nextStepTitle ?? DEFAULT_NEXT_STEP_TITLE}
+                          maxLength={60}
+                          placeholder="Ex: Próximo passo"
+                          onChange={(event) => setField('nextStepTitle', event.target.value)}
+                        />
+                      </label>
+                      <label className="sm:col-span-2">
+                        <span className="mb-1 block text-xs font-semibold">Texto com instruções</span>
+                        <textarea
+                          className="min-h-16 w-full rounded-lg border bg-transparent px-3 py-2 text-xs outline-none"
+                          style={{ borderColor: theme.border }}
+                          value={draft.nextStepDescription ?? DEFAULT_NEXT_STEP_DESC}
+                          maxLength={160}
+                          placeholder="Ex: Vamos confirmar seus dados e preparar uma análise inicial do seu consumo."
+                          onChange={(event) => setField('nextStepDescription', event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bloco: Botão de ação opcional (ex: WhatsApp) */}
+                <div className="rounded-xl border p-4" style={{ borderColor: theme.border }}>
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" style={{ color: theme.accent }} />
+                    <div>
+                      <h4 className="text-xs font-bold">Botão de ação opcional (ex: WhatsApp ou link)</h4>
+                      <p className="text-[11px] opacity-60">
+                        Adicione um botão direto para o lead conversar imediatamente no WhatsApp ou agendar uma reunião.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label>
+                      <span className="mb-1 block text-xs font-semibold">Texto do botão</span>
+                      <input
+                        className="crm-input"
+                        value={draft.actionButtonLabel ?? ''}
+                        maxLength={60}
+                        placeholder="Ex: Falar com especialista no WhatsApp"
+                        onChange={(event) => setField('actionButtonLabel', event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-1 block text-xs font-semibold">Link de destino (URL ou WhatsApp)</span>
+                      <input
+                        className="crm-input"
+                        value={draft.actionButtonUrl ?? ''}
+                        maxLength={300}
+                        placeholder="https://wa.me/5521999999999"
+                        onChange={(event) => setField('actionButtonUrl', event.target.value)}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
@@ -929,7 +1397,22 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
       {/* Floating Picture-in-Picture Preview Window */}
       {floatingPreviewOpen && (
-        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] max-w-[420px] transition-all animate-in fade-in slide-in-from-bottom-5">
+        <div
+          ref={floatingRef}
+          className={`fixed z-50 w-[92vw] sm:w-[400px] max-w-[420px] transition-[opacity,box-shadow] ${
+            isDragging ? 'select-none pointer-events-auto cursor-grabbing' : ''
+          } ${floatingPosition ? '' : 'bottom-20 right-4 sm:right-6'} animate-in fade-in slide-in-from-bottom-5`}
+          style={
+            floatingPosition
+              ? {
+                  left: `${floatingPosition.x}px`,
+                  top: `${floatingPosition.y}px`,
+                  right: 'auto',
+                  bottom: 'auto',
+                }
+              : undefined
+          }
+        >
           {renderFormPreviewCard(true)}
         </div>
       )}

@@ -252,6 +252,12 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   subheadline: string;
   submitLabel: string;
   successMessage: string;
+  successTitle?: string;
+  nextStepTitle?: string;
+  nextStepDescription?: string;
+  showNextStep?: boolean;
+  actionButtonLabel?: string;
+  actionButtonUrl?: string;
   privacyUrl: string;
   showPoweredBy: boolean;
 }

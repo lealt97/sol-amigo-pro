@@ -21,6 +21,7 @@ import {
   normalizeFormThemeColors,
   resolveFormTheme,
 } from '../utils/formTheme';
+import { parseSuccessDetails } from '../utils/formSuccess';
 
 interface PublicLeadFormViewProps {
   formToken: string;
@@ -154,6 +155,14 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     () => mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12),
     [resolvedTheme.successAccent, resolvedTheme.successBackground]
   );
+  const successDetails = useMemo(() => {
+    return parseSuccessDetails(
+      config.successMessage,
+      config.themeColors && typeof config.themeColors === 'object'
+        ? (config.themeColors as Record<string, unknown>)._success
+        : undefined
+    );
+  }, [config.successMessage, config.themeColors]);
   const formThemeStyle = useMemo(() => ({
     '--form-page': resolvedTheme.pageBackground,
     '--form-card': resolvedTheme.cardBackground,
@@ -390,19 +399,41 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.successAccent }}>
               <CheckCircle2 className="h-9 w-9" />
             </div>
-            <h1 className="mt-6 text-2xl font-extrabold tracking-tight md:text-3xl">Recebemos sua solicitação!</h1>
+            <h1 className="mt-6 text-2xl font-extrabold tracking-tight md:text-3xl">
+              {successDetails.title}
+            </h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6" style={{ color: resolvedTheme.mutedText }}>
-              {config.successMessage}
+              {successDetails.message}
             </p>
-            <div className="mt-7 rounded-2xl border p-4 text-left" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.bodyText }}>
-              <div className="flex items-start gap-3">
-                <MessageCircle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: resolvedTheme.successAccent }} />
-                <div>
-                  <p className="text-sm font-bold">Próximo passo</p>
-                  <p className="mt-1 text-xs leading-5" style={{ color: resolvedTheme.bodyText }}>Vamos confirmar seus dados e preparar uma análise inicial do seu consumo.</p>
+            {successDetails.showNextStep && (
+              <div className="mt-7 rounded-2xl border p-4 text-left" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.bodyText }}>
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: resolvedTheme.successAccent }} />
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: resolvedTheme.bodyText }}>{successDetails.nextStepTitle}</p>
+                    <p className="mt-1 text-xs leading-5" style={{ color: resolvedTheme.mutedText }}>
+                      {successDetails.nextStepDescription}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+            {successDetails.actionButtonLabel && successDetails.actionButtonUrl && (
+              <div className="mt-6">
+                <a
+                  href={successDetails.actionButtonUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-extrabold shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    backgroundColor: resolvedTheme.primaryButtonBackground,
+                    color: resolvedTheme.primaryButtonText,
+                  }}
+                >
+                  {successDetails.actionButtonLabel}
+                </a>
+              </div>
+            )}
             {config.showPoweredBy && <p className="mt-5 text-[10px] font-semibold" style={{ color: resolvedTheme.mutedText }}>Tecnologia Sol Amigo PRO</p>}
           </section>
         </div>
