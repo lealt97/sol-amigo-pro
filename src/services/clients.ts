@@ -1,5 +1,6 @@
 import { Client } from '../types';
 import { supabase } from '../lib/supabase';
+import { formatPhone } from '../utils/formatters';
 
 type ClientRow = {
   id: string;
@@ -31,7 +32,7 @@ const fromRow = (row: ClientRow): Client => ({
   document: row.document ?? '',
   type: row.type,
   email: row.email ?? '',
-  phone: row.phone ?? '',
+  phone: formatPhone(row.phone ?? ''),
   city: row.city ?? '',
   state: row.state ?? '',
   concessionaria: row.concessionaria ?? '',

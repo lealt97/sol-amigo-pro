@@ -14,6 +14,7 @@ import {
 import { Client, ThemeConfig } from '../types';
 import { fetchClients } from '../services/clients';
 import { getContrastFg } from '../utils/themeEngine';
+import { formatPhone } from '../utils/formatters';
 
 interface ClientesViewProps {
   theme: ThemeConfig;
@@ -65,7 +66,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ theme }) => {
       clients.filter((client) =>
         !normalizedSearch
           ? true
-          : [client.name, client.phone, client.email, client.city, client.state]
+          : [client.name, client.phone, formatPhone(client.phone), client.email, client.city, client.state]
               .join(' ')
               .toLocaleLowerCase('pt-BR')
               .includes(normalizedSearch)
@@ -190,7 +191,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ theme }) => {
                 className="mt-4 grid gap-2 rounded-lg border p-3 text-xs"
                 style={{ backgroundColor: panelAltBg, borderColor: theme.border }}
               >
-                <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {client.phone || 'Não informado'}</p>
+                <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {formatPhone(client.phone) || 'Não informado'}</p>
                 <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> {client.email || 'Não informado'}</p>
                 <p className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> {client.type} · {client.concessionaria || 'Distribuidora não informada'}</p>
               </div>

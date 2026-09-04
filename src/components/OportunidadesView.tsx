@@ -53,6 +53,7 @@ import {
   updateLeadStage,
 } from '../services/leads';
 import { getContrastFg } from '../utils/themeEngine';
+import { formatPhone } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
 
 interface OportunidadesViewProps {
@@ -242,6 +243,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
           !normalizedSearch ||
           lead.name.toLocaleLowerCase('pt-BR').includes(normalizedSearch) ||
           lead.phone.toLocaleLowerCase('pt-BR').includes(normalizedSearch) ||
+          formatPhone(lead.phone).toLocaleLowerCase('pt-BR').includes(normalizedSearch) ||
           lead.email?.toLocaleLowerCase('pt-BR').includes(normalizedSearch) ||
           lead.city.toLocaleLowerCase('pt-BR').includes(normalizedSearch);
         const matchesProperty = propertyFilter === 'Todos' || lead.propertyType === propertyFilter;
@@ -726,7 +728,7 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
               <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
                 <h3 className="flex items-center gap-2 text-xs font-extrabold"><UserRound className="h-4 w-4" style={{ color: theme.secondary }} /> Contato</h3>
                 <div className="mt-4 grid gap-4 text-xs sm:grid-cols-2">
-                  <div><p style={{ color: mutedText }}>WhatsApp</p><p className="mt-1 font-bold">{selectedLead.phone}</p></div>
+                  <div><p style={{ color: mutedText }}>WhatsApp</p><p className="mt-1 font-bold">{formatPhone(selectedLead.phone)}</p></div>
                   <div><p style={{ color: mutedText }}>E-mail</p><p className="mt-1 break-all font-bold">{selectedLead.email || 'Não informado'}</p></div>
                   <div><p style={{ color: mutedText }}>Localização</p><p className="mt-1 font-bold">{selectedLead.city}/{selectedLead.state}</p></div>
                   <div><p style={{ color: mutedText }}>Melhor horário</p><p className="mt-1 font-bold">{selectedLead.preferredContactTime || 'Qualquer horário'}</p></div>

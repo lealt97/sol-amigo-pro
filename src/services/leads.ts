@@ -8,6 +8,7 @@ import {
   LeadTaskStatus,
 } from '../types';
 import { supabase } from '../lib/supabase';
+import { formatPhone } from '../utils/formatters';
 
 type LeadRow = {
   id: string;
@@ -82,7 +83,7 @@ export const leadFromRow = (row: LeadRow): Lead => ({
   clientId: row.client_id ?? undefined,
   consumerUnitId: row.consumer_unit_id ?? undefined,
   name: row.name,
-  phone: row.phone,
+  phone: formatPhone(row.phone),
   email: row.email ?? undefined,
   city: row.city,
   state: row.state,
