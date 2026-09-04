@@ -71,11 +71,17 @@
         <div class="spinner" aria-hidden="true"></div>
         <strong>Sol Amigo Pro</strong>
         <span>Carregando o sistema...</span>
-        <button type="button" onclick="window.location.reload()">Tentar novamente</button>
+        <button type="button" onclick="retryBoot()">Tentar novamente</button>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      function retryBoot() {
+        var url = new URL(window.location.href);
+        url.searchParams.set('_sol_retry', Date.now().toString());
+        window.location.replace(url.toString());
+      }
+
       window.setTimeout(function () {
         var fallback = document.getElementById('boot-fallback');
         if (!fallback) return;

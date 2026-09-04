@@ -32,6 +32,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Validate GitHub Pages asset paths
+        run: |
+          if grep -Eq '(src|href)="/assets/' dist/index.html; then
+            echo "::error::The build points to /assets instead of /sol-amigo-pro/assets."
+            exit 1
+          fi
+          grep -q '/sol-amigo-pro/assets/' dist/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
