@@ -128,13 +128,13 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       {/* Filter and Search Bar */}
       <div className="bg-[#161B22] p-3 rounded-lg border border-[#30363D] flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 text-[#8B949E] absolute left-3 top-2.5" />
+          <Search className="w-3.5 h-3.5 text-[#8B949E] absolute left-3 top-2.5 pointer-events-none" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filtrar por cliente, cidade, código..."
-            className="w-full h-8 pl-8 pr-3 text-xs bg-[#0D1117] border border-[#30363D] rounded-md outline-none focus:border-blue-500 text-[#C9D1D9] font-mono placeholder:text-[#8B949E]"
+            className="w-full h-8 pl-9 pr-3 text-xs bg-[#0D1117] border border-[#30363D] rounded-md outline-none focus:border-blue-500 text-[#C9D1D9] font-mono placeholder:text-[#8B949E]"
           />
         </div>
 

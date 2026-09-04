@@ -277,7 +277,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
           <p className="text-xs opacity-60">Clique em um tema para aplicar imediatamente.</p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {THEME_PRESETS.map((preset) => {
             const selected = activePresetId === preset.id;
             return (

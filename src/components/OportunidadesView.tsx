@@ -520,8 +520,15 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
 
       <section className="flex flex-col gap-3 rounded-xl border p-3 lg:flex-row lg:items-center" style={panelStyle}>
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: mutedText }} />
-          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, telefone, e-mail ou cidade..." className="crm-input pl-9" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: mutedText }} />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nome, telefone, e-mail ou cidade..."
+            className="crm-input !pl-10"
+            style={{ paddingLeft: '40px' }}
+          />
         </div>
         <div className="flex h-[42px] items-center gap-2 rounded-lg border px-3" style={{ borderColor: theme.border }}>
           <Filter className="h-4 w-4" style={{ color: mutedText }} />

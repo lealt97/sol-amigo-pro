@@ -217,6 +217,10 @@ main > #area-risco-page {
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.crm-input[type='search'] {
+  padding-left: 40px !important;
+}
+
 .crm-input:focus {
   border-color: var(--secondary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 16%, transparent);

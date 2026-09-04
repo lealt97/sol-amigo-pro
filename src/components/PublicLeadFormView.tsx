@@ -87,6 +87,25 @@ const normalizeSiteFont = (value: string | null) => {
   return candidate;
 };
 
+const formatPhone = (value: string): string => {
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length > 11) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 11);
+  if (!digits) return '';
+  if (digits.length <= 2) {
+    return `(${digits}`;
+  }
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 const INITIAL_FORM: PublicFormData = {
   name: '',
   phone: '',
@@ -262,7 +281,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   }, [queryContext.siteOrigin, queryContext.widget, step, submitted, configLoading]);
 
   const setField = <K extends keyof PublicFormData>(key: K, value: PublicFormData[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
+    const formattedValue = (key === 'phone' ? formatPhone(String(value ?? '')) : value) as PublicFormData[K];
+    setForm((current) => ({ ...current, [key]: formattedValue }));
     setError('');
   };
 
@@ -450,7 +470,15 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">WhatsApp com DDD *</span>
-                      <input value={form.phone} onChange={(event) => setField('phone', event.target.value)} autoComplete="tel" inputMode="tel" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="(00) 00000-0000" />
+                      <input
+                        value={form.phone}
+                        onChange={(event) => setField('phone', event.target.value)}
+                        autoComplete="tel"
+                        inputMode="tel"
+                        maxLength={15}
+                        className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10"
+                        placeholder="(00) 00000-0000"
+                      />
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">E-mail</span>

@@ -144,7 +144,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ theme }) => {
       <section className="rounded-xl border p-3" style={panelStyle}>
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
             style={{ color: mutedText }}
           />
           <input
@@ -152,7 +152,8 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ theme }) => {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nome, telefone, e-mail ou cidade..."
-            className="crm-input pl-9"
+            className="crm-input !pl-10"
+            style={{ paddingLeft: '40px' }}
           />
         </div>
       </section>
