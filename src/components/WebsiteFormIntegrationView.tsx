@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, Check, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
-  Globe2, Image, KeyRound, Loader2, MapPin, MonitorSmartphone, Plus, RefreshCw,
-  RotateCcw, Save, ShieldCheck, Trash2, Type,
+  Eye, EyeOff, Globe2, Image, KeyRound, Laptop, Loader2, MapPin, Maximize2,
+  Minimize2, MonitorSmartphone, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
+  Smartphone, Trash2, Type, X,
 } from 'lucide-react';
 import type { FormColorMode, FormThemeColors, ThemeConfig, WebsiteFormSettings } from '../types';
 import {
@@ -76,6 +77,10 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     states: true,
     appearance: false,
   });
+  const [rightTab, setRightTab] = useState<'preview' | 'access'>('preview');
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [floatingPreviewOpen, setFloatingPreviewOpen] = useState(false);
+  const [floatingMinimized, setFloatingMinimized] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -351,8 +356,231 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     color: resolvedTheme.mutedText,
   };
 
+  const renderFormPreviewCard = (isFloating = false) => {
+    return (
+      <section
+        className={`rounded-2xl border p-4 shadow-sm transition-all ${
+          isFloating ? 'bg-[#0E2337]/95 shadow-2xl backdrop-blur-md' : ''
+        }`}
+        style={{ borderColor: theme.border }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">
+              {isFloating ? 'Prévia Flutuante' : 'Prévia do formulário'}
+            </p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Ao vivo
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center rounded-lg border p-0.5" style={{ borderColor: theme.border }}>
+              <button
+                type="button"
+                onClick={() => setPreviewDevice('desktop')}
+                className={`rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
+                  previewDevice === 'desktop' ? 'bg-white/15 text-white' : 'opacity-50 hover:opacity-100'
+                }`}
+                title="Visualização no computador"
+              >
+                <Laptop className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewDevice('mobile')}
+                className={`rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
+                  previewDevice === 'mobile' ? 'bg-white/15 text-white' : 'opacity-50 hover:opacity-100'
+                }`}
+                title="Visualização no celular"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {!isFloating && (
+              <button
+                type="button"
+                onClick={() => setFloatingPreviewOpen(true)}
+                className="hidden sm:inline-flex rounded-lg border p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                style={{ borderColor: theme.border }}
+                title="Destacar prévia flutuante (PIP)"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {isFloating && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFloatingMinimized(!floatingMinimized)}
+                  className="rounded-lg border p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                  style={{ borderColor: theme.border }}
+                  title={floatingMinimized ? 'Expandir prévia' : 'Minimizar prévia'}
+                >
+                  {floatingMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloatingPreviewOpen(false)}
+                  className="rounded-lg border p-1 text-xs opacity-70 hover:text-red-400 transition-colors"
+                  style={{ borderColor: theme.border }}
+                  title="Fechar prévia flutuante"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {(!isFloating || !floatingMinimized) && (
+          <div className="mt-3 space-y-3">
+            <div className="flex items-center justify-between text-[10px] opacity-60">
+              <span>{previewDevice === 'desktop' ? 'Layout computador' : 'Layout celular'}</span>
+              <span
+                className="rounded-full border px-2 py-0.5 font-bold uppercase tracking-[.08em]"
+                style={{ borderColor: theme.border }}
+              >
+                {draft.colorMode === 'automatic' ? 'Cores automáticas' : 'Cores detalhadas'}
+              </span>
+            </div>
+
+            {draft.widgetMode === 'modal' && (
+              <div
+                className="relative min-h-24 overflow-hidden rounded-xl border p-3"
+                style={{
+                  borderColor: theme.border,
+                  backgroundColor: resolvedTheme.pageBackground,
+                  color: resolvedTheme.bodyText,
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
+                  Exemplo no site (botão flutuante)
+                </p>
+                <div className="mt-2 h-1.5 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
+                <button
+                  type="button"
+                  className="absolute bottom-2.5 right-2.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold shadow-lg"
+                  style={{
+                    backgroundColor: resolvedTheme.primaryButtonBackground,
+                    color: resolvedTheme.primaryButtonText,
+                  }}
+                >
+                  {draft.submitLabel || 'Simular agora'}
+                </button>
+              </div>
+            )}
+
+            <div
+              className={`rounded-2xl p-2.5 transition-all ${
+                previewDevice === 'mobile' ? 'max-w-[310px] mx-auto' : ''
+              }`}
+              style={{ backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}
+            >
+              <div
+                className="overflow-hidden rounded-xl shadow-lg"
+                style={{ backgroundColor: resolvedTheme.cardBackground }}
+              >
+                <div
+                  className="p-3.5"
+                  style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}
+                >
+                  {draft.logoUrl ? (
+                    <img
+                      src={draft.logoUrl}
+                      alt="Logotipo configurado"
+                      className="mb-2.5 h-7 max-w-[160px] object-contain object-left"
+                    />
+                  ) : (
+                    <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
+                      {draft.companyName || 'Sua Empresa Solar'}
+                    </p>
+                  )}
+                  <h3 className="text-base font-extrabold leading-tight">
+                    {draft.headline || 'Simule sua economia de energia solar'}
+                  </h3>
+                  {draft.subheadline && (
+                    <p className="mt-1 text-[10px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>
+                      {draft.subheadline}
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  className={
+                    previewDevice === 'desktop' && draft.sideImageUrls.length > 0
+                      ? 'grid grid-cols-[0.68fr_1.32fr]'
+                      : ''
+                  }
+                >
+                  {previewDevice === 'desktop' && draft.sideImageUrls.length > 0 && (
+                    <div
+                      className="relative min-h-48 overflow-hidden"
+                      style={{ backgroundColor: resolvedTheme.progressInactive }}
+                    >
+                      {draft.sideImageUrls.map((imageUrl, index) => (
+                        <img
+                          key={imageUrl}
+                          src={imageUrl}
+                          alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''}
+                          className={`absolute inset-0 h-full min-h-48 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
+                            index === previewImageIndex ? 'opacity-100' : 'opacity-0'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid min-w-0 gap-2 p-3 sm:grid-cols-2">
+                    <div className="rounded-lg border px-2.5 py-2 text-[11px] sm:col-span-2" style={previewFieldStyle}>
+                      Nome completo
+                    </div>
+                    <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                      WhatsApp (00) 00000-0000
+                    </div>
+                    <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                      Estado (UF)
+                    </div>
+                    <button
+                      type="button"
+                      className="h-9 w-full rounded-lg text-[11px] font-extrabold sm:col-span-2 shadow-md transition-transform active:scale-[0.98]"
+                      style={{
+                        backgroundColor: resolvedTheme.primaryButtonBackground,
+                        color: resolvedTheme.primaryButtonText,
+                      }}
+                    >
+                      {draft.submitLabel || 'Simular economia'}
+                    </button>
+                    {draft.showPoweredBy && (
+                      <p className="text-center text-[9px] sm:col-span-2" style={{ color: resolvedTheme.mutedText }}>
+                        Tecnologia Sol Amigo PRO
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {draft.successMessage && (
+              <div
+                className="rounded-xl border p-2.5 text-[10px] leading-4"
+                style={{ borderColor: theme.border }}
+              >
+                <strong className="opacity-90">Após o envio:</strong>{' '}
+                <span className="opacity-70">{draft.successMessage}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  };
+
   return (
-    <div id="integracoes-page" className="mx-auto max-w-6xl space-y-5">
+    <div id="integracoes-page" className="mx-auto max-w-[1480px] w-full space-y-5">
       <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
@@ -383,7 +611,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         </div>
       )}
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_440px]">
         <div className="min-w-0 space-y-5">
           <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
             <div className="flex items-start justify-between gap-3">
@@ -470,9 +698,24 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
-                <div><h3 className="font-bold">3. Aparência e conteúdo</h3><p className="mt-1 text-xs leading-5 opacity-65">Personalize o formulário sem código.</p></div>
+                <div>
+                  <h3 className="font-bold">3. Aparência e conteúdo</h3>
+                  <p className="mt-1 text-xs leading-5 opacity-65">
+                    Personalize o formulário sem código. A prévia ao lado sincroniza em tempo real enquanto você digita e escolhe as cores.
+                  </p>
+                </div>
               </div>
-              {collapseButton('appearance', 'aparência')}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFloatingPreviewOpen(true)}
+                  className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors"
+                  style={{ borderColor: theme.border }}
+                >
+                  <Eye className="h-3.5 w-3.5 text-emerald-400" /> Ver prévia
+                </button>
+                {collapseButton('appearance', 'aparência')}
+              </div>
             </div>
             {!collapsedSections.appearance && (
               <div className="mt-5 space-y-6">
@@ -573,69 +816,159 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
           </section>
         </div>
 
-        <aside className="min-w-0 space-y-5 xl:sticky xl:top-20 xl:self-start">
-          <section className="rounded-2xl border p-4" style={{ borderColor: theme.border }}>
-            <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[.12em] opacity-60">Prévia do formulário</p><span className="rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-[.08em]" style={{ borderColor: theme.border }}>{draft.colorMode === 'automatic' ? 'Cores automáticas' : 'Cores detalhadas'}</span></div>
-            {draft.widgetMode === 'modal' && (
-              <div className="relative mt-4 min-h-32 overflow-hidden rounded-2xl border p-4" style={{ borderColor: theme.border, backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}>
-                <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>Exemplo no site</p>
-                <div className="mt-3 h-2 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
-                <div className="mt-2 h-2 w-1/2 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
-                <button type="button" className="absolute bottom-3 right-3 rounded-full px-4 py-2 text-[10px] font-extrabold shadow-lg" style={{ backgroundColor: resolvedTheme.primaryButtonBackground, color: resolvedTheme.primaryButtonText }}>{draft.submitLabel}</button>
-              </div>
-            )}
-            <p className="mt-4 text-[10px] font-bold uppercase tracking-[.1em] opacity-50">Primeira etapa</p>
-            <div className="mt-4 rounded-2xl p-3" style={{ backgroundColor: resolvedTheme.pageBackground, color: resolvedTheme.bodyText }}>
-              <div className="overflow-hidden rounded-2xl shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground }}>
-                <div className="p-4" style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}>
-                  {draft.logoUrl ? <img src={draft.logoUrl} alt="Logotipo configurado" className="mb-3 h-8 max-w-[180px] object-contain object-left" /> : <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[.12em]">{draft.companyName}</p>}
-                  <h3 className="text-lg font-extrabold leading-tight">{draft.headline}</h3>
-                  <p className="mt-2 text-[11px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>{draft.subheadline}</p>
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto pr-1">
+          {/* Tab Switcher: Prévia ao vivo vs Links & Segurança */}
+          <div
+            className="flex items-center rounded-xl border p-1"
+            style={{ borderColor: theme.border, backgroundColor: `${theme.primary}25` }}
+          >
+            <button
+              type="button"
+              onClick={() => setRightTab('preview')}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: rightTab === 'preview' ? theme.secondary : 'transparent',
+                color: rightTab === 'preview' ? '#FFFFFF' : theme.text,
+              }}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>Prévia ao vivo</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightTab('access')}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: rightTab === 'access' ? theme.secondary : 'transparent',
+                color: rightTab === 'access' ? '#FFFFFF' : theme.text,
+              }}
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              <span>Links e Chaves</span>
+            </button>
+          </div>
+
+          {rightTab === 'preview' ? (
+            <div className="space-y-3">
+              {renderFormPreviewCard(false)}
+
+              <div
+                className="flex items-center justify-between rounded-xl border p-3 text-xs"
+                style={{ borderColor: theme.border }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="opacity-80">Fixa na tela ao rolar</span>
                 </div>
-                <div className={draft.sideImageUrls.length ? 'grid grid-cols-[0.72fr_1.28fr]' : ''}>
-                  {draft.sideImageUrls.length > 0 && (
-                    <div className="relative min-h-56 overflow-hidden" style={{ backgroundColor: resolvedTheme.progressInactive }}>
-                      {draft.sideImageUrls.map((imageUrl, index) => (
-                        <img key={imageUrl} src={imageUrl} alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''} className={`absolute inset-0 h-full min-h-56 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${index === previewImageIndex ? 'opacity-100' : 'opacity-0'}`} />
-                      ))}
-                    </div>
-                  )}
-                  <div className="grid min-w-0 gap-2 p-4 sm:grid-cols-2 xl:grid-cols-2">
-                    <div className="rounded-lg border px-3 py-2.5 text-xs sm:col-span-2" style={previewFieldStyle}>Nome completo</div>
-                    <div className="rounded-lg border px-3 py-2.5 text-xs" style={previewFieldStyle}>WhatsApp</div>
-                    <div className="rounded-lg border px-3 py-2.5 text-xs" style={previewFieldStyle}>Estado</div>
-                    <button type="button" className="h-10 w-full rounded-lg text-xs font-extrabold sm:col-span-2" style={{ backgroundColor: resolvedTheme.primaryButtonBackground, color: resolvedTheme.primaryButtonText }}>{draft.submitLabel}</button>
-                    {draft.showPoweredBy && <p className="text-center text-[9px] sm:col-span-2" style={{ color: resolvedTheme.mutedText }}>Tecnologia Sol Amigo PRO</p>}
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setFloatingPreviewOpen(true)}
+                  className="btn-outline inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold"
+                  style={{ borderColor: theme.border }}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" /> Destacar janela
+                </button>
               </div>
             </div>
-            <div className="mt-3 rounded-xl border p-3 text-[11px] leading-5" style={{ borderColor: theme.border }}><strong>Após o envio:</strong> <span className="opacity-70">{draft.successMessage}</span></div>
-          </section>
+          ) : (
+            <div className="space-y-4">
+              <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-bold">Link direto</h3>
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${draft.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                    {draft.active ? 'Ativo' : 'Desativado'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs opacity-60">Para bio, anúncio ou WhatsApp.</p>
+                <div className="mt-3 flex gap-2">
+                  <input readOnly value={publicLink} className="crm-input min-w-0 flex-1 font-mono text-[10px]" />
+                  <button type="button" onClick={() => copy('link', publicLink)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>
+                    {copied === 'link' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                  </button>
+                  <a href={publicLink} target="_blank" rel="noreferrer" className="flex items-center rounded-lg border px-3" style={{ borderColor: theme.border }}>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </section>
 
-          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
-            <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Link direto</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${draft.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>{draft.active ? 'Ativo' : 'Desativado'}</span></div>
-            <p className="mt-1 text-xs opacity-60">Para bio, anúncio ou WhatsApp.</p>
-            <div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="crm-input min-w-0 flex-1 font-mono text-[10px]" /><button type="button" onClick={() => copy('link', publicLink)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>{copied === 'link' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="flex items-center rounded-lg border px-3" style={{ borderColor: theme.border }}><ExternalLink className="h-4 w-4" /></a></div>
-          </section>
+              <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4" style={{ color: theme.accent }} />
+                  <h3 className="font-bold">Identificador público</h3>
+                </div>
+                <p className="mt-2 text-xs leading-5 opacity-60">Identifica o destino dos leads, sem conceder acesso ao CRM.</p>
+                <div className="mt-3 flex gap-2">
+                  <input readOnly value={draft.publicToken} className="crm-input min-w-0 flex-1 font-mono text-[10px]" />
+                  <button type="button" onClick={() => copy('token', draft.publicToken)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>
+                    {copied === 'token' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                  </button>
+                </div>
+                <button type="button" disabled={rotating} onClick={rotateToken} className="btn-outline mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>
+                  <RefreshCw className={`h-4 w-4 ${rotating ? 'animate-spin' : ''}`} /> Renovar identificador
+                </button>
+              </section>
 
-          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
-            <div className="flex items-center gap-2"><KeyRound className="h-4 w-4" style={{ color: theme.accent }} /><h3 className="font-bold">Identificador público</h3></div>
-            <p className="mt-2 text-xs leading-5 opacity-60">Identifica o destino dos leads, sem conceder acesso ao CRM.</p>
-            <div className="mt-3 flex gap-2"><input readOnly value={draft.publicToken} className="crm-input min-w-0 flex-1 font-mono text-[10px]" /><button type="button" onClick={() => copy('token', draft.publicToken)} className="rounded-lg border px-3" style={{ borderColor: theme.border }}>{copied === 'token' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button></div>
-            <button type="button" disabled={rotating} onClick={rotateToken} className="btn-outline mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}><RefreshCw className={`h-4 w-4 ${rotating ? 'animate-spin' : ''}`} /> Renovar identificador</button>
-          </section>
-
-          <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
-            <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" style={{ color: theme.accent }} /><h3 className="font-bold">Proteções ativas</h3></div>
-            <ul className="mt-3 space-y-2 text-xs opacity-70"><li>• isolamento por conta e políticas RLS</li><li>• domínio autorizado e integração desligada por padrão</li><li>• limite por IP anonimizado e limite global</li><li>• campo-isca, validação no servidor e deduplicação</li><li>• nenhuma chave administrativa no navegador</li></ul>
-          </section>
+              <section className="rounded-2xl border p-5" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" style={{ color: theme.accent }} />
+                  <h3 className="font-bold">Proteções ativas</h3>
+                </div>
+                <ul className="mt-3 space-y-2 text-xs opacity-70">
+                  <li>• isolamento por conta e políticas RLS</li>
+                  <li>• domínio autorizado e integração desligada por padrão</li>
+                  <li>• limite por IP anonimizado e limite global</li>
+                  <li>• campo-isca, validação no servidor e deduplicação</li>
+                  <li>• nenhuma chave administrativa no navegador</li>
+                </ul>
+              </section>
+            </div>
+          )}
         </aside>
       </div>
 
-      <div className="sticky bottom-4 flex flex-col gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
-        <div><p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p><p className="mt-0.5 text-xs opacity-60">A prévia usa exatamente o mesmo motor de cores do formulário público.</p></div>
-        <div className="flex flex-wrap gap-2">
+      {/* Floating Picture-in-Picture Preview Window */}
+      {floatingPreviewOpen && (
+        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] max-w-[420px] transition-all animate-in fade-in slide-in-from-bottom-5">
+          {renderFormPreviewCard(true)}
+        </div>
+      )}
+
+      {/* Floating trigger button on smaller screens (< lg) */}
+      {!floatingPreviewOpen && (
+        <button
+          type="button"
+          onClick={() => setFloatingPreviewOpen(true)}
+          className="lg:hidden fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-2xl border transition-transform active:scale-95"
+          style={{
+            backgroundColor: theme.secondary,
+            color: '#FFFFFF',
+            borderColor: `${theme.secondary}80`,
+            boxShadow: `0 8px 24px ${theme.secondary}60`,
+          }}
+        >
+          <Eye className="h-4 w-4" />
+          <span>Ver prévia ao vivo</span>
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        </button>
+      )}
+
+      <div className="sticky bottom-4 z-30 flex flex-col gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
+        <div>
+          <p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p>
+          <p className="mt-0.5 text-xs opacity-60">A prévia ao lado atualiza em tempo real sem precisar recarregar.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFloatingPreviewOpen((prev) => !prev)}
+            className="btn-outline inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-bold"
+            style={{ borderColor: theme.border }}
+            title="Abre uma janela flutuante que acompanha você pela página"
+          >
+            <Eye className="h-4 w-4 text-emerald-400" />
+            {floatingPreviewOpen ? 'Fechar prévia flutuante' : 'Prévia flutuante (PIP)'}
+          </button>
           <button type="button" disabled={testing || changed || !saved?.active || !saved.widgetEnabled || !saved.allowedOrigins.length} onClick={testConnection} className="btn-outline inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold" style={{ borderColor: theme.border }}>{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />} Testar conexão</button>
           <button type="button" disabled={saving || !changed} onClick={save} className="btn-filled inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold" style={{ backgroundColor: theme.secondary, color: '#fff' }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar configurações</button>
         </div>
