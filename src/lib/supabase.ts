@@ -14,3 +14,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     detectSessionInUrl: true,
   },
 });
+
+export const validateCurrentPassword = async (email: string, password: string) => {
+  // A separate, non-persistent client validates the credential without replacing
+  // the active session or lowering an MFA-protected session back to AAL1.
+  const verifier = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  const { error } = await verifier.auth.signInWithPassword({ email, password });
+  await verifier.auth.signOut({ scope: 'local' });
+  return error;
+};
