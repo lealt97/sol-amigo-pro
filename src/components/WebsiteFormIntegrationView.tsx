@@ -776,50 +776,65 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       {/* Container do botão flutuante redondo com balãozinho interativo ao pairar */}
                       <div className="absolute bottom-3 right-3 flex items-center justify-end">
                         <div className="relative group flex items-center">
-                          {/* Balãozinho simples (tooltip / speech bubble) */}
+                          {/* Balãozinho simples (tooltip / speech bubble) SEM BORDA */}
                           <div
                             role="tooltip"
-                            className="pointer-events-none absolute right-[calc(100%+10px)] top-1/2 -translate-y-1/2 z-20 flex items-center opacity-0 translate-x-2 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
+                            className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 -translate-y-1/2 z-20 flex items-center opacity-0 translate-x-2 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
                           >
                             <div
-                              className="rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap shadow-xl border flex items-center"
+                              className="rounded-[9px] px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap shadow-2xl flex items-center border-0 outline-none"
                               style={{
                                 backgroundColor: '#0E2337',
                                 color: '#FFFFFF',
-                                borderColor: 'rgba(255, 255, 255, 0.12)',
+                                boxShadow: '0 10px 25px -4px rgba(0, 0, 0, 0.4)',
                               }}
                             >
                               <span>{draft.submitLabel || 'Simular economia solar'}</span>
                             </div>
-                            {/* Pontinha / seta do balão apontando para o botão redondo */}
+                            {/* Pontinha / seta do balão apontando para o botão redondo SEM BORDA */}
                             <div
-                              className="w-0 h-0 border-y-[5px] border-y-transparent border-l-[6px] -ml-[1px]"
+                              className="w-0 h-0 border-y-[5px] border-y-transparent border-l-[6px] border-r-0 -ml-[1px]"
                               style={{ borderLeftColor: '#0E2337' }}
                             />
                           </div>
 
-                          {/* Botão redondo com logo perfeitamente centralizado */}
-                          <button
-                            type="button"
-                            aria-label={draft.submitLabel || 'Simular economia solar'}
-                            className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-2xl transition-transform duration-200 ease-out hover:scale-110 active:scale-95 focus:outline-none"
-                            style={{
-                              backgroundColor: resolvedTheme.primaryButtonBackground,
-                              color: resolvedTheme.primaryButtonText,
-                              boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.38), 0 4px 10px -2px rgba(0, 0, 0, 0.2)',
-                            }}
-                          >
-                            {effectiveFloatingLogo ? (
-                              <img
-                                src={effectiveFloatingLogo}
-                                alt="Logo centralizado"
-                                className="max-h-[66%] max-w-[66%] object-contain select-none pointer-events-none drop-shadow-sm"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <Sun className="h-6 w-6 select-none" />
-                            )}
-                          </button>
+                          {/* Botão redondo com logo perfeitamente centralizado, borda e hover scale 1.10 */}
+                          {(() => {
+                            const buttonBorder = (resolvedTheme.primaryButtonText === '#FFFFFF')
+                              ? '2.5px solid rgba(255, 255, 255, 0.9)'
+                              : '2.5px solid rgba(14, 35, 55, 0.35)';
+                            const borderColor = (resolvedTheme.primaryButtonText === '#FFFFFF')
+                              ? 'rgba(255, 255, 255, 0.9)'
+                              : 'rgba(14, 35, 55, 0.35)';
+                            return (
+                              <button
+                                type="button"
+                                data-sol-amigo-floating-btn
+                                aria-label={draft.submitLabel || 'Simular economia solar'}
+                                className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-2xl transition-[transform,box-shadow] duration-200 ease-out group-hover:scale-110 active:scale-95 focus:outline-none"
+                                style={{
+                                  backgroundColor: resolvedTheme.primaryButtonBackground,
+                                  color: resolvedTheme.primaryButtonText,
+                                  border: buttonBorder,
+                                  boxShadow: '0 12px 28px -4px rgba(15, 23, 42, 0.38), 0 4px 10px -2px rgba(15, 23, 42, 0.2)',
+                                  '--floating-btn-bg': resolvedTheme.primaryButtonBackground,
+                                  '--floating-btn-fg': resolvedTheme.primaryButtonText,
+                                  '--floating-btn-border': borderColor,
+                                } as React.CSSProperties}
+                              >
+                                {effectiveFloatingLogo ? (
+                                  <img
+                                    src={effectiveFloatingLogo}
+                                    alt="Logo centralizado"
+                                    className="max-h-[66%] max-w-[66%] object-contain select-none pointer-events-none drop-shadow-sm"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <Sun className="h-6 w-6 select-none" />
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

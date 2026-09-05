@@ -111,11 +111,13 @@
 
   var modal = null;
   var openButton = null;
+  var widgetTrigger = null;
 
   function closeModal() {
     if (!modal) return;
     modal.style.display = "none";
     document.body.style.overflow = modal.dataset.previousOverflow || "";
+    if (widgetTrigger) widgetTrigger.style.display = "flex";
     if (openButton) openButton.focus();
   }
 
@@ -124,23 +126,76 @@
     else script.parentNode.insertBefore(shell, script.nextSibling);
   } else {
     var floatingLogoUrl = (publicConfig && (publicConfig.floatingButtonLogoUrl || publicConfig.logoUrl)) || script.dataset.floatingLogoUrl || "";
+    
+    widgetTrigger = document.createElement("div");
+    widgetTrigger.id = "sol-amigo-widget-trigger";
+    widgetTrigger.style.position = "fixed";
+    widgetTrigger.style.right = "24px";
+    widgetTrigger.style.bottom = "24px";
+    widgetTrigger.style.zIndex = "2147483000";
+    widgetTrigger.style.display = "flex";
+    widgetTrigger.style.alignItems = "center";
+    widgetTrigger.style.justifyContent = "flex-end";
+    widgetTrigger.style.pointerEvents = "none";
+
+    var bubble = document.createElement("div");
+    bubble.setAttribute("role", "tooltip");
+    bubble.style.position = "relative";
+    bubble.style.marginRight = "12px";
+    bubble.style.background = "#0E2337";
+    bubble.style.color = "#FFFFFF";
+    bubble.style.padding = "8px 14px";
+    bubble.style.borderRadius = "9px";
+    bubble.style.border = "none";
+    bubble.style.outline = "none";
+    bubble.style.fontFamily = hostFont || "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    bubble.style.fontSize = "13px";
+    bubble.style.fontWeight = "600";
+    bubble.style.lineHeight = "1.3";
+    bubble.style.whiteSpace = "nowrap";
+    bubble.style.boxShadow = "0 10px 25px -4px rgba(0, 0, 0, 0.4)";
+    bubble.style.pointerEvents = "none";
+    bubble.style.userSelect = "none";
+    bubble.style.opacity = "0";
+    bubble.style.transform = "translateX(8px)";
+    bubble.style.transition = "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+    bubble.textContent = buttonLabel;
+
+    var bubbleArrow = document.createElement("div");
+    bubbleArrow.style.position = "absolute";
+    bubbleArrow.style.top = "50%";
+    bubbleArrow.style.right = "-6px";
+    bubbleArrow.style.marginTop = "-5px";
+    bubbleArrow.style.width = "0";
+    bubbleArrow.style.height = "0";
+    bubbleArrow.style.borderTop = "5px solid transparent";
+    bubbleArrow.style.borderBottom = "5px solid transparent";
+    bubbleArrow.style.borderLeft = "6px solid #0E2337";
+    bubbleArrow.style.borderRight = "none";
+    bubble.appendChild(bubbleArrow);
+
+    var buttonBorder = (buttonTextColor === "#FFFFFF")
+      ? "2.5px solid rgba(255, 255, 255, 0.9)"
+      : "2.5px solid rgba(14, 35, 55, 0.35)";
+
     openButton = document.createElement("button");
     openButton.type = "button";
     openButton.setAttribute("aria-haspopup", "dialog");
     openButton.setAttribute("aria-label", buttonLabel);
-    openButton.style.position = "fixed";
-    openButton.style.right = "24px";
-    openButton.style.bottom = "24px";
-    openButton.style.zIndex = "2147483000";
+    openButton.setAttribute("data-sol-amigo-floating-btn", "true");
+    openButton.style.position = "relative";
+    openButton.style.pointerEvents = "auto";
     openButton.style.width = "60px";
     openButton.style.height = "60px";
     openButton.style.minWidth = "60px";
     openButton.style.minHeight = "60px";
     openButton.style.padding = "0";
-    openButton.style.border = "0";
+    openButton.style.border = buttonBorder;
     openButton.style.borderRadius = "50%";
-    openButton.style.background = color;
-    openButton.style.color = buttonTextColor;
+    openButton.style.boxSizing = "border-box";
+    openButton.style.setProperty("background", color, "important");
+    openButton.style.setProperty("background-color", color, "important");
+    openButton.style.setProperty("color", buttonTextColor, "important");
     openButton.style.display = "flex";
     openButton.style.alignItems = "center";
     openButton.style.justifyContent = "center";
@@ -177,51 +232,26 @@
       openButton.appendChild(sunSvg);
     }
 
-    var bubble = document.createElement("div");
-    bubble.setAttribute("role", "tooltip");
-    bubble.style.position = "fixed";
-    bubble.style.right = "94px";
-    bubble.style.bottom = "36px";
-    bubble.style.zIndex = "2147483000";
-    bubble.style.background = "#0E2337";
-    bubble.style.color = "#FFFFFF";
-    bubble.style.padding = "8px 14px";
-    bubble.style.borderRadius = "9px";
-    bubble.style.fontFamily = hostFont || "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    bubble.style.fontSize = "13px";
-    bubble.style.fontWeight = "600";
-    bubble.style.lineHeight = "1.3";
-    bubble.style.whiteSpace = "nowrap";
-    bubble.style.boxShadow = "0 10px 25px -4px rgba(0, 0, 0, 0.35)";
-    bubble.style.pointerEvents = "none";
-    bubble.style.userSelect = "none";
-    bubble.style.opacity = "0";
-    bubble.style.transform = "translateX(8px)";
-    bubble.style.transition = "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
-    bubble.textContent = buttonLabel;
-
-    var bubbleArrow = document.createElement("div");
-    bubbleArrow.style.position = "absolute";
-    bubbleArrow.style.top = "50%";
-    bubbleArrow.style.right = "-6px";
-    bubbleArrow.style.marginTop = "-5px";
-    bubbleArrow.style.width = "0";
-    bubbleArrow.style.height = "0";
-    bubbleArrow.style.borderTop = "5px solid transparent";
-    bubbleArrow.style.borderBottom = "5px solid transparent";
-    bubbleArrow.style.borderLeft = "6px solid #0E2337";
-    bubble.appendChild(bubbleArrow);
-
     function showBubble() {
       bubble.style.opacity = "1";
       bubble.style.transform = "translateX(0)";
-      openButton.style.transform = "scale(1.08)";
+      openButton.style.transform = "scale(1.1)";
+      openButton.style.boxShadow = "0 16px 36px -4px rgba(15, 23, 42, .48), 0 6px 14px -2px rgba(15, 23, 42, .24)";
+      openButton.style.setProperty("background", color, "important");
+      openButton.style.setProperty("background-color", color, "important");
+      openButton.style.setProperty("color", buttonTextColor, "important");
+      openButton.style.border = buttonBorder;
     }
 
     function hideBubble() {
       bubble.style.opacity = "0";
       bubble.style.transform = "translateX(8px)";
       openButton.style.transform = "scale(1)";
+      openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
+      openButton.style.setProperty("background", color, "important");
+      openButton.style.setProperty("background-color", color, "important");
+      openButton.style.setProperty("color", buttonTextColor, "important");
+      openButton.style.border = buttonBorder;
     }
 
     openButton.addEventListener("mouseenter", showBubble);
@@ -270,11 +300,14 @@
     dialog.appendChild(closeButton);
     dialog.appendChild(shell);
     modal.appendChild(dialog);
-    document.body.appendChild(openButton);
+    widgetTrigger.appendChild(bubble);
+    widgetTrigger.appendChild(openButton);
+    document.body.appendChild(widgetTrigger);
     document.body.appendChild(modal);
 
     openButton.addEventListener("click", function () {
       hideBubble();
+      if (widgetTrigger) widgetTrigger.style.display = "none";
       modal.dataset.previousOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       modal.style.display = "block";

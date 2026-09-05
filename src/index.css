@@ -76,12 +76,12 @@ label:has(input[type="file"]:not(:disabled)),
   2) Controles que já possuem preenchimento recebem a cor PRIMÁRIA.
   Em ambos os casos, o texto fica branco.
 */
-button:not(:disabled):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):hover,
 input[type="button"]:not(:disabled):hover,
 input[type="submit"]:not(:disabled):hover,
 input[type="reset"]:not(:disabled):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
-[role="button"]:not([aria-disabled="true"]):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):hover {
   background-color: var(--button-outline-hover-bg) !important;
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
@@ -89,8 +89,8 @@ label:has(input[type="file"]:not(:disabled)):hover,
 }
 
 /* Botões com preenchimento via style inline do React */
-button:not(:disabled)[style*="background-color"]:hover,
-[role="button"]:not([aria-disabled="true"])[style*="background-color"]:hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn])[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[style*="background-color"]:hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg) !important;
@@ -98,13 +98,26 @@ button:not(:disabled)[style*="background-color"]:hover,
 }
 
 /* Botões com preenchimento via classes utilitárias Tailwind */
-button:not(:disabled)[class^="bg-"]:not([class*="bg-transparent"]):hover,
-button:not(:disabled)[class*=" bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botão flutuante do formulário preserva 100% da cor configurada em qualquer estado */
+[data-sol-amigo-floating-btn],
+[data-sol-amigo-floating-btn]:hover,
+[data-sol-amigo-floating-btn]:focus,
+button[data-sol-amigo-floating-btn],
+button[data-sol-amigo-floating-btn]:hover,
+button[data-sol-amigo-floating-btn]:focus {
+  background-color: var(--floating-btn-bg, inherit) !important;
+  color: var(--floating-btn-fg, inherit) !important;
+  border-color: var(--floating-btn-border, inherit) !important;
   filter: none !important;
 }
 
