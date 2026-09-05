@@ -15,7 +15,9 @@
   var appBase = new URL("./", scriptUrl).toString();
   var appOrigin = scriptUrl.origin;
   var endpoint = "https://tmdhmthlnfotfezxgxlt.supabase.co/functions/v1/capture-lead";
-  var fallbackMode = script.dataset.mode === "modal" ? "modal" : "inline";
+  var fallbackMode = script.dataset.mode === "both" ? "both"
+    : script.dataset.mode === "modal" ? "modal"
+    : "inline";
   var fallbackColor = /^#[0-9a-f]{6}$/i.test(script.dataset.color || "")
     ? script.dataset.color
     : "#0076DD";
@@ -58,9 +60,15 @@
   }
 
   function initializeWidget(publicConfig) {
-    var mode = publicConfig && publicConfig.widgetMode === "modal" ? "modal"
-      : publicConfig && publicConfig.widgetMode === "inline" ? "inline"
+    var storedMode = (publicConfig && publicConfig.themeColors && publicConfig.themeColors._widgetMode)
+      ? publicConfig.themeColors._widgetMode
+      : (publicConfig && publicConfig.widgetMode);
+
+    var mode = script.dataset.mode === "both" || storedMode === "both" ? "both"
+      : script.dataset.mode === "modal" || storedMode === "modal" ? "modal"
+      : script.dataset.mode === "inline" || storedMode === "inline" ? "inline"
       : fallbackMode;
+
     var detailedTheme = publicConfig && publicConfig.colorMode === "detailed" && publicConfig.themeColors
       ? publicConfig.themeColors
       : null;
@@ -77,310 +85,311 @@
       : fallbackButtonLabel;
     var target = findTarget();
     var hostFont = detectHostFont(target);
-    var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
-    var query = new URLSearchParams({
-      captacao: token,
-      embed: "1",
-      widget: "1",
-      site_origin: siteOrigin,
-    });
-    if (hostFont) query.set("site_font", hostFont);
-    var frameUrl = appBase + "?" + query.toString();
 
-  var frame = document.createElement("iframe");
-  frame.id = frameId;
-  frame.title = "Formulário de simulação de energia solar";
-  frame.src = frameUrl;
-  frame.loading = "lazy";
-  frame.referrerPolicy = "strict-origin-when-cross-origin";
-  frame.setAttribute("sandbox", "allow-forms allow-scripts allow-same-origin");
-  frame.setAttribute("allow", "clipboard-write");
-  frame.style.display = "block";
-  frame.style.width = "100%";
-  frame.style.height = "760px";
-  frame.style.border = "0";
-  frame.style.borderRadius = "18px";
-  frame.style.background = "transparent";
+    function createFormInstance(isModal) {
+      var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
+      var query = new URLSearchParams({
+        captacao: token,
+        embed: "1",
+        widget: "1",
+        site_origin: siteOrigin,
+      });
+      if (isModal) query.set("modal", "1");
+      if (hostFont) query.set("site_font", hostFont);
+      var frameUrl = appBase + "?" + query.toString();
 
-  var shell = document.createElement("div");
-  shell.dataset.solAmigoWidget = token;
-  shell.style.width = "100%";
-  shell.style.maxWidth = "900px";
-  shell.style.margin = "0 auto";
-  shell.appendChild(frame);
+      var frame = document.createElement("iframe");
+      frame.id = frameId;
+      frame.title = "Formulário de simulação de energia solar";
+      frame.src = frameUrl;
+      frame.loading = "lazy";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.setAttribute("sandbox", "allow-forms allow-scripts allow-same-origin");
+      frame.setAttribute("allow", "clipboard-write");
+      frame.style.display = "block";
+      frame.style.width = "100%";
+      frame.style.height = "760px";
+      frame.style.border = "0";
+      frame.style.borderRadius = "18px";
+      frame.style.background = "transparent";
 
-  var modal = null;
-  var openButton = null;
-  var widgetTrigger = null;
+      var shell = document.createElement("div");
+      shell.dataset.solAmigoWidget = token;
+      shell.style.width = "100%";
+      shell.style.maxWidth = "900px";
+      shell.style.margin = "0 auto";
+      shell.appendChild(frame);
 
-  function closeModal() {
-    if (!modal) return;
-    modal.style.display = "none";
-    document.body.style.overflow = modal.dataset.previousOverflow || "";
-    if (widgetTrigger) widgetTrigger.style.display = "flex";
-    if (openButton) openButton.focus();
-  }
-
-  if (mode === "inline") {
-    if (target) target.appendChild(shell);
-    else script.parentNode.insertBefore(shell, script.nextSibling);
-  } else {
-    var floatingLogoUrl = (publicConfig && (publicConfig.floatingButtonLogoUrl || publicConfig.logoUrl)) || script.dataset.floatingLogoUrl || "";
-    
-    widgetTrigger = document.createElement("div");
-    widgetTrigger.id = "sol-amigo-widget-trigger";
-    widgetTrigger.style.position = "fixed";
-    widgetTrigger.style.right = "24px";
-    widgetTrigger.style.bottom = "24px";
-    widgetTrigger.style.zIndex = "2147483000";
-    widgetTrigger.style.display = "flex";
-    widgetTrigger.style.alignItems = "center";
-    widgetTrigger.style.justifyContent = "flex-end";
-    widgetTrigger.style.pointerEvents = "none";
-
-    var bubble = document.createElement("div");
-    bubble.setAttribute("role", "tooltip");
-    bubble.style.position = "relative";
-    bubble.style.marginRight = "12px";
-    bubble.style.background = "#0E2337";
-    bubble.style.color = "#FFFFFF";
-    bubble.style.padding = "8px 14px";
-    bubble.style.borderRadius = "9px";
-    bubble.style.border = "none";
-    bubble.style.outline = "none";
-    bubble.style.fontFamily = hostFont || "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    bubble.style.fontSize = "13px";
-    bubble.style.fontWeight = "600";
-    bubble.style.lineHeight = "1.3";
-    bubble.style.whiteSpace = "nowrap";
-    bubble.style.boxShadow = "0 10px 25px -4px rgba(0, 0, 0, 0.4)";
-    bubble.style.pointerEvents = "none";
-    bubble.style.userSelect = "none";
-    bubble.style.opacity = "0";
-    bubble.style.transform = "translateX(8px)";
-    bubble.style.transition = "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
-    bubble.textContent = buttonLabel;
-
-    var bubbleArrow = document.createElement("div");
-    bubbleArrow.style.position = "absolute";
-    bubbleArrow.style.top = "50%";
-    bubbleArrow.style.right = "-6px";
-    bubbleArrow.style.marginTop = "-5px";
-    bubbleArrow.style.width = "0";
-    bubbleArrow.style.height = "0";
-    bubbleArrow.style.borderTop = "5px solid transparent";
-    bubbleArrow.style.borderBottom = "5px solid transparent";
-    bubbleArrow.style.borderLeft = "6px solid #0E2337";
-    bubbleArrow.style.borderRight = "none";
-    bubble.appendChild(bubbleArrow);
-
-    var buttonBorder = (buttonTextColor === "#FFFFFF")
-      ? "2.5px solid rgba(255, 255, 255, 0.9)"
-      : "2.5px solid rgba(14, 35, 55, 0.35)";
-
-    openButton = document.createElement("button");
-    openButton.type = "button";
-    openButton.setAttribute("aria-haspopup", "dialog");
-    openButton.setAttribute("aria-label", buttonLabel);
-    openButton.setAttribute("data-sol-amigo-floating-btn", "true");
-    openButton.style.position = "relative";
-    openButton.style.pointerEvents = "auto";
-    openButton.style.width = "60px";
-    openButton.style.height = "60px";
-    openButton.style.minWidth = "60px";
-    openButton.style.minHeight = "60px";
-    openButton.style.padding = "0";
-    openButton.style.border = buttonBorder;
-    openButton.style.borderRadius = "50%";
-    openButton.style.boxSizing = "border-box";
-    openButton.style.setProperty("background", color, "important");
-    openButton.style.setProperty("background-color", color, "important");
-    openButton.style.setProperty("color", buttonTextColor, "important");
-    openButton.style.display = "flex";
-    openButton.style.alignItems = "center";
-    openButton.style.justifyContent = "center";
-    openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
-    openButton.style.cursor = "pointer";
-    openButton.style.transition = "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease";
-    openButton.style.outline = "none";
-    openButton.style.overflow = "hidden";
-
-    if (floatingLogoUrl) {
-      var logoImg = document.createElement("img");
-      logoImg.src = floatingLogoUrl;
-      logoImg.alt = publicConfig && publicConfig.companyName ? publicConfig.companyName : "Logotipo";
-      logoImg.style.maxWidth = "66%";
-      logoImg.style.maxHeight = "66%";
-      logoImg.style.objectFit = "contain";
-      logoImg.style.display = "block";
-      logoImg.style.pointerEvents = "none";
-      logoImg.style.userSelect = "none";
-      openButton.appendChild(logoImg);
-    } else {
-      var sunSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      sunSvg.setAttribute("viewBox", "0 0 24 24");
-      sunSvg.setAttribute("width", "28");
-      sunSvg.setAttribute("height", "28");
-      sunSvg.setAttribute("fill", "none");
-      sunSvg.setAttribute("stroke", "currentColor");
-      sunSvg.setAttribute("stroke-width", "2");
-      sunSvg.setAttribute("stroke-linecap", "round");
-      sunSvg.setAttribute("stroke-linejoin", "round");
-      sunSvg.style.display = "block";
-      sunSvg.style.pointerEvents = "none";
-      sunSvg.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>';
-      openButton.appendChild(sunSvg);
+      return { frame: frame, shell: shell };
     }
 
-    function showBubble() {
-      bubble.style.opacity = "1";
-      bubble.style.transform = "translateX(0)";
-      openButton.style.transform = "scale(1.1)";
-      openButton.style.boxShadow = "0 16px 36px -4px rgba(15, 23, 42, .48), 0 6px 14px -2px rgba(15, 23, 42, .24)";
-      openButton.style.setProperty("background", color, "important");
-      openButton.style.setProperty("background-color", color, "important");
-      openButton.style.setProperty("color", buttonTextColor, "important");
-      openButton.style.border = buttonBorder;
+    var shouldMountInline = (mode === "inline" || mode === "both");
+    var shouldMountModal = (mode === "modal" || mode === "both");
+
+    var inlineFrame = null;
+    var modalFrame = null;
+    var modal = null;
+    var openButton = null;
+    var widgetTrigger = null;
+
+    function closeModal() {
+      if (!modal) return;
+      modal.style.display = "none";
+      document.body.style.overflow = modal.dataset.previousOverflow || "";
+      if (widgetTrigger) widgetTrigger.style.display = "flex";
+      if (openButton) openButton.focus();
     }
 
-    function hideBubble() {
+    if (shouldMountInline) {
+      var inlineInstance = createFormInstance(false);
+      inlineFrame = inlineInstance.frame;
+      if (target) target.appendChild(inlineInstance.shell);
+      else script.parentNode.insertBefore(inlineInstance.shell, script.nextSibling);
+    }
+
+    if (shouldMountModal) {
+      var modalInstance = createFormInstance(true);
+      modalFrame = modalInstance.frame;
+      var floatingLogoUrl = (publicConfig && (publicConfig.floatingButtonLogoUrl || publicConfig.logoUrl)) || script.dataset.floatingLogoUrl || "";
+
+      widgetTrigger = document.createElement("div");
+      widgetTrigger.id = "sol-amigo-widget-trigger";
+      widgetTrigger.style.position = "fixed";
+      widgetTrigger.style.right = "24px";
+      widgetTrigger.style.bottom = "24px";
+      widgetTrigger.style.zIndex = "2147483000";
+      widgetTrigger.style.display = "flex";
+      widgetTrigger.style.alignItems = "center";
+      widgetTrigger.style.justifyContent = "flex-end";
+      widgetTrigger.style.pointerEvents = "none";
+
+      var bubble = document.createElement("div");
+      bubble.setAttribute("role", "tooltip");
+      bubble.style.position = "relative";
+      bubble.style.marginRight = "12px";
+      bubble.style.background = "#0E2337";
+      bubble.style.color = "#FFFFFF";
+      bubble.style.padding = "8px 14px";
+      bubble.style.borderRadius = "9px";
+      bubble.style.border = "none";
+      bubble.style.outline = "none";
+      bubble.style.fontFamily = hostFont || "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      bubble.style.fontSize = "13px";
+      bubble.style.fontWeight = "600";
+      bubble.style.lineHeight = "1.3";
+      bubble.style.whiteSpace = "nowrap";
+      bubble.style.boxShadow = "0 10px 25px -4px rgba(0, 0, 0, 0.4)";
+      bubble.style.pointerEvents = "none";
+      bubble.style.userSelect = "none";
       bubble.style.opacity = "0";
       bubble.style.transform = "translateX(8px)";
-      openButton.style.transform = "scale(1)";
-      openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
+      bubble.style.transition = "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+      bubble.textContent = buttonLabel;
+
+      var bubbleArrow = document.createElement("div");
+      bubbleArrow.style.position = "absolute";
+      bubbleArrow.style.right = "-6px";
+      bubbleArrow.style.top = "50%";
+      bubbleArrow.style.transform = "translateY(-50%)";
+      bubbleArrow.style.width = "0";
+      bubbleArrow.style.height = "0";
+      bubbleArrow.style.borderTop = "5px solid transparent";
+      bubbleArrow.style.borderBottom = "5px solid transparent";
+      bubbleArrow.style.borderLeft = "6px solid #0E2337";
+      bubble.appendChild(bubbleArrow);
+
+      var buttonBorder = (buttonTextColor === "#FFFFFF" || buttonTextColor.toLowerCase() === "#fff")
+        ? "2.5px solid rgba(255, 255, 255, 0.9)"
+        : "2.5px solid rgba(14, 35, 55, 0.35)";
+
+      openButton = document.createElement("button");
+      openButton.type = "button";
+      openButton.setAttribute("data-sol-amigo-floating-btn", "true");
+      openButton.setAttribute("aria-label", buttonLabel);
+      openButton.style.position = "relative";
+      openButton.style.display = "flex";
+      openButton.style.alignItems = "center";
+      openButton.style.justifyContent = "center";
+      openButton.style.width = "56px";
+      openButton.style.height = "56px";
+      openButton.style.borderRadius = "50%";
       openButton.style.setProperty("background", color, "important");
       openButton.style.setProperty("background-color", color, "important");
       openButton.style.setProperty("color", buttonTextColor, "important");
       openButton.style.border = buttonBorder;
-    }
+      openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
+      openButton.style.cursor = "pointer";
+      openButton.style.outline = "none";
+      openButton.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease";
+      openButton.style.pointerEvents = "auto";
 
-    openButton.addEventListener("mouseenter", showBubble);
-    openButton.addEventListener("mouseleave", hideBubble);
-    openButton.addEventListener("focus", showBubble);
-    openButton.addEventListener("blur", hideBubble);
-
-    modal = document.createElement("div");
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-label", "Simulação de energia solar");
-    modal.style.display = "none";
-    modal.style.position = "fixed";
-    modal.style.inset = "0";
-    modal.style.zIndex = "2147483001";
-    modal.style.padding = "20px";
-    modal.style.background = "rgba(14, 35, 55, .72)";
-    modal.style.backdropFilter = "blur(5px)";
-    modal.style.overflowY = "auto";
-
-    var dialog = document.createElement("div");
-    dialog.style.position = "relative";
-    dialog.style.width = "min(900px, 100%)";
-    dialog.style.margin = "20px auto";
-
-    var closeButton = document.createElement("button");
-    closeButton.type = "button";
-    closeButton.textContent = "×";
-    closeButton.setAttribute("aria-label", "Fechar formulário");
-    closeButton.style.position = "absolute";
-    closeButton.style.top = "10px";
-    closeButton.style.right = "12px";
-    closeButton.style.zIndex = "2";
-    closeButton.style.width = "36px";
-    closeButton.style.height = "36px";
-    closeButton.style.border = "0";
-    closeButton.style.borderRadius = "50%";
-    closeButton.style.background = "rgba(14, 35, 55, .9)";
-    closeButton.style.color = "#fff";
-    closeButton.style.fontFamily = hostFont || "ui-sans-serif, system-ui, sans-serif";
-    closeButton.style.fontSize = "25px";
-    closeButton.style.fontWeight = "400";
-    closeButton.style.lineHeight = "1";
-    closeButton.style.cursor = "pointer";
-
-    dialog.appendChild(closeButton);
-    dialog.appendChild(shell);
-    modal.appendChild(dialog);
-    widgetTrigger.appendChild(bubble);
-    widgetTrigger.appendChild(openButton);
-    document.body.appendChild(widgetTrigger);
-    document.body.appendChild(modal);
-
-    openButton.addEventListener("click", function () {
-      hideBubble();
-      if (widgetTrigger) widgetTrigger.style.display = "none";
-      modal.dataset.previousOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      modal.style.display = "block";
-      closeButton.focus();
-    });
-    closeButton.addEventListener("click", closeModal);
-    modal.addEventListener("click", function (event) {
-      if (event.target === modal) closeModal();
-    });
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && modal.style.display !== "none") closeModal();
-    });
-  }
-
-  function utmContext() {
-    var params = new URLSearchParams(window.location.search);
-    return {
-      utmSource: params.get("utm_source"),
-      utmMedium: params.get("utm_medium"),
-      utmCampaign: params.get("utm_campaign"),
-      utmContent: params.get("utm_content"),
-      utmTerm: params.get("utm_term"),
-    };
-  }
-
-  window.addEventListener("message", function (event) {
-    if (event.origin !== appOrigin || event.source !== frame.contentWindow) return;
-    var message = event.data;
-    if (!message || typeof message !== "object") return;
-
-    if (message.type === "sol-amigo:resize") {
-      var requestedHeight = Number(message.height);
-      if (Number.isFinite(requestedHeight)) {
-        frame.style.height = Math.max(240, Math.min(1400, Math.ceil(requestedHeight))) + "px";
+      if (floatingLogoUrl) {
+        var logoImg = document.createElement("img");
+        logoImg.src = floatingLogoUrl;
+        logoImg.alt = publicConfig && publicConfig.companyName ? publicConfig.companyName : "Logotipo";
+        logoImg.style.maxWidth = "66%";
+        logoImg.style.maxHeight = "66%";
+        logoImg.style.objectFit = "contain";
+        logoImg.style.display = "block";
+        logoImg.style.pointerEvents = "none";
+        logoImg.style.userSelect = "none";
+        openButton.appendChild(logoImg);
+      } else {
+        var sunSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        sunSvg.setAttribute("viewBox", "0 0 24 24");
+        sunSvg.setAttribute("width", "28");
+        sunSvg.setAttribute("height", "28");
+        sunSvg.setAttribute("fill", "none");
+        sunSvg.setAttribute("stroke", "currentColor");
+        sunSvg.setAttribute("stroke-width", "2");
+        sunSvg.setAttribute("stroke-linecap", "round");
+        sunSvg.setAttribute("stroke-linejoin", "round");
+        sunSvg.style.display = "block";
+        sunSvg.style.pointerEvents = "none";
+        sunSvg.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>';
+        openButton.appendChild(sunSvg);
       }
-      return;
+
+      function showBubble() {
+        bubble.style.opacity = "1";
+        bubble.style.transform = "translateX(0)";
+        openButton.style.transform = "scale(1.1)";
+        openButton.style.boxShadow = "0 16px 36px -4px rgba(15, 23, 42, .48), 0 6px 14px -2px rgba(15, 23, 42, .24)";
+        openButton.style.setProperty("background", color, "important");
+        openButton.style.setProperty("background-color", color, "important");
+        openButton.style.setProperty("color", buttonTextColor, "important");
+        openButton.style.border = buttonBorder;
+      }
+
+      function hideBubble() {
+        bubble.style.opacity = "0";
+        bubble.style.transform = "translateX(8px)";
+        openButton.style.transform = "scale(1)";
+        openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
+        openButton.style.setProperty("background", color, "important");
+        openButton.style.setProperty("background-color", color, "important");
+        openButton.style.setProperty("color", buttonTextColor, "important");
+        openButton.style.border = buttonBorder;
+      }
+
+      openButton.addEventListener("mouseenter", showBubble);
+      openButton.addEventListener("mouseleave", hideBubble);
+      openButton.addEventListener("focus", showBubble);
+      openButton.addEventListener("blur", hideBubble);
+
+      modal = document.createElement("div");
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
+      modal.setAttribute("aria-label", "Simulação de energia solar");
+      modal.style.display = "none";
+      modal.style.position = "fixed";
+      modal.style.inset = "0";
+      modal.style.zIndex = "2147483001";
+      modal.style.padding = "20px";
+      modal.style.background = "rgba(14, 35, 55, .72)";
+      modal.style.backdropFilter = "blur(5px)";
+      modal.style.overflowY = "auto";
+
+      var dialog = document.createElement("div");
+      dialog.style.position = "relative";
+      dialog.style.width = "min(900px, 100%)";
+      dialog.style.margin = "20px auto";
+
+      dialog.appendChild(modalInstance.shell);
+      modal.appendChild(dialog);
+      widgetTrigger.appendChild(bubble);
+      widgetTrigger.appendChild(openButton);
+      document.body.appendChild(widgetTrigger);
+      document.body.appendChild(modal);
+
+      openButton.addEventListener("click", function () {
+        hideBubble();
+        if (widgetTrigger) widgetTrigger.style.display = "none";
+        modal.dataset.previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        modal.style.display = "block";
+      });
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) closeModal();
+      });
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && modal.style.display !== "none") closeModal();
+      });
     }
 
-    if (message.type !== "sol-amigo:submit" || message.formToken !== token) return;
-    var payload = message.payload && typeof message.payload === "object" ? message.payload : {};
+    function utmContext() {
+      var params = new URLSearchParams(window.location.search);
+      return {
+        utmSource: params.get("utm_source"),
+        utmMedium: params.get("utm_medium"),
+        utmCampaign: params.get("utm_campaign"),
+        utmContent: params.get("utm_content"),
+        utmTerm: params.get("utm_term"),
+      };
+    }
 
-    fetch(endpoint, {
-      method: "POST",
-      credentials: "omit",
-      referrerPolicy: "strict-origin-when-cross-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.assign({}, payload, utmContext(), {
-        formToken: token,
-        siteOrigin: siteOrigin,
-        landingPage: window.location.href.slice(0, 500),
-        source: "Formulário integrado no site",
-      })),
-    })
-      .then(function (response) {
-        return response.json().catch(function () { return {}; }).then(function (body) {
-          return { ok: response.ok, body: body };
+    window.addEventListener("message", function (event) {
+      if (event.origin !== appOrigin) return;
+      var isInline = inlineFrame && event.source === inlineFrame.contentWindow;
+      var isModal = modalFrame && event.source === modalFrame.contentWindow;
+      if (!isInline && !isModal) return;
+
+      var currentFrame = isInline ? inlineFrame : modalFrame;
+      var message = event.data;
+      if (!message || typeof message !== "object") return;
+
+      if (message.type === "sol-amigo:resize") {
+        var requestedHeight = Number(message.height);
+        if (Number.isFinite(requestedHeight) && currentFrame) {
+          currentFrame.style.height = Math.max(240, Math.min(1400, Math.ceil(requestedHeight))) + "px";
+        }
+        return;
+      }
+
+      if (message.type === "sol-amigo:close") {
+        closeModal();
+        return;
+      }
+
+      if (message.type !== "sol-amigo:submit" || message.formToken !== token) return;
+      var payload = message.payload && typeof message.payload === "object" ? message.payload : {};
+
+      fetch(endpoint, {
+        method: "POST",
+        credentials: "omit",
+        referrerPolicy: "strict-origin-when-cross-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, payload, utmContext(), {
+          formToken: token,
+          siteOrigin: siteOrigin,
+          landingPage: window.location.href.slice(0, 500),
+          source: isModal ? "Botão flutuante integrado no site" : "Formulário incorporado no site",
+        })),
+      })
+        .then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (body) {
+            return { ok: response.ok, body: body };
+          });
+        })
+        .then(function (result) {
+          if (event.source && typeof event.source.postMessage === "function") {
+            event.source.postMessage({
+              type: "sol-amigo:result",
+              success: result.ok && result.body.success === true,
+              error: result.ok ? null : (result.body.error || "Não foi possível enviar seus dados."),
+            }, appOrigin);
+          }
+        })
+        .catch(function () {
+          if (event.source && typeof event.source.postMessage === "function") {
+            event.source.postMessage({
+              type: "sol-amigo:result",
+              success: false,
+              error: "Não foi possível conectar ao formulário. Tente novamente.",
+            }, appOrigin);
+          }
         });
-      })
-      .then(function (result) {
-        frame.contentWindow.postMessage({
-          type: "sol-amigo:result",
-          success: result.ok && result.body.success === true,
-          error: result.ok ? null : (result.body.error || "Não foi possível enviar seus dados."),
-        }, appOrigin);
-      })
-      .catch(function () {
-        frame.contentWindow.postMessage({
-          type: "sol-amigo:result",
-          success: false,
-          error: "Não foi possível conectar ao formulário. Tente novamente.",
-        }, appOrigin);
-      });
-  });
+    });
   }
 
   var configUrl = new URL(endpoint);

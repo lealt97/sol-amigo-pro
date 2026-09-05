@@ -79,6 +79,9 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
   const floatingButtonLogoUrl = typeof rawThemeColors._floatingButtonLogoUrl === 'string'
     ? rawThemeColors._floatingButtonLogoUrl
     : (row.logo_url ?? '');
+  const storedWidgetMode = (rawThemeColors._widgetMode as WebsiteFormSettings['widgetMode'])
+    || (row.widget_mode as WebsiteFormSettings['widgetMode'])
+    || 'inline';
 
   return {
     id: row.id,
@@ -88,7 +91,7 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
     widgetEnabled: row.widget_enabled,
     allowedOrigins: row.allowed_origins ?? [],
     serviceStates: row.service_states ?? [],
-    widgetMode: row.widget_mode,
+    widgetMode: storedWidgetMode,
     companyName: row.company_name,
     logoUrl: row.logo_url ?? '',
     floatingButtonLogoUrl,
@@ -133,14 +136,17 @@ const toUpdate = (settings: WebsiteFormSettings) => {
     ...settings.themeColors,
     _success: fullPayload,
     _floatingButtonLogoUrl: settings.floatingButtonLogoUrl ?? '',
+    _widgetMode: settings.widgetMode,
   };
+
+  const dbWidgetMode = settings.widgetMode === 'both' ? 'modal' : settings.widgetMode;
 
   return {
     active: settings.active,
     widget_enabled: settings.widgetEnabled,
     allowed_origins: settings.allowedOrigins,
     service_states: settings.serviceStates,
-    widget_mode: settings.widgetMode,
+    widget_mode: dbWidgetMode,
     company_name: settings.companyName.trim(),
     logo_url: settings.logoUrl.trim() || null,
     side_image_url: settings.sideImageUrls[0] ?? null,

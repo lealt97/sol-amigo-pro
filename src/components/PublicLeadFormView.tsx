@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -7,6 +7,7 @@ import {
   Loader2,
   LockKeyhole,
   MessageCircle,
+  X,
   Zap,
 } from 'lucide-react';
 import { SUPABASE_URL, supabase } from '../lib/supabase';
@@ -146,10 +147,36 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
       utmTerm: params.get('utm_term'),
       embedded: params.get('embed') === '1',
       widget: params.get('widget') === '1',
+      modal: params.get('modal') === '1',
       siteOrigin: params.get('site_origin'),
       siteFont: normalizeSiteFont(params.get('site_font')),
     };
   }, []);
+
+  const handleCloseWidget = useCallback(() => {
+    if (window.parent !== window) {
+      let hostOrigin = '*';
+      if (queryContext.siteOrigin) {
+        try {
+          hostOrigin = new URL(queryContext.siteOrigin).origin;
+        } catch {
+          // fallback
+        }
+      }
+      window.parent.postMessage({ type: 'sol-amigo:close', formToken }, hostOrigin);
+    }
+  }, [formToken, queryContext.siteOrigin]);
+
+  useEffect(() => {
+    if (!queryContext.modal && !queryContext.widget) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseWidget();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [queryContext.modal, queryContext.widget, handleCloseWidget]);
   const resolvedTheme = useMemo(() => resolveFormTheme(config), [config]);
   const successTint = useMemo(
     () => mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12),
@@ -382,7 +409,28 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   if (configError) {
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`flex items-center justify-center px-4 ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen'}`} style={formThemeStyle}>
-        <div className="max-w-md rounded-2xl border p-7 text-center shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
+        <div className="relative max-w-md rounded-2xl border p-7 text-center shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
+          {queryContext.modal && (
+            <button
+              type="button"
+              onClick={handleCloseWidget}
+              data-sol-amigo-close-btn
+              aria-label="Fechar formulário"
+              className="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer shadow-sm focus:outline-none"
+              style={{
+                borderColor: resolvedTheme.inputBorder,
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                backgroundColor: resolvedTheme.cardBackground,
+                color: resolvedTheme.bodyText,
+                '--close-btn-bg': resolvedTheme.cardBackground,
+                '--close-btn-fg': resolvedTheme.bodyText,
+                '--close-btn-border': resolvedTheme.inputBorder,
+              } as React.CSSProperties}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
           <AlertTriangle className="mx-auto h-8 w-8" style={{ color: resolvedTheme.errorAccent }} />
           <h1 className="mt-4 text-xl font-extrabold">Formulário indisponível</h1>
           <p className="mt-2 text-sm leading-6" style={{ color: resolvedTheme.mutedText }}>{configError}</p>
@@ -395,7 +443,28 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4`} style={formThemeStyle}>
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
-          <section className="w-full rounded-3xl border p-7 text-center shadow-xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, borderColor: resolvedTheme.inputBorder, color: resolvedTheme.bodyText }}>
+          <section className="relative w-full rounded-3xl border p-7 text-center shadow-xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, borderColor: resolvedTheme.inputBorder, color: resolvedTheme.bodyText }}>
+            {queryContext.modal && (
+              <button
+                type="button"
+                onClick={handleCloseWidget}
+                data-sol-amigo-close-btn
+                aria-label="Fechar formulário"
+                className="absolute top-4 right-4 sm:top-5 sm:right-6 z-20 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer shadow-sm focus:outline-none"
+                style={{
+                  borderColor: resolvedTheme.inputBorder,
+                  borderWidth: '1.5px',
+                  borderStyle: 'solid',
+                  backgroundColor: resolvedTheme.successBackground,
+                  color: resolvedTheme.bodyText,
+                  '--close-btn-bg': resolvedTheme.successBackground,
+                  '--close-btn-fg': resolvedTheme.bodyText,
+                  '--close-btn-border': resolvedTheme.inputBorder,
+                } as React.CSSProperties}
+              >
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            )}
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.successAccent }}>
               <CheckCircle2 className="h-9 w-9" />
             </div>
@@ -449,10 +518,33 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
       >
         <section className={`w-full ${config.sideImageUrls.length ? 'max-w-6xl' : 'max-w-2xl'}`}>
             <div className="overflow-hidden rounded-3xl border shadow-xl shadow-slate-900/5" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
-              <div className="p-5 sm:p-7 lg:px-9 lg:py-8" style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}>
-                {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span>}
-                <h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
-                <p className="mt-2 text-sm leading-5" style={{ color: resolvedTheme.headerMutedText }}>{config.subheadline}</p>
+              <div className="relative p-5 sm:p-7 lg:px-9 lg:py-8" style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}>
+                {queryContext.modal && (
+                  <button
+                    type="button"
+                    onClick={handleCloseWidget}
+                    data-sol-amigo-close-btn
+                    aria-label="Fechar formulário"
+                    className="absolute top-4 right-4 sm:top-5 sm:right-6 md:top-6 md:right-8 z-20 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer shadow-sm focus:outline-none"
+                    style={{
+                      borderColor: resolvedTheme.inputBorder,
+                      borderWidth: '1.5px',
+                      borderStyle: 'solid',
+                      backgroundColor: resolvedTheme.headerBackground,
+                      color: resolvedTheme.headerText,
+                      '--close-btn-bg': resolvedTheme.headerBackground,
+                      '--close-btn-fg': resolvedTheme.headerText,
+                      '--close-btn-border': resolvedTheme.inputBorder,
+                    } as React.CSSProperties}
+                  >
+                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                )}
+                <div className={queryContext.modal ? 'pr-10 sm:pr-12 md:pr-14' : ''}>
+                  {config.logoUrl ? <img src={config.logoUrl} alt={config.companyName} className="h-10 max-w-[190px] object-contain object-left" referrerPolicy="no-referrer" /> : <span className="text-xs font-extrabold uppercase tracking-[.1em]">{config.companyName}</span>}
+                  <h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-[-0.025em]">{config.headline}</h1>
+                  <p className="mt-2 text-sm leading-5" style={{ color: resolvedTheme.headerMutedText }}>{config.subheadline}</p>
+                </div>
               </div>
 
               <div className={config.sideImageUrls.length ? 'lg:grid lg:grid-cols-[minmax(260px,0.78fr)_minmax(0,1.22fr)]' : ''}>

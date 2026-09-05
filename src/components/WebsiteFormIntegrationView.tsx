@@ -3,7 +3,7 @@ import {
   AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
   Eye, EyeOff, Globe2, GripHorizontal, Image, KeyRound, Laptop, Loader2, MapPin, Maximize2, MessageCircle,
   Minimize2, MonitorSmartphone, MousePointerClick, Palette, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
-  Smartphone, Sun, Trash2, Type, X,
+  Smartphone, Sparkles, Sun, Trash2, Type, X,
 } from 'lucide-react';
 import type { FormColorMode, FormThemeColors, ThemeConfig, WebsiteFormSettings } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
@@ -218,14 +218,46 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     : '';
   const installCode = useMemo(() => {
     if (!draft) return '';
+    const activeLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
+    const logoAttr = activeLogo ? ` data-floating-logo-url="${activeLogo}"` : '';
+    const buttonLabelAttr = draft.submitLabel ? ` data-button-label="${draft.submitLabel.replace(/"/g, '&quot;')}"` : '';
+
+    if (draft.widgetMode === 'both') {
+      return `<!-- 1. Bloco onde o formulário será incorporado na página -->\n<div id="sol-amigo-formulario"></div>\n\n<!-- 2. Script para ativar o formulário e o botão flutuante juntos -->\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="both" data-target="#sol-amigo-formulario"${buttonLabelAttr}${logoAttr}></script>`;
+    }
     if (draft.widgetMode === 'modal') {
-      const activeLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
-      const logoAttr = activeLogo ? ` data-floating-logo-url="${activeLogo}"` : '';
-      const buttonLabelAttr = draft.submitLabel ? ` data-button-label="${draft.submitLabel.replace(/"/g, '&quot;')}"` : '';
       return `<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="modal"${buttonLabelAttr}${logoAttr}></script>`;
     }
     return `<div id="sol-amigo-formulario"></div>\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-target="#sol-amigo-formulario"></script>`;
   }, [draft]);
+
+  const hasInline = draft ? (draft.widgetMode === 'inline' || draft.widgetMode === 'both') : true;
+  const hasButton = draft ? (draft.widgetMode === 'modal' || draft.widgetMode === 'both') : false;
+
+  const toggleWidgetOption = (option: 'inline' | 'modal') => {
+    if (!draft) return;
+    if (option === 'inline') {
+      if (hasInline) {
+        if (!hasButton) {
+          onShowToast('Mantenha ao menos uma opção marcada.');
+          return;
+        }
+        setField('widgetMode', 'modal');
+      } else {
+        setField('widgetMode', hasButton ? 'both' : 'inline');
+      }
+    } else {
+      if (hasButton) {
+        if (!hasInline) {
+          onShowToast('Mantenha ao menos uma opção marcada.');
+          return;
+        }
+        setField('widgetMode', 'inline');
+      } else {
+        setField('widgetMode', hasInline ? 'both' : 'modal');
+      }
+    }
+  };
 
   const setField = <K extends keyof WebsiteFormSettings>(key: K, value: WebsiteFormSettings[K]) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
@@ -402,7 +434,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         const response = await fetch(url, { method: 'GET', credentials: 'omit', cache: 'no-store' });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(`${origin}: ${body.error || 'conexão recusada'}`);
-        if (!['inline', 'modal'].includes(body.widgetMode) || !body.primaryColor || !body.themeColors) {
+        if (!['inline', 'modal', 'both'].includes(body.widgetMode) || !body.primaryColor || !body.themeColors) {
           throw new Error(`${origin}: a configuração pública está incompleta.`);
         }
       }));
@@ -740,7 +772,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               </div>
             ) : (
               <>
-                {draft.widgetMode === 'modal' && (() => {
+                {hasButton && (() => {
                   const effectiveFloatingLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
                   return (
                     <div
@@ -758,7 +790,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                             style={{ backgroundColor: resolvedTheme.progressActive || theme.secondary }}
                           />
                           <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
-                            Exemplo no site (botão flutuante redondo)
+                            {draft.widgetMode === 'both'
+                              ? 'Exemplo no site (botão flutuante ativo junto com o formulário)'
+                              : 'Exemplo no site (botão flutuante redondo)'}
                           </p>
                         </div>
                         <span className="text-[10px] font-medium opacity-65 flex items-center gap-1">
@@ -852,29 +886,44 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     style={{ backgroundColor: resolvedTheme.cardBackground }}
                   >
                     <div
-                      className="p-3.5"
+                      className="relative p-3.5"
                       style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}
                     >
-                      {draft.logoUrl ? (
-                        <img
-                          src={draft.logoUrl}
-                          alt="Logotipo configurado"
-                          draggable={false}
-                          className="mb-2.5 h-7 max-w-[160px] object-contain object-left select-none pointer-events-none"
-                        />
-                      ) : (
-                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
-                          {draft.companyName || 'Sua Empresa Solar'}
-                        </p>
+                      {(draft.widgetMode === 'modal' || draft.widgetMode === 'both') && (
+                        <div
+                          className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm select-none"
+                          style={{
+                            borderColor: resolvedTheme.inputBorder,
+                            backgroundColor: resolvedTheme.headerBackground,
+                            color: resolvedTheme.headerText,
+                          }}
+                          title={draft.widgetMode === 'both' ? 'Botão de fechar (quando aberto via botão flutuante no modal)' : 'Botão de fechar'}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </div>
                       )}
-                      <h3 className="text-base font-extrabold leading-tight">
-                        {draft.headline || 'Simule sua economia de energia solar'}
-                      </h3>
-                      {draft.subheadline && (
-                        <p className="mt-1 text-[10px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>
-                          {draft.subheadline}
-                        </p>
-                      )}
+                      <div className={(draft.widgetMode === 'modal' || draft.widgetMode === 'both') ? 'pr-7' : ''}>
+                        {draft.logoUrl ? (
+                          <img
+                            src={draft.logoUrl}
+                            alt="Logotipo configurado"
+                            draggable={false}
+                            className="mb-2.5 h-7 max-w-[160px] object-contain object-left select-none pointer-events-none"
+                          />
+                        ) : (
+                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
+                            {draft.companyName || 'Sua Empresa Solar'}
+                          </p>
+                        )}
+                        <h3 className="text-base font-extrabold leading-tight">
+                          {draft.headline || 'Simule sua economia de energia solar'}
+                        </h3>
+                        {draft.subheadline && (
+                          <p className="mt-1 text-[10px] leading-4" style={{ color: resolvedTheme.headerMutedText }}>
+                            {draft.subheadline}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div
@@ -1009,19 +1058,138 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     </span>
                   )) : <span className="text-xs opacity-55">Nenhum domínio autorizado.</span>}
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {([
-                    ['inline', 'Dentro da página', 'Ocupa um bloco da página.'],
-                    ['modal', 'Botão flutuante', 'Abre sobre a página.'],
-                  ] as const).map(([mode, label, description]) => (
-                    <button key={mode} type="button" onClick={() => setField('widgetMode', mode)} className="rounded-xl border p-4 text-left" style={{ borderColor: draft.widgetMode === mode ? theme.secondary : theme.border, boxShadow: draft.widgetMode === mode ? `0 0 0 2px ${theme.secondary}25` : undefined }}>
-                      <span className="flex items-center justify-between gap-2 text-sm font-bold">{label}{draft.widgetMode === mode && <Check className="h-4 w-4" style={{ color: theme.accent }} />}</span>
-                      <span className="mt-1 block text-xs opacity-60">{description}</span>
-                    </button>
-                  ))}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Modo de exibição no site (caixas de seleção)
+                    </span>
+                    <span className="text-[11px] font-medium opacity-75">
+                      {draft.widgetMode === 'both'
+                        ? '✨ Ambos ativos (formulário + botão flutuante)'
+                        : draft.widgetMode === 'inline'
+                        ? '📄 Apenas formulário na página ativo'
+                        : '🔘 Apenas botão flutuante ativo'}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed opacity-65">
+                    Marque as caixas abaixo para ativar o formulário no seu site. Você pode marcar ambas para funcionarem juntas simultaneamente, ou apenas uma das duas:
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2 pt-1">
+                    {/* Opção 1: Formulário incorporado na página */}
+                    <div
+                      role="checkbox"
+                      aria-checked={hasInline}
+                      tabIndex={0}
+                      onClick={() => toggleWidgetOption('inline')}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          toggleWidgetOption('inline');
+                        }
+                      }}
+                      className="group relative flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5 select-none"
+                      style={{
+                        borderColor: hasInline ? theme.secondary : theme.border,
+                        boxShadow: hasInline ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                        backgroundColor: hasInline ? `${theme.secondary}08` : undefined,
+                      }}
+                    >
+                      <div
+                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors"
+                        style={{
+                          borderColor: hasInline ? theme.secondary : theme.border,
+                          backgroundColor: hasInline ? theme.secondary : 'transparent',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {hasInline && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold">Formulário na página</span>
+                          <span
+                            className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                            style={{
+                              backgroundColor: hasInline ? `${theme.secondary}20` : `${theme.text}10`,
+                              color: hasInline ? theme.secondary : undefined,
+                            }}
+                          >
+                            Incorporado
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed opacity-65">
+                          Ocupa um bloco fixo dentro do layout da página do seu site.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Opção 2: Botão flutuante */}
+                    <div
+                      role="checkbox"
+                      aria-checked={hasButton}
+                      tabIndex={0}
+                      onClick={() => toggleWidgetOption('modal')}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          toggleWidgetOption('modal');
+                        }
+                      }}
+                      className="group relative flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5 select-none"
+                      style={{
+                        borderColor: hasButton ? theme.secondary : theme.border,
+                        boxShadow: hasButton ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                        backgroundColor: hasButton ? `${theme.secondary}08` : undefined,
+                      }}
+                    >
+                      <div
+                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors"
+                        style={{
+                          borderColor: hasButton ? theme.secondary : theme.border,
+                          backgroundColor: hasButton ? theme.secondary : 'transparent',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {hasButton && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold">Botão flutuante</span>
+                          <span
+                            className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                            style={{
+                              backgroundColor: hasButton ? `${theme.secondary}20` : `${theme.text}10`,
+                              color: hasButton ? theme.secondary : undefined,
+                            }}
+                          >
+                            Modal / Balão
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed opacity-65">
+                          Botão redondo fixo no canto inferior com balão interativo que abre sobre a página.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {draft.widgetMode === 'both' && (
+                    <div
+                      className="flex items-center gap-2.5 rounded-lg border px-3.5 py-2 text-xs"
+                      style={{
+                        borderColor: `${theme.secondary}40`,
+                        backgroundColor: `${theme.secondary}12`,
+                        color: theme.text,
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4 shrink-0" style={{ color: theme.secondary }} />
+                      <span>
+                        <strong>Ambos ativos:</strong> o visitante do seu site pode interagir tanto com o formulário embutido na página quanto com o botão flutuante no canto da tela!
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {draft.widgetMode === 'modal' && (
+                {hasButton && (
                   <div
                     className="rounded-2xl border p-4 sm:p-5 space-y-3.5"
                     style={{ borderColor: theme.border, backgroundColor: `${theme.primary}0D` }}
@@ -1279,8 +1447,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Texto de apoio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.subheadline} maxLength={240} onChange={(event) => setField('subheadline', event.target.value)} /></label>
                   <label>
                     <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold">
-                      <span>Texto do botão {draft.widgetMode === 'modal' ? '/ balão flutuante' : ''}</span>
-                      {draft.widgetMode === 'modal' && (
+                      <span>Texto do botão {hasButton ? '/ balão flutuante' : ''}</span>
+                      {hasButton && (
                         <span className="text-[10px] font-semibold text-emerald-400">
                           Exibido no balãozinho ao pairar
                         </span>
@@ -1293,7 +1461,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       placeholder="Simular economia solar"
                       onChange={(event) => setField('submitLabel', event.target.value)}
                     />
-                    {draft.widgetMode === 'modal' && (
+                    {hasButton && (
                       <span className="mt-1 block text-[10px] leading-4 opacity-60">
                         Ao pairar o mouse no botão redondo flutuante no site, este texto aparece dentro do balãozinho.
                       </span>

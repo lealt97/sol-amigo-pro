@@ -238,7 +238,7 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   widgetEnabled: boolean;
   allowedOrigins: string[];
   serviceStates: string[];
-  widgetMode: 'inline' | 'modal';
+  widgetMode: 'inline' | 'modal' | 'both';
   companyName: string;
   logoUrl: string;
   floatingButtonLogoUrl?: string;

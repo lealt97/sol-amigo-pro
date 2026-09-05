@@ -76,12 +76,12 @@ label:has(input[type="file"]:not(:disabled)),
   2) Controles que já possuem preenchimento recebem a cor PRIMÁRIA.
   Em ambos os casos, o texto fica branco.
 */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover,
 input[type="button"]:not(:disabled):hover,
 input[type="submit"]:not(:disabled):hover,
 input[type="reset"]:not(:disabled):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover {
   background-color: var(--button-outline-hover-bg) !important;
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
@@ -89,8 +89,8 @@ label:has(input[type="file"]:not(:disabled)):hover,
 }
 
 /* Botões com preenchimento via style inline do React */
-button:not(:disabled):not([data-sol-amigo-floating-btn])[style*="background-color"]:hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[style*="background-color"]:hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[style*="background-color"]:hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg) !important;
@@ -98,10 +98,10 @@ button:not(:disabled):not([data-sol-amigo-floating-btn])[style*="background-colo
 }
 
 /* Botões com preenchimento via classes utilitárias Tailwind */
-button:not(:disabled):not([data-sol-amigo-floating-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-button:not(:disabled):not([data-sol-amigo-floating-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg) !important;
@@ -119,6 +119,23 @@ button[data-sol-amigo-floating-btn]:focus {
   color: var(--floating-btn-fg, inherit) !important;
   border-color: var(--floating-btn-border, inherit) !important;
   filter: none !important;
+}
+
+/* Botão de fechar do formulário modal preserva a mesma borda e estilo do formulário */
+[data-sol-amigo-close-btn],
+[data-sol-amigo-close-btn]:hover,
+[data-sol-amigo-close-btn]:focus,
+button[data-sol-amigo-close-btn],
+button[data-sol-amigo-close-btn]:hover,
+button[data-sol-amigo-close-btn]:focus {
+  background-color: var(--close-btn-bg, inherit) !important;
+  color: var(--close-btn-fg, inherit) !important;
+  border-color: var(--close-btn-border, inherit) !important;
+  filter: none !important;
+}
+[data-sol-amigo-close-btn]:hover,
+button[data-sol-amigo-close-btn]:hover {
+  opacity: 0.85;
 }
 
 a[href]:hover {
