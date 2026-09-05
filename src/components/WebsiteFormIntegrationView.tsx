@@ -218,7 +218,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     : '';
   const installCode = useMemo(() => {
     if (!draft) return '';
-    const activeLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
+    const activeLogo = draft.floatingButtonLogoUrl === 'none'
+      ? 'none'
+      : (draft.floatingButtonLogoUrl || draft.logoUrl || '');
     const logoAttr = activeLogo ? ` data-floating-logo-url="${activeLogo}"` : '';
     const buttonLabelAttr = draft.submitLabel ? ` data-button-label="${draft.submitLabel.replace(/"/g, '&quot;')}"` : '';
 
@@ -229,7 +231,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
       return `<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="modal"${buttonLabelAttr}${logoAttr}></script>`;
     }
     return `<div id="sol-amigo-formulario"></div>\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-target="#sol-amigo-formulario"></script>`;
-  }, [draft]);
+  }, [draft, PUBLIC_APP_URL]);
 
   const hasInline = draft ? (draft.widgetMode === 'inline' || draft.widgetMode === 'both') : true;
   const hasButton = draft ? (draft.widgetMode === 'modal' || draft.widgetMode === 'both') : false;
@@ -773,7 +775,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             ) : (
               <>
                 {hasButton && (() => {
-                  const effectiveFloatingLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
+                  const effectiveFloatingLogo = draft.floatingButtonLogoUrl === 'none'
+                    ? null
+                    : (draft.floatingButtonLogoUrl || draft.logoUrl || null);
                   return (
                     <div
                       className="relative min-h-[140px] overflow-hidden rounded-2xl border p-4 transition-all"
@@ -1105,18 +1109,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                         {hasInline && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold">Formulário na página</span>
-                          <span
-                            className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                            style={{
-                              backgroundColor: hasInline ? `${theme.secondary}20` : `${theme.text}10`,
-                              color: hasInline ? theme.secondary : undefined,
-                            }}
-                          >
-                            Incorporado
-                          </span>
-                        </div>
+                        <span className="text-sm font-bold">Formulário na página</span>
                         <p className="mt-1 text-xs leading-relaxed opacity-65">
                           Ocupa um bloco fixo dentro do layout da página do seu site.
                         </p>
@@ -1153,18 +1146,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                         {hasButton && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold">Botão flutuante</span>
-                          <span
-                            className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                            style={{
-                              backgroundColor: hasButton ? `${theme.secondary}20` : `${theme.text}10`,
-                              color: hasButton ? theme.secondary : undefined,
-                            }}
-                          >
-                            Modal / Balão
-                          </span>
-                        </div>
+                        <span className="text-sm font-bold">Botão flutuante</span>
                         <p className="mt-1 text-xs leading-relaxed opacity-65">
                           Botão redondo fixo no canto inferior com balão interativo que abre sobre a página.
                         </p>
@@ -1208,45 +1190,46 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
                     <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                       {/* Opção: Logo principal do formulário */}
-                      <button
-                        type="button"
-                        onClick={() => setField('floatingButtonLogoUrl', '')}
-                        className="relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5"
-                        style={{
-                          borderColor: !draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl
-                            ? theme.secondary
-                            : theme.border,
-                          boxShadow: !draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl
-                            ? `0 0 0 2px ${theme.secondary}25`
-                            : undefined,
-                        }}
-                      >
-                        <div
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md overflow-hidden"
-                          style={{
-                            backgroundColor: resolvedTheme.primaryButtonBackground,
-                            color: resolvedTheme.primaryButtonText,
-                            borderColor: theme.border,
-                          }}
-                        >
-                          {draft.logoUrl ? (
-                            <img
-                              src={draft.logoUrl}
-                              alt="Logo do formulário"
-                              className="max-h-[64%] max-w-[64%] object-contain select-none pointer-events-none"
-                            />
-                          ) : (
-                            <Sun className="h-5 w-5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-bold">Logo do formulário</span>
-                          <span className="block text-[10px] opacity-60">Padrão do cabeçalho</span>
-                        </div>
-                        {(!draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl) && (
-                          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
-                        )}
-                      </button>
+                      {(() => {
+                        const isFormLogoSelected = !draft.floatingButtonLogoUrl || (draft.floatingButtonLogoUrl === draft.logoUrl && !profileLogos.some(p => p.url === draft.floatingButtonLogoUrl));
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setField('floatingButtonLogoUrl', '')}
+                            className="relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{
+                              borderColor: isFormLogoSelected ? theme.secondary : theme.border,
+                              boxShadow: isFormLogoSelected ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                            }}
+                          >
+                            <div
+                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md overflow-hidden"
+                              style={{
+                                backgroundColor: resolvedTheme.primaryButtonBackground,
+                                color: resolvedTheme.primaryButtonText,
+                                borderColor: theme.border,
+                              }}
+                            >
+                              {draft.logoUrl ? (
+                                <img
+                                  src={draft.logoUrl}
+                                  alt="Logo do formulário"
+                                  className="max-h-[64%] max-w-[64%] object-contain select-none pointer-events-none"
+                                />
+                              ) : (
+                                <Sun className="h-5 w-5" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-bold">Logo do formulário</span>
+                              <span className="block text-[10px] opacity-60">Padrão do cabeçalho</span>
+                            </div>
+                            {isFormLogoSelected && (
+                              <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })()}
 
                       {/* Logos upados no perfil do usuário */}
                       {profileLogos.map((logo) => {

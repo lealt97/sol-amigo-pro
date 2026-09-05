@@ -150,7 +150,23 @@
     if (shouldMountModal) {
       var modalInstance = createFormInstance(true);
       modalFrame = modalInstance.frame;
-      var floatingLogoUrl = (publicConfig && (publicConfig.floatingButtonLogoUrl || publicConfig.logoUrl)) || script.dataset.floatingLogoUrl || "";
+      var scriptLogo = typeof script.dataset.floatingLogoUrl === "string" ? script.dataset.floatingLogoUrl.trim() : "";
+      var configFloatingLogo = "";
+      if (publicConfig && typeof publicConfig.floatingButtonLogoUrl === "string" && publicConfig.floatingButtonLogoUrl.trim()) {
+        configFloatingLogo = publicConfig.floatingButtonLogoUrl.trim();
+      } else if (publicConfig && publicConfig.themeColors && typeof publicConfig.themeColors._floatingButtonLogoUrl === "string" && publicConfig.themeColors._floatingButtonLogoUrl.trim()) {
+        configFloatingLogo = publicConfig.themeColors._floatingButtonLogoUrl.trim();
+      }
+      var configMainLogo = (publicConfig && typeof publicConfig.logoUrl === "string") ? publicConfig.logoUrl.trim() : "";
+
+      var floatingLogoUrl = "";
+      if (scriptLogo) {
+        floatingLogoUrl = scriptLogo === "none" ? "" : scriptLogo;
+      } else if (configFloatingLogo) {
+        floatingLogoUrl = configFloatingLogo === "none" ? "" : configFloatingLogo;
+      } else if (configMainLogo) {
+        floatingLogoUrl = configMainLogo;
+      }
 
       widgetTrigger = document.createElement("div");
       widgetTrigger.id = "sol-amigo-widget-trigger";
@@ -227,12 +243,30 @@
         var logoImg = document.createElement("img");
         logoImg.src = floatingLogoUrl;
         logoImg.alt = publicConfig && publicConfig.companyName ? publicConfig.companyName : "Logotipo";
+        logoImg.referrerPolicy = "no-referrer";
         logoImg.style.maxWidth = "66%";
         logoImg.style.maxHeight = "66%";
         logoImg.style.objectFit = "contain";
         logoImg.style.display = "block";
         logoImg.style.pointerEvents = "none";
         logoImg.style.userSelect = "none";
+        logoImg.onerror = function() {
+          logoImg.style.display = "none";
+          if (!openButton.querySelector("svg")) {
+            var fallbackSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            fallbackSvg.setAttribute("viewBox", "0 0 24 24");
+            fallbackSvg.setAttribute("width", "28");
+            fallbackSvg.setAttribute("height", "28");
+            fallbackSvg.setAttribute("fill", "none");
+            fallbackSvg.setAttribute("stroke", "currentColor");
+            fallbackSvg.setAttribute("stroke-width", "2");
+            fallbackSvg.setAttribute("stroke-linecap", "round");
+            fallbackSvg.setAttribute("stroke-linejoin", "round");
+            fallbackSvg.style.display = "block";
+            fallbackSvg.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>';
+            openButton.appendChild(fallbackSvg);
+          }
+        };
         openButton.appendChild(logoImg);
       } else {
         var sunSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

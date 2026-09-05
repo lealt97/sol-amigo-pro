@@ -111,10 +111,17 @@ const THEME_COLOR_KEYS = [
 
 const normalizeThemeColors = (value: unknown) => {
   const candidate = value && typeof value === "object" ? value as Record<string, unknown> : {};
-  return Object.fromEntries(THEME_COLOR_KEYS.flatMap((key) => {
+  const colors: Record<string, unknown> = Object.fromEntries(THEME_COLOR_KEYS.flatMap((key) => {
     const color = asText(candidate[key], 7).toUpperCase();
     return HEX_COLOR_PATTERN.test(color) ? [[key, color]] : [];
   }));
+  if (typeof candidate._floatingButtonLogoUrl === 'string') {
+    colors._floatingButtonLogoUrl = candidate._floatingButtonLogoUrl.slice(0, 500);
+  }
+  if (typeof candidate._widgetMode === 'string') {
+    colors._widgetMode = candidate._widgetMode;
+  }
+  return colors;
 };
 
 type CaptureForm = {
