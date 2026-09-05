@@ -73,6 +73,13 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
       ? (row.theme_colors as Record<string, unknown>)._success
       : undefined
   );
+  const rawThemeColors = row.theme_colors && typeof row.theme_colors === 'object'
+    ? (row.theme_colors as Record<string, unknown>)
+    : {};
+  const floatingButtonLogoUrl = typeof rawThemeColors._floatingButtonLogoUrl === 'string'
+    ? rawThemeColors._floatingButtonLogoUrl
+    : (row.logo_url ?? '');
+
   return {
     id: row.id,
     publicToken: row.public_token,
@@ -84,6 +91,7 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
     widgetMode: row.widget_mode,
     companyName: row.company_name,
     logoUrl: row.logo_url ?? '',
+    floatingButtonLogoUrl,
     sideImageUrls: row.side_image_urls?.length
       ? row.side_image_urls
       : row.side_image_url
@@ -124,6 +132,7 @@ const toUpdate = (settings: WebsiteFormSettings) => {
   const themeColorsToPersist = {
     ...settings.themeColors,
     _success: fullPayload,
+    _floatingButtonLogoUrl: settings.floatingButtonLogoUrl ?? '',
   };
 
   return {

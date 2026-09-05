@@ -210,9 +210,13 @@ Deno.serve(async (req: Request) => {
       const configuredImages = normalizePublicImageUrls(form.side_image_urls);
       const legacyImages = normalizePublicImageUrls(form.side_image_url ? [form.side_image_url] : []);
       const sideImageUrls = configuredImages.length ? configuredImages : legacyImages;
+      const floatingButtonLogo = typeof form.theme_colors?._floatingButtonLogoUrl === 'string' && form.theme_colors._floatingButtonLogoUrl.trim()
+        ? form.theme_colors._floatingButtonLogoUrl.trim()
+        : form.logo_url;
       return json({
         companyName: form.company_name,
         logoUrl: form.logo_url,
+        floatingButtonLogoUrl: floatingButtonLogo,
         sideImageUrls,
         sideImageRotationEnabled: form.side_image_rotation_enabled && sideImageUrls.length > 1,
         colorMode: form.color_mode === "detailed" ? "detailed" : "automatic",

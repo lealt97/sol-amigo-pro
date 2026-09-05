@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
   Eye, EyeOff, Globe2, GripHorizontal, Image, KeyRound, Laptop, Loader2, MapPin, Maximize2, MessageCircle,
-  Minimize2, MonitorSmartphone, Palette, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
-  Smartphone, Trash2, Type, X,
+  Minimize2, MonitorSmartphone, MousePointerClick, Palette, Plus, RefreshCw, RotateCcw, Save, ShieldCheck,
+  Smartphone, Sun, Trash2, Type, X,
 } from 'lucide-react';
 import type { FormColorMode, FormThemeColors, ThemeConfig, WebsiteFormSettings } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
@@ -98,12 +98,14 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     initialBoxY: number;
   } | null>(null);
 
-  const handleDragPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDragPointerDown = (event: React.PointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest('button') || target?.closest('input') || target?.closest('a')) {
+    if (target?.closest('button') || target?.closest('input') || target?.closest('select') || target?.closest('textarea') || target?.closest('a')) {
       return;
     }
+
+    event.preventDefault();
 
     const el = floatingRef.current;
     if (!el) return;
@@ -124,7 +126,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     }
   };
 
-  const handleDragPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDragPointerMove = (event: React.PointerEvent<HTMLElement>) => {
     if (!dragStartRef.current) return;
     const el = floatingRef.current;
     const boxWidth = el?.offsetWidth ?? 390;
@@ -145,7 +147,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     setFloatingPosition({ x: clampedX, y: clampedY });
   };
 
-  const handleDragPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDragPointerUp = (event: React.PointerEvent<HTMLElement>) => {
     if (dragStartRef.current) {
       try {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -216,6 +218,12 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     : '';
   const installCode = useMemo(() => {
     if (!draft) return '';
+    if (draft.widgetMode === 'modal') {
+      const activeLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
+      const logoAttr = activeLogo ? ` data-floating-logo-url="${activeLogo}"` : '';
+      const buttonLabelAttr = draft.submitLabel ? ` data-button-label="${draft.submitLabel.replace(/"/g, '&quot;')}"` : '';
+      return `<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="modal"${buttonLabelAttr}${logoAttr}></script>`;
+    }
     return `<div id="sol-amigo-formulario"></div>\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-target="#sol-amigo-formulario"></script>`;
   }, [draft]);
 
@@ -490,7 +498,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     return (
       <section
         className={`rounded-2xl border p-4 shadow-sm transition-all ${
-          isFloating ? 'shadow-2xl backdrop-blur-md' : ''
+          isFloating
+            ? 'shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none'
+            : ''
         }`}
         style={{
           borderColor: theme.border,
@@ -502,26 +512,24 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               : `0 24px 48px -12px rgba(0,0,0,0.18), 0 0 0 1px ${theme.border}`
             : undefined,
         }}
+        onPointerDown={isFloating ? handleDragPointerDown : undefined}
+        onPointerMove={isFloating ? handleDragPointerMove : undefined}
+        onPointerUp={isFloating ? handleDragPointerUp : undefined}
+        onPointerCancel={isFloating ? handleDragPointerUp : undefined}
+        title={isFloating ? 'Clique e arraste em qualquer parte para mover pela tela' : undefined}
       >
         <div
           className={`flex items-center justify-between gap-2 ${
-            isFloating
-              ? 'cursor-grab active:cursor-grabbing pb-3 mb-1 border-b select-none'
-              : ''
+            isFloating ? 'pb-3 mb-1 border-b' : ''
           }`}
           style={isFloating ? { borderColor: `${theme.border}80` } : undefined}
-          onPointerDown={isFloating ? handleDragPointerDown : undefined}
-          onPointerMove={isFloating ? handleDragPointerMove : undefined}
-          onPointerUp={isFloating ? handleDragPointerUp : undefined}
-          onPointerCancel={isFloating ? handleDragPointerUp : undefined}
-          title={isFloating ? 'Clique e arraste para posicionar onde quiser na tela' : undefined}
         >
           <div className="flex items-center gap-2">
             {isFloating && (
               <span
-                className="flex items-center justify-center rounded p-1 opacity-60 hover:opacity-100 transition-opacity"
+                className="flex items-center justify-center rounded p-1 opacity-60"
                 style={{ color: theme.text }}
-                title="Clique e arraste a janela"
+                title="Clique e arraste em qualquer parte para mover a janela"
               >
                 <GripHorizontal className="h-4 w-4" />
               </span>
@@ -732,31 +740,91 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               </div>
             ) : (
               <>
-                {draft.widgetMode === 'modal' && (
-                  <div
-                    className="relative min-h-24 overflow-hidden rounded-xl border p-3"
-                    style={{
-                      borderColor: theme.border,
-                      backgroundColor: resolvedTheme.pageBackground,
-                      color: resolvedTheme.bodyText,
-                    }}
-                  >
-                    <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
-                      Exemplo no site (botão flutuante)
-                    </p>
-                    <div className="mt-2 h-1.5 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
-                    <button
-                      type="button"
-                      className="absolute bottom-2.5 right-2.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold shadow-lg"
+                {draft.widgetMode === 'modal' && (() => {
+                  const effectiveFloatingLogo = draft.floatingButtonLogoUrl || draft.logoUrl;
+                  return (
+                    <div
+                      className="relative min-h-[140px] overflow-hidden rounded-2xl border p-4 transition-all"
                       style={{
-                        backgroundColor: resolvedTheme.primaryButtonBackground,
-                        color: resolvedTheme.primaryButtonText,
+                        borderColor: theme.border,
+                        backgroundColor: resolvedTheme.pageBackground,
+                        color: resolvedTheme.bodyText,
                       }}
                     >
-                      {draft.submitLabel || 'Simular agora'}
-                    </button>
-                  </div>
-                )}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-flex h-2 w-2 rounded-full animate-pulse"
+                            style={{ backgroundColor: resolvedTheme.progressActive || theme.secondary }}
+                          />
+                          <p className="text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: resolvedTheme.mutedText }}>
+                            Exemplo no site (botão flutuante redondo)
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-medium opacity-65 flex items-center gap-1">
+                          <MousePointerClick className="h-3 w-3" /> Paire o mouse no botão
+                        </span>
+                      </div>
+
+                      {/* Mock de linhas de conteúdo da página do cliente */}
+                      <div className="mt-3 max-w-[220px] space-y-1.5 opacity-40">
+                        <div className="h-2 w-full rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
+                        <div className="h-2 w-4/5 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
+                        <div className="h-2 w-2/3 rounded" style={{ backgroundColor: resolvedTheme.progressInactive }} />
+                      </div>
+
+                      {/* Container do botão flutuante redondo com balãozinho interativo ao pairar */}
+                      <div className="absolute bottom-3 right-3 flex items-center justify-end">
+                        <div className="relative group flex items-center">
+                          {/* Balãozinho simples (tooltip / speech bubble) */}
+                          <div
+                            role="tooltip"
+                            className="pointer-events-none absolute right-[calc(100%+10px)] top-1/2 -translate-y-1/2 z-20 flex items-center opacity-0 translate-x-2 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0"
+                          >
+                            <div
+                              className="rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap shadow-xl border flex items-center"
+                              style={{
+                                backgroundColor: '#0E2337',
+                                color: '#FFFFFF',
+                                borderColor: 'rgba(255, 255, 255, 0.12)',
+                              }}
+                            >
+                              <span>{draft.submitLabel || 'Simular economia solar'}</span>
+                            </div>
+                            {/* Pontinha / seta do balão apontando para o botão redondo */}
+                            <div
+                              className="w-0 h-0 border-y-[5px] border-y-transparent border-l-[6px] -ml-[1px]"
+                              style={{ borderLeftColor: '#0E2337' }}
+                            />
+                          </div>
+
+                          {/* Botão redondo com logo perfeitamente centralizado */}
+                          <button
+                            type="button"
+                            aria-label={draft.submitLabel || 'Simular economia solar'}
+                            className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-2xl transition-transform duration-200 ease-out hover:scale-110 active:scale-95 focus:outline-none"
+                            style={{
+                              backgroundColor: resolvedTheme.primaryButtonBackground,
+                              color: resolvedTheme.primaryButtonText,
+                              boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.38), 0 4px 10px -2px rgba(0, 0, 0, 0.2)',
+                            }}
+                          >
+                            {effectiveFloatingLogo ? (
+                              <img
+                                src={effectiveFloatingLogo}
+                                alt="Logo centralizado"
+                                className="max-h-[66%] max-w-[66%] object-contain select-none pointer-events-none drop-shadow-sm"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <Sun className="h-6 w-6 select-none" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div
                   className={`rounded-2xl p-2.5 transition-all ${
@@ -776,7 +844,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                         <img
                           src={draft.logoUrl}
                           alt="Logotipo configurado"
-                          className="mb-2.5 h-7 max-w-[160px] object-contain object-left"
+                          draggable={false}
+                          className="mb-2.5 h-7 max-w-[160px] object-contain object-left select-none pointer-events-none"
                         />
                       ) : (
                         <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.12em]">
@@ -810,7 +879,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                               key={imageUrl}
                               src={imageUrl}
                               alt={index === previewImageIndex ? 'Prévia da foto lateral' : ''}
-                              className={`absolute inset-0 h-full min-h-48 w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
+                              draggable={false}
+                              className={`absolute inset-0 h-full min-h-48 w-full object-cover select-none pointer-events-none transition-opacity duration-1000 motion-reduce:transition-none ${
                                 index === previewImageIndex ? 'opacity-100' : 'opacity-0'
                               }`}
                             />
@@ -935,6 +1005,135 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     </button>
                   ))}
                 </div>
+
+                {draft.widgetMode === 'modal' && (
+                  <div
+                    className="rounded-2xl border p-4 sm:p-5 space-y-3.5"
+                    style={{ borderColor: theme.border, backgroundColor: `${theme.primary}0D` }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                          <Sun className="h-4 w-4" style={{ color: theme.accent }} />
+                          Logotipo do botão flutuante redondo
+                        </span>
+                        <p className="mt-1 text-[11px] leading-5 opacity-70">
+                          O botão no site é redondo com um dos logos perfeitamente centralizado. Ao pairar o mouse, aparece o balãozinho com o texto do botão. Escolha qual logo upado no sistema será exibido no botão:
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {/* Opção: Logo principal do formulário */}
+                      <button
+                        type="button"
+                        onClick={() => setField('floatingButtonLogoUrl', '')}
+                        className="relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{
+                          borderColor: !draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl
+                            ? theme.secondary
+                            : theme.border,
+                          boxShadow: !draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl
+                            ? `0 0 0 2px ${theme.secondary}25`
+                            : undefined,
+                        }}
+                      >
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md overflow-hidden"
+                          style={{
+                            backgroundColor: resolvedTheme.primaryButtonBackground,
+                            color: resolvedTheme.primaryButtonText,
+                            borderColor: theme.border,
+                          }}
+                        >
+                          {draft.logoUrl ? (
+                            <img
+                              src={draft.logoUrl}
+                              alt="Logo do formulário"
+                              className="max-h-[64%] max-w-[64%] object-contain select-none pointer-events-none"
+                            />
+                          ) : (
+                            <Sun className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold">Logo do formulário</span>
+                          <span className="block text-[10px] opacity-60">Padrão do cabeçalho</span>
+                        </div>
+                        {(!draft.floatingButtonLogoUrl || draft.floatingButtonLogoUrl === draft.logoUrl) && (
+                          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                        )}
+                      </button>
+
+                      {/* Logos upados no perfil do usuário */}
+                      {profileLogos.map((logo) => {
+                        const isSelected = draft.floatingButtonLogoUrl === logo.url;
+                        return (
+                          <button
+                            key={logo.id}
+                            type="button"
+                            onClick={() => setField('floatingButtonLogoUrl', logo.url)}
+                            className="relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{
+                              borderColor: isSelected ? theme.secondary : theme.border,
+                              boxShadow: isSelected ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                            }}
+                          >
+                            <div
+                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md overflow-hidden"
+                              style={{
+                                backgroundColor: resolvedTheme.primaryButtonBackground,
+                                borderColor: theme.border,
+                              }}
+                            >
+                              <img
+                                src={logo.url}
+                                alt={logo.label}
+                                className="max-h-[64%] max-w-[64%] object-contain select-none pointer-events-none"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-bold">{logo.label}</span>
+                              <span className="block text-[10px] opacity-60">Logo upado</span>
+                            </div>
+                            {isSelected && (
+                              <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {/* Opção sem imagem: ícone solar minimalista */}
+                      <button
+                        type="button"
+                        onClick={() => setField('floatingButtonLogoUrl', 'none')}
+                        className="relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{
+                          borderColor: draft.floatingButtonLogoUrl === 'none' ? theme.secondary : theme.border,
+                          boxShadow: draft.floatingButtonLogoUrl === 'none' ? `0 0 0 2px ${theme.secondary}25` : undefined,
+                        }}
+                      >
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md overflow-hidden"
+                          style={{
+                            backgroundColor: resolvedTheme.primaryButtonBackground,
+                            color: resolvedTheme.primaryButtonText,
+                            borderColor: theme.border,
+                          }}
+                        >
+                          <Sun className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold">Sem logo</span>
+                          <span className="block text-[10px] opacity-60">Apenas ícone solar</span>
+                        </div>
+                        {draft.floatingButtonLogoUrl === 'none' && (
+                          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="relative">
                   <pre className="max-h-48 min-w-0 overflow-y-auto whitespace-pre-wrap break-all rounded-xl border p-4 pr-12 font-mono text-[11px] leading-5" style={{ borderColor: theme.border, backgroundColor: `${theme.primary}22` }}><code>{installCode}</code></pre>
                   <button type="button" onClick={() => copy('code', installCode)} className="absolute right-2 top-2 rounded-lg border p-2" style={{ borderColor: theme.border }} aria-label="Copiar código de instalação">{copied === 'code' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button>
@@ -1063,7 +1262,28 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
                   <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>
                   <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Texto de apoio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.subheadline} maxLength={240} onChange={(event) => setField('subheadline', event.target.value)} /></label>
-                  <label><span className="mb-1.5 block text-xs font-bold">Texto do botão</span><input className="crm-input" value={draft.submitLabel} maxLength={60} onChange={(event) => setField('submitLabel', event.target.value)} /></label>
+                  <label>
+                    <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold">
+                      <span>Texto do botão {draft.widgetMode === 'modal' ? '/ balão flutuante' : ''}</span>
+                      {draft.widgetMode === 'modal' && (
+                        <span className="text-[10px] font-semibold text-emerald-400">
+                          Exibido no balãozinho ao pairar
+                        </span>
+                      )}
+                    </span>
+                    <input
+                      className="crm-input"
+                      value={draft.submitLabel}
+                      maxLength={60}
+                      placeholder="Simular economia solar"
+                      onChange={(event) => setField('submitLabel', event.target.value)}
+                    />
+                    {draft.widgetMode === 'modal' && (
+                      <span className="mt-1 block text-[10px] leading-4 opacity-60">
+                        Ao pairar o mouse no botão redondo flutuante no site, este texto aparece dentro do balãozinho.
+                      </span>
+                    )}
+                  </label>
                   <label><span className="mb-1.5 block text-xs font-bold">Política de privacidade</span><input className="crm-input" value={draft.privacyUrl} maxLength={500} inputMode="url" placeholder="https://..." onChange={(event) => setField('privacyUrl', event.target.value)} /></label>
                   <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Mensagem após o envio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.successMessage} maxLength={240} onChange={(event) => setField('successMessage', event.target.value)} /></label>
                   <label className="sm:col-span-2 flex items-center gap-3 rounded-lg border p-3" style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
@@ -1135,19 +1355,6 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRightTab('preview');
-                    setPreviewStage('success');
-                    if (window.innerWidth < 1024) setFloatingPreviewOpen(true);
-                  }}
-                  className="btn-outline hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold"
-                  style={{ borderColor: theme.border }}
-                  title="Ver tela de conclusão na prévia"
-                >
-                  <Eye className="h-3.5 w-3.5" /> Ver na prévia
-                </button>
                 <button
                   type="button"
                   onClick={() => toggleSection('success')}

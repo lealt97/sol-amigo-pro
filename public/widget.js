@@ -123,26 +123,111 @@
     if (target) target.appendChild(shell);
     else script.parentNode.insertBefore(shell, script.nextSibling);
   } else {
+    var floatingLogoUrl = (publicConfig && (publicConfig.floatingButtonLogoUrl || publicConfig.logoUrl)) || script.dataset.floatingLogoUrl || "";
     openButton = document.createElement("button");
     openButton.type = "button";
-    openButton.textContent = buttonLabel;
     openButton.setAttribute("aria-haspopup", "dialog");
+    openButton.setAttribute("aria-label", buttonLabel);
     openButton.style.position = "fixed";
     openButton.style.right = "24px";
     openButton.style.bottom = "24px";
     openButton.style.zIndex = "2147483000";
-    openButton.style.minHeight = "48px";
-    openButton.style.padding = "0 20px";
+    openButton.style.width = "60px";
+    openButton.style.height = "60px";
+    openButton.style.minWidth = "60px";
+    openButton.style.minHeight = "60px";
+    openButton.style.padding = "0";
     openButton.style.border = "0";
-    openButton.style.borderRadius = "999px";
+    openButton.style.borderRadius = "50%";
     openButton.style.background = color;
     openButton.style.color = buttonTextColor;
-    openButton.style.fontFamily = hostFont || "ui-sans-serif, system-ui, sans-serif";
-    openButton.style.fontSize = "14px";
-    openButton.style.fontWeight = "700";
-    openButton.style.lineHeight = "1.2";
-    openButton.style.boxShadow = "0 14px 35px rgba(15, 23, 42, .28)";
+    openButton.style.display = "flex";
+    openButton.style.alignItems = "center";
+    openButton.style.justifyContent = "center";
+    openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
     openButton.style.cursor = "pointer";
+    openButton.style.transition = "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease";
+    openButton.style.outline = "none";
+    openButton.style.overflow = "hidden";
+
+    if (floatingLogoUrl) {
+      var logoImg = document.createElement("img");
+      logoImg.src = floatingLogoUrl;
+      logoImg.alt = publicConfig && publicConfig.companyName ? publicConfig.companyName : "Logotipo";
+      logoImg.style.maxWidth = "66%";
+      logoImg.style.maxHeight = "66%";
+      logoImg.style.objectFit = "contain";
+      logoImg.style.display = "block";
+      logoImg.style.pointerEvents = "none";
+      logoImg.style.userSelect = "none";
+      openButton.appendChild(logoImg);
+    } else {
+      var sunSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      sunSvg.setAttribute("viewBox", "0 0 24 24");
+      sunSvg.setAttribute("width", "28");
+      sunSvg.setAttribute("height", "28");
+      sunSvg.setAttribute("fill", "none");
+      sunSvg.setAttribute("stroke", "currentColor");
+      sunSvg.setAttribute("stroke-width", "2");
+      sunSvg.setAttribute("stroke-linecap", "round");
+      sunSvg.setAttribute("stroke-linejoin", "round");
+      sunSvg.style.display = "block";
+      sunSvg.style.pointerEvents = "none";
+      sunSvg.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>';
+      openButton.appendChild(sunSvg);
+    }
+
+    var bubble = document.createElement("div");
+    bubble.setAttribute("role", "tooltip");
+    bubble.style.position = "fixed";
+    bubble.style.right = "94px";
+    bubble.style.bottom = "36px";
+    bubble.style.zIndex = "2147483000";
+    bubble.style.background = "#0E2337";
+    bubble.style.color = "#FFFFFF";
+    bubble.style.padding = "8px 14px";
+    bubble.style.borderRadius = "9px";
+    bubble.style.fontFamily = hostFont || "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    bubble.style.fontSize = "13px";
+    bubble.style.fontWeight = "600";
+    bubble.style.lineHeight = "1.3";
+    bubble.style.whiteSpace = "nowrap";
+    bubble.style.boxShadow = "0 10px 25px -4px rgba(0, 0, 0, 0.35)";
+    bubble.style.pointerEvents = "none";
+    bubble.style.userSelect = "none";
+    bubble.style.opacity = "0";
+    bubble.style.transform = "translateX(8px)";
+    bubble.style.transition = "opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+    bubble.textContent = buttonLabel;
+
+    var bubbleArrow = document.createElement("div");
+    bubbleArrow.style.position = "absolute";
+    bubbleArrow.style.top = "50%";
+    bubbleArrow.style.right = "-6px";
+    bubbleArrow.style.marginTop = "-5px";
+    bubbleArrow.style.width = "0";
+    bubbleArrow.style.height = "0";
+    bubbleArrow.style.borderTop = "5px solid transparent";
+    bubbleArrow.style.borderBottom = "5px solid transparent";
+    bubbleArrow.style.borderLeft = "6px solid #0E2337";
+    bubble.appendChild(bubbleArrow);
+
+    function showBubble() {
+      bubble.style.opacity = "1";
+      bubble.style.transform = "translateX(0)";
+      openButton.style.transform = "scale(1.08)";
+    }
+
+    function hideBubble() {
+      bubble.style.opacity = "0";
+      bubble.style.transform = "translateX(8px)";
+      openButton.style.transform = "scale(1)";
+    }
+
+    openButton.addEventListener("mouseenter", showBubble);
+    openButton.addEventListener("mouseleave", hideBubble);
+    openButton.addEventListener("focus", showBubble);
+    openButton.addEventListener("blur", hideBubble);
 
     modal = document.createElement("div");
     modal.setAttribute("role", "dialog");
@@ -189,6 +274,7 @@
     document.body.appendChild(modal);
 
     openButton.addEventListener("click", function () {
+      hideBubble();
       modal.dataset.previousOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       modal.style.display = "block";
