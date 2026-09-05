@@ -1624,25 +1624,6 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         </div>
       )}
 
-      {/* Floating trigger button on smaller screens (< lg) */}
-      {!floatingPreviewOpen && (
-        <button
-          type="button"
-          onClick={() => setFloatingPreviewOpen(true)}
-          className="lg:hidden fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold shadow-2xl border transition-transform active:scale-95"
-          style={{
-            backgroundColor: theme.secondary,
-            color: '#FFFFFF',
-            borderColor: `${theme.secondary}80`,
-            boxShadow: `0 8px 24px ${theme.secondary}60`,
-          }}
-        >
-          <Eye className="h-4 w-4" />
-          <span>Ver prévia ao vivo</span>
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-        </button>
-      )}
-
       <div className="sticky bottom-4 z-30 flex flex-col gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
         <div>
           <p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p>
