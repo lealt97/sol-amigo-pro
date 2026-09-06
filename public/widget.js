@@ -43,6 +43,66 @@
     return /^[\p{L}\p{N}\s,'"-]+$/u.test(family) ? family : "";
   }
 
+  function clampRadius(value) {
+    var numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return 12;
+    return Math.round(Math.max(0, Math.min(24, numericValue)));
+  }
+
+  function parseCornerRadius(value, referenceSize) {
+    if (typeof value !== "string") return null;
+    var match = value.trim().match(/^(-?\d+(?:\.\d+)?)(px|%)?/i);
+    if (!match) return null;
+    var amount = Number(match[1]);
+    if (!Number.isFinite(amount) || amount < 0) return null;
+    if (match[2] === "%") amount = referenceSize * amount / 100;
+    return Math.min(amount, referenceSize / 2);
+  }
+
+  function detectHostRadius() {
+    if (!window.getComputedStyle || !document.querySelectorAll) return null;
+    var selector = [
+      "button",
+      "input:not([type='hidden']):not([type='checkbox']):not([type='radio'])",
+      "select",
+      "textarea",
+      "[role='button']",
+      "a[class*='btn']",
+      "a[class*='button']",
+    ].join(",");
+    var elements;
+    try {
+      elements = Array.prototype.slice.call(document.querySelectorAll(selector), 0, 100);
+    } catch (_error) {
+      return null;
+    }
+
+    var samples = elements.flatMap(function (element) {
+      if (!element || (element.closest && element.closest("[data-sol-amigo-widget], #sol-amigo-widget-trigger"))) return [];
+      var rect = element.getBoundingClientRect ? element.getBoundingClientRect() : null;
+      if (!rect || rect.width < 40 || rect.height < 24) return [];
+      var style = window.getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return [];
+      var referenceSize = Math.min(rect.width, rect.height);
+      var corners = [
+        style.borderTopLeftRadius,
+        style.borderTopRightRadius,
+        style.borderBottomRightRadius,
+        style.borderBottomLeftRadius,
+      ].map(function (radius) { return parseCornerRadius(radius, referenceSize); })
+        .filter(function (radius) { return radius !== null; });
+      if (!corners.length) return [];
+      return [Math.min(24, corners.reduce(function (sum, radius) { return sum + radius; }, 0) / corners.length)];
+    }).sort(function (a, b) { return a - b; });
+
+    if (!samples.length) return null;
+    var middle = Math.floor(samples.length / 2);
+    var median = samples.length % 2
+      ? samples[middle]
+      : (samples[middle - 1] + samples[middle]) / 2;
+    return clampRadius(median);
+  }
+
   function relativeLuminance(hex) {
     var channels = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(function (value) {
       var channel = parseInt(value, 16) / 255;
@@ -85,6 +145,19 @@
       : fallbackButtonLabel;
     var target = findTarget();
     var hostFont = detectHostFont(target);
+    var configuredRadiusMode = publicConfig && publicConfig.borderRadiusMode === "manual"
+      ? "manual"
+      : publicConfig && publicConfig.themeColors && publicConfig.themeColors._borderRadiusMode === "manual"
+      ? "manual"
+      : "automatic";
+    var configuredRadiusValue = publicConfig && publicConfig.borderRadius !== undefined
+      ? publicConfig.borderRadius
+      : publicConfig && publicConfig.themeColors
+      ? publicConfig.themeColors._borderRadius
+      : 12;
+    var configuredRadius = clampRadius(configuredRadiusValue);
+    var detectedRadius = configuredRadiusMode === "automatic" ? detectHostRadius() : null;
+    var formRadius = detectedRadius === null ? configuredRadius : detectedRadius;
 
     function createFormInstance(isModal) {
       var frameId = "sol-amigo-frame-" + Math.random().toString(36).slice(2);
@@ -96,6 +169,7 @@
       });
       if (isModal) query.set("modal", "1");
       if (hostFont) query.set("site_font", hostFont);
+      query.set("site_radius", String(formRadius));
       var frameUrl = appBase + "?" + query.toString();
 
       var frame = document.createElement("iframe");
@@ -110,7 +184,7 @@
       frame.style.width = "100%";
       frame.style.height = "760px";
       frame.style.border = "0";
-      frame.style.borderRadius = "18px";
+      frame.style.borderRadius = Math.min(32, Math.round(formRadius * 2)) + "px";
       frame.style.background = "transparent";
 
       var shell = document.createElement("div");
