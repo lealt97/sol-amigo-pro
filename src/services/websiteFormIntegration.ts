@@ -3,6 +3,7 @@ import { supabase, SUPABASE_URL } from '../lib/supabase';
 import { ensureLeadCaptureForm } from './leads';
 import { createAutomaticFormTheme, normalizeFormThemeColors } from '../utils/formTheme';
 import { encodeSuccessPayload, parseSuccessDetails } from '../utils/formSuccess';
+import { DEFAULT_FORM_BORDER_RADIUS, normalizeFormBorderRadius } from '../utils/formRadius';
 
 export interface ProfileBrandLogo {
   id: string;
@@ -82,6 +83,11 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
   const storedWidgetMode = (rawThemeColors._widgetMode as WebsiteFormSettings['widgetMode'])
     || (row.widget_mode as WebsiteFormSettings['widgetMode'])
     || 'inline';
+  const borderRadiusMode = rawThemeColors._borderRadiusMode === 'manual' ? 'manual' : 'automatic';
+  const borderRadius = normalizeFormBorderRadius(
+    rawThemeColors._borderRadius,
+    DEFAULT_FORM_BORDER_RADIUS
+  );
 
   return {
     id: row.id,
@@ -101,6 +107,8 @@ const fromRow = (row: WebsiteFormRow): WebsiteFormSettings => {
         ? [row.side_image_url]
         : [],
     sideImageRotationEnabled: row.side_image_rotation_enabled ?? false,
+    borderRadiusMode,
+    borderRadius,
     colorMode: row.color_mode === 'detailed' ? 'detailed' : 'automatic',
     primaryColor: row.primary_color,
     secondaryColor: row.secondary_color,
@@ -137,6 +145,8 @@ const toUpdate = (settings: WebsiteFormSettings) => {
     _success: fullPayload,
     _floatingButtonLogoUrl: settings.floatingButtonLogoUrl ?? '',
     _widgetMode: settings.widgetMode,
+    _borderRadiusMode: settings.borderRadiusMode,
+    _borderRadius: normalizeFormBorderRadius(settings.borderRadius),
   };
 
   const dbWidgetMode = settings.widgetMode === 'both' ? 'modal' : settings.widgetMode;
