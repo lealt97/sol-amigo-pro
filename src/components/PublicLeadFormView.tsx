@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { SUPABASE_URL, supabase } from '../lib/supabase';
 import { ALL_BRAZIL_STATE_CODES, BRAZIL_STATE_NAMES } from '../data/brazilStates';
-import type { FormColorMode, FormThemeColors } from '../types';
+import type { FormBorderRadiusMode, FormColorMode, FormThemeColors } from '../types';
 import {
   DEFAULT_FORM_PRIMARY,
   DEFAULT_FORM_SECONDARY,
@@ -23,6 +23,11 @@ import {
   resolveFormTheme,
 } from '../utils/formTheme';
 import { parseSuccessDetails } from '../utils/formSuccess';
+import {
+  createFormBorderRadiusTokens,
+  DEFAULT_FORM_BORDER_RADIUS,
+  normalizeFormBorderRadius,
+} from '../utils/formRadius';
 
 interface PublicLeadFormViewProps {
   formToken: string;
@@ -50,6 +55,8 @@ type PublicFormConfig = {
   logoUrl: string | null;
   sideImageUrls: string[];
   sideImageRotationEnabled: boolean;
+  borderRadiusMode: FormBorderRadiusMode;
+  borderRadius: number;
   colorMode: FormColorMode;
   primaryColor: string;
   secondaryColor: string;
@@ -69,6 +76,8 @@ const DEFAULT_CONFIG: PublicFormConfig = {
   logoUrl: null,
   sideImageUrls: [],
   sideImageRotationEnabled: false,
+  borderRadiusMode: 'automatic',
+  borderRadius: DEFAULT_FORM_BORDER_RADIUS,
   colorMode: 'automatic',
   primaryColor: DEFAULT_FORM_PRIMARY,
   secondaryColor: DEFAULT_FORM_SECONDARY,
@@ -87,6 +96,12 @@ const normalizeSiteFont = (value: string | null) => {
   const candidate = value?.trim().slice(0, 200) ?? '';
   if (!candidate || !/^[\p{L}\p{N}\s,'"-]+$/u.test(candidate)) return '';
   return candidate;
+};
+
+const normalizeSiteRadius = (value: string | null) => {
+  if (value === null || value.trim() === '') return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? normalizeFormBorderRadius(numericValue) : null;
 };
 
 const formatPhone = (value: string): string => {
@@ -150,6 +165,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
       modal: params.get('modal') === '1',
       siteOrigin: params.get('site_origin'),
       siteFont: normalizeSiteFont(params.get('site_font')),
+      siteRadius: normalizeSiteRadius(params.get('site_radius')),
     };
   }, []);
 
@@ -182,6 +198,13 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     () => mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12),
     [resolvedTheme.successAccent, resolvedTheme.successBackground]
   );
+  const activeBorderRadius = config.borderRadiusMode === 'automatic' && queryContext.siteRadius !== null
+    ? queryContext.siteRadius
+    : normalizeFormBorderRadius(config.borderRadius);
+  const borderRadiusTokens = useMemo(
+    () => createFormBorderRadiusTokens(activeBorderRadius),
+    [activeBorderRadius]
+  );
   const successDetails = useMemo(() => {
     return parseSuccessDetails(
       config.successMessage,
@@ -212,10 +235,14 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     '--form-success-accent': resolvedTheme.successAccent,
     '--form-error': resolvedTheme.errorBackground,
     '--form-error-accent': resolvedTheme.errorAccent,
+    '--form-radius-card': `${borderRadiusTokens.card}px`,
+    '--form-radius-panel': `${borderRadiusTokens.panel}px`,
+    '--form-radius-control': `${borderRadiusTokens.control}px`,
+    '--form-radius-compact': `${borderRadiusTokens.compact}px`,
     backgroundColor: queryContext.embedded ? 'transparent' : resolvedTheme.pageBackground,
     color: resolvedTheme.bodyText,
     fontFamily: queryContext.siteFont || 'Inter, ui-sans-serif, system-ui, sans-serif',
-  } as React.CSSProperties), [queryContext.siteFont, resolvedTheme]);
+  } as React.CSSProperties), [borderRadiusTokens, queryContext.siteFont, resolvedTheme]);
 
   useEffect(() => {
     let mounted = true;
@@ -234,6 +261,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
         setConfig({
           ...DEFAULT_CONFIG,
           ...nextConfig,
+          borderRadiusMode: nextConfig.borderRadiusMode === 'manual' ? 'manual' : 'automatic',
+          borderRadius: normalizeFormBorderRadius(nextConfig.borderRadius),
           colorMode: nextConfig.colorMode === 'detailed' ? 'detailed' : 'automatic',
           themeColors: normalizeFormThemeColors(
             nextConfig.themeColors,
@@ -409,7 +438,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   if (configError) {
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`flex items-center justify-center px-4 ${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen'}`} style={formThemeStyle}>
-        <div className="relative max-w-md rounded-2xl border p-7 text-center shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
+        <div data-form-card className="relative max-w-md rounded-2xl border p-7 text-center shadow-xl" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
           {queryContext.modal && (
             <button
               type="button"
@@ -443,7 +472,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`${queryContext.embedded ? 'min-h-0 py-4' : 'min-h-screen py-10'} px-4`} style={formThemeStyle}>
         <div className={`mx-auto flex max-w-xl items-center ${queryContext.embedded ? 'min-h-0' : 'min-h-[calc(100vh-5rem)]'}`}>
-          <section className="relative w-full rounded-3xl border p-7 text-center shadow-xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, borderColor: resolvedTheme.inputBorder, color: resolvedTheme.bodyText }}>
+          <section data-form-card className="relative w-full rounded-3xl border p-7 text-center shadow-xl md:p-10" style={{ backgroundColor: resolvedTheme.successBackground, borderColor: resolvedTheme.inputBorder, color: resolvedTheme.bodyText }}>
             {queryContext.modal && (
               <button
                 type="button"
@@ -475,7 +504,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               {successDetails.message}
             </p>
             {successDetails.showNextStep && (
-              <div className="mt-7 rounded-2xl border p-4 text-left" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.bodyText }}>
+              <div data-form-panel className="mt-7 rounded-2xl border p-4 text-left" style={{ backgroundColor: successTint, borderColor: resolvedTheme.successAccent, color: resolvedTheme.bodyText }}>
                 <div className="flex items-start gap-3">
                   <MessageCircle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: resolvedTheme.successAccent }} />
                   <div>
@@ -490,6 +519,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
             {successDetails.actionButtonLabel && successDetails.actionButtonUrl && (
               <div className="mt-6">
                 <a
+                  data-primary-action
                   href={successDetails.actionButtonUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -517,7 +547,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
         style={{ backgroundColor: queryContext.embedded ? 'transparent' : resolvedTheme.pageBackground }}
       >
         <section className={`w-full ${config.sideImageUrls.length ? 'max-w-6xl' : 'max-w-2xl'}`}>
-            <div className="overflow-hidden rounded-3xl border shadow-xl shadow-slate-900/5" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
+            <div data-form-card className="overflow-hidden rounded-3xl border shadow-xl shadow-slate-900/5" style={{ backgroundColor: resolvedTheme.cardBackground, borderColor: resolvedTheme.inputBorder }}>
               <div className="relative p-5 sm:p-7 lg:px-9 lg:py-8" style={{ backgroundColor: resolvedTheme.headerBackground, color: resolvedTheme.headerText }}>
                 {queryContext.modal && (
                   <button
@@ -635,7 +665,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
               ) : (
                 <>
                   <div className="mb-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: resolvedTheme.consentBackground, color: resolvedTheme.progressActive }}><Zap className="h-5 w-5" /></div>
+                    <div data-form-compact className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: resolvedTheme.consentBackground, color: resolvedTheme.progressActive }}><Zap className="h-5 w-5" /></div>
                     <h2 className="mt-4 text-2xl font-extrabold tracking-tight">Agora, sobre seu consumo</h2>
                     <p className="mt-2 text-sm" style={{ color: resolvedTheme.mutedText }}>Informe o que você souber. Um dos dois primeiros campos é suficiente.</p>
                   </div>
@@ -673,7 +703,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                   </div>
 
-                  <label className="mt-5 flex items-start gap-3 rounded-xl p-3" style={{ backgroundColor: resolvedTheme.consentBackground }}>
+                  <label data-form-panel className="mt-5 flex items-start gap-3 rounded-xl p-3" style={{ backgroundColor: resolvedTheme.consentBackground }}>
                     <input type="checkbox" checked={form.consent} onChange={(event) => setField('consent', event.target.checked)} className="mt-0.5 h-4 w-4" style={{ accentColor: resolvedTheme.progressActive }} />
                     <span className="text-xs leading-5" style={{ color: resolvedTheme.mutedText }}>Autorizo o contato da equipe para atender esta solicitação e concordo com o tratamento dos dados informados para essa finalidade.{config.privacyUrl && <> Consulte a <a href={config.privacyUrl} target="_blank" rel="noreferrer" className="font-bold underline">política de privacidade</a>.</>}</span>
                   </label>
@@ -700,7 +730,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                 </>
               )}
 
-              {error && <p role="alert" className="mt-4 rounded-xl border px-3 py-2 text-xs font-semibold" style={{ backgroundColor: resolvedTheme.errorBackground, borderColor: resolvedTheme.errorAccent, color: resolvedTheme.errorAccent }}>{error}</p>}
+              {error && <p data-form-panel role="alert" className="mt-4 rounded-xl border px-3 py-2 text-xs font-semibold" style={{ backgroundColor: resolvedTheme.errorBackground, borderColor: resolvedTheme.errorAccent, color: resolvedTheme.errorAccent }}>{error}</p>}
               </form>
                 </div>
               </div>
