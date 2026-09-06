@@ -21,7 +21,11 @@ const responseHeaders = (origin: string | null, isPublicConfig = false) => ({
   "Access-Control-Allow-Methods": preflightHeaders["Access-Control-Allow-Methods"],
   Vary: "Origin",
   "Content-Type": "application/json; charset=utf-8",
-  "Cache-Control": isPublicConfig ? "public, max-age=60" : "no-store",
+  // As configurações do widget precisam refletir alterações de identidade visual
+  // imediatamente após o usuário salvar, inclusive em sites já instalados.
+  "Cache-Control": "no-store, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
 });
 
 const json = (
