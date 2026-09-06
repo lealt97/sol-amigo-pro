@@ -218,17 +218,13 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     : '';
   const installCode = useMemo(() => {
     if (!draft) return '';
-    const activeLogo = draft.floatingButtonLogoUrl === 'none'
-      ? 'none'
-      : (draft.floatingButtonLogoUrl || draft.logoUrl || '');
-    const logoAttr = activeLogo ? ` data-floating-logo-url="${activeLogo}"` : '';
     const buttonLabelAttr = draft.submitLabel ? ` data-button-label="${draft.submitLabel.replace(/"/g, '&quot;')}"` : '';
 
     if (draft.widgetMode === 'both') {
-      return `<!-- 1. Bloco onde o formulário será incorporado na página -->\n<div id="sol-amigo-formulario"></div>\n\n<!-- 2. Script para ativar o formulário e o botão flutuante juntos -->\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="both" data-target="#sol-amigo-formulario"${buttonLabelAttr}${logoAttr}></script>`;
+      return `<!-- 1. Bloco onde o formulário será incorporado na página -->\n<div id="sol-amigo-formulario"></div>\n\n<!-- 2. Script para ativar o formulário e o botão flutuante juntos -->\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="both" data-target="#sol-amigo-formulario"${buttonLabelAttr}></script>`;
     }
     if (draft.widgetMode === 'modal') {
-      return `<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="modal"${buttonLabelAttr}${logoAttr}></script>`;
+      return `<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-mode="modal"${buttonLabelAttr}></script>`;
     }
     return `<div id="sol-amigo-formulario"></div>\n<script async src="${PUBLIC_APP_URL}widget.js" data-sol-amigo-token="${draft.publicToken}" data-target="#sol-amigo-formulario"></script>`;
   }, [draft, PUBLIC_APP_URL]);

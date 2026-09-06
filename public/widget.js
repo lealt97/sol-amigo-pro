@@ -160,12 +160,14 @@
       var configMainLogo = (publicConfig && typeof publicConfig.logoUrl === "string") ? publicConfig.logoUrl.trim() : "";
 
       var floatingLogoUrl = "";
-      if (scriptLogo) {
-        floatingLogoUrl = scriptLogo === "none" ? "" : scriptLogo;
-      } else if (configFloatingLogo) {
+      // A configuração salva é a fonte oficial. O atributo no script permanece
+      // apenas como compatibilidade para instalações antigas/sem configuração.
+      if (configFloatingLogo) {
         floatingLogoUrl = configFloatingLogo === "none" ? "" : configFloatingLogo;
       } else if (configMainLogo) {
         floatingLogoUrl = configMainLogo;
+      } else if (scriptLogo) {
+        floatingLogoUrl = scriptLogo === "none" ? "" : scriptLogo;
       }
 
       widgetTrigger = document.createElement("div");
