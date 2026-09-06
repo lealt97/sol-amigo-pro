@@ -104,6 +104,7 @@ const ACCIDENTAL_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const DEFAULT_FORM_BORDER_RADIUS = 12;
 const THEME_COLOR_KEYS = [
   "pageBackground", "cardBackground", "headerBackground", "headerText",
   "headerMutedText", "bodyText", "mutedText", "inputBackground", "inputBorder",
@@ -125,6 +126,11 @@ const normalizeThemeColors = (value: unknown) => {
   if (typeof candidate._widgetMode === 'string') {
     colors._widgetMode = candidate._widgetMode;
   }
+  colors._borderRadiusMode = candidate._borderRadiusMode === 'manual' ? 'manual' : 'automatic';
+  const radius = Number(candidate._borderRadius);
+  colors._borderRadius = Number.isFinite(radius)
+    ? Math.round(Math.min(24, Math.max(0, radius)))
+    : DEFAULT_FORM_BORDER_RADIUS;
   return colors;
 };
 
@@ -224,6 +230,7 @@ Deno.serve(async (req: Request) => {
       const floatingButtonLogo = typeof form.theme_colors?._floatingButtonLogoUrl === 'string' && form.theme_colors._floatingButtonLogoUrl.trim()
         ? form.theme_colors._floatingButtonLogoUrl.trim()
         : form.logo_url;
+      const normalizedThemeColors = normalizeThemeColors(form.theme_colors);
       return json({
         companyName: form.company_name,
         logoUrl: form.logo_url,
@@ -234,7 +241,9 @@ Deno.serve(async (req: Request) => {
         primaryColor: form.primary_color,
         secondaryColor: form.secondary_color,
         surfaceColor: form.surface_color,
-        themeColors: normalizeThemeColors(form.theme_colors),
+        themeColors: normalizedThemeColors,
+        borderRadiusMode: normalizedThemeColors._borderRadiusMode,
+        borderRadius: normalizedThemeColors._borderRadius,
         headline: form.headline,
         subheadline: form.subheadline,
         submitLabel: form.submit_label,
