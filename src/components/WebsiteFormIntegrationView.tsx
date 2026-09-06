@@ -22,6 +22,7 @@ import {
   DEFAULT_NEXT_STEP_DESC, DEFAULT_NEXT_STEP_TITLE,
   DEFAULT_SUCCESS_MESSAGE, DEFAULT_SUCCESS_TITLE,
 } from '../utils/formSuccess';
+import { createFormBorderRadiusTokens, normalizeFormBorderRadius } from '../utils/formRadius';
 import { ResponsiveColorField } from './ResponsiveColorField';
 
 interface WebsiteFormIntegrationViewProps {
@@ -381,6 +382,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     if (!Object.values(settings.themeColors).every(isHexColor)) {
       throw new Error('Revise as cores detalhadas do formulário.');
     }
+    if (!Number.isFinite(settings.borderRadius) || settings.borderRadius < 0 || settings.borderRadius > 24) {
+      throw new Error('Escolha um arredondamento entre 0 e 24 pixels.');
+    }
     validateHttpsUrl(settings.privacyUrl, 'A URL da política de privacidade');
     if (settings.sideImageUrls.length > 3) throw new Error('Use no máximo três fotos laterais.');
     settings.sideImageUrls.forEach((url, index) => validateHttpsUrl(url, `A foto ${index + 1}`));
@@ -514,6 +518,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
   const resolvedTheme = resolveFormTheme(draft);
   const successTint = mixHexColors(resolvedTheme.successAccent, resolvedTheme.successBackground, 0.12);
+  const previewRadius = createFormBorderRadiusTokens(draft.borderRadius);
   const isDarkSystem = getContrastFg(theme.background) === '#FFFFFF';
   const floatingCardBg = isDarkSystem
     ? `color-mix(in srgb, ${theme.background} 92%, ${theme.primary} 8%)`
@@ -522,6 +527,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
     backgroundColor: resolvedTheme.inputBackground,
     borderColor: resolvedTheme.inputBorder,
     color: resolvedTheme.mutedText,
+    borderRadius: `${previewRadius.control}px`,
   };
 
   const renderFormPreviewCard = (isFloating = false) => {
@@ -708,6 +714,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     backgroundColor: resolvedTheme.successBackground,
                     borderColor: resolvedTheme.inputBorder,
                     color: resolvedTheme.bodyText,
+                    borderRadius: `${previewRadius.card}px`,
                   }}
                 >
                   <div
@@ -732,6 +739,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       style={{
                         backgroundColor: successTint,
                         borderColor: resolvedTheme.successAccent,
+                        borderRadius: `${previewRadius.panel}px`,
                       }}
                     >
                       <div className="flex items-start gap-2.5">
@@ -755,6 +763,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                         style={{
                           backgroundColor: resolvedTheme.primaryButtonBackground,
                           color: resolvedTheme.primaryButtonText,
+                          borderRadius: `${previewRadius.control}px`,
                         }}
                       >
                         {draft.actionButtonLabel}
@@ -883,7 +892,10 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 >
                   <div
                     className="overflow-hidden rounded-xl shadow-lg"
-                    style={{ backgroundColor: resolvedTheme.cardBackground }}
+                    style={{
+                      backgroundColor: resolvedTheme.cardBackground,
+                      borderRadius: `${previewRadius.card}px`,
+                    }}
                   >
                     <div
                       className="relative p-3.5"
@@ -968,6 +980,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                           style={{
                             backgroundColor: resolvedTheme.primaryButtonBackground,
                             color: resolvedTheme.primaryButtonText,
+                            borderRadius: `${previewRadius.control}px`,
                           }}
                         >
                           {draft.submitLabel || 'Simular economia'}
@@ -1449,6 +1462,71 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   <label><span className="mb-1.5 block text-xs font-bold">Política de privacidade</span><input className="crm-input" value={draft.privacyUrl} maxLength={500} inputMode="url" placeholder="https://..." onChange={(event) => setField('privacyUrl', event.target.value)} /></label>
                   <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold">Mensagem após o envio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.successMessage} maxLength={240} onChange={(event) => setField('successMessage', event.target.value)} /></label>
                   <label className="sm:col-span-2 flex items-center gap-3 rounded-lg border p-3" style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
+                </div>
+
+                <div className="border-t pt-6" style={{ borderColor: theme.border }}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="max-w-xl">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" style={{ color: theme.accent }} />
+                        <h4 className="text-sm font-bold">Arredondamento do formulário</h4>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-5 opacity-60">
+                        Assim como a fonte, o modo automático acompanha o estilo do site do integrador. Somente um valor numérico seguro é aplicado; nenhum CSS externo entra no formulário.
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: theme.border }}>
+                      Botão flutuante sempre circular
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border p-1.5" style={{ borderColor: theme.border }}>
+                    {([['automatic', 'Automático do site'], ['manual', 'Manual']] as const).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setField('borderRadiusMode', mode)}
+                        className="rounded-lg px-3 py-2.5 text-xs font-bold"
+                        style={{
+                          backgroundColor: draft.borderRadiusMode === mode ? theme.secondary : 'transparent',
+                          color: draft.borderRadiusMode === mode ? '#FFFFFF' : undefined,
+                        }}
+                        aria-pressed={draft.borderRadiusMode === mode}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {draft.borderRadiusMode === 'automatic' ? (
+                    <div className="mt-4 rounded-xl border p-3" style={{ borderColor: theme.border }}>
+                      <p className="text-xs font-bold">Detecção automática ativa</p>
+                      <p className="mt-1 text-[10px] leading-4 opacity-60">
+                        No site publicado, o widget analisa botões e campos visíveis para harmonizar as bordas. A prévia usa {draft.borderRadius}px como valor de segurança.
+                      </p>
+                    </div>
+                  ) : (
+                    <label className="mt-4 block rounded-xl border p-4" style={{ borderColor: theme.border }}>
+                      <span className="flex items-center justify-between gap-3 text-xs font-bold">
+                        <span>Arredondamento manual</span>
+                        <span className="rounded-md border px-2 py-1 tabular-nums" style={{ borderColor: theme.border }}>
+                          {draft.borderRadius}px
+                        </span>
+                      </span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="24"
+                        step="1"
+                        value={draft.borderRadius}
+                        onChange={(event) => setField('borderRadius', normalizeFormBorderRadius(event.target.value))}
+                        className="mt-4 w-full"
+                        style={{ accentColor: theme.secondary }}
+                        aria-label="Arredondamento manual do formulário"
+                      />
+                      <span className="mt-2 flex justify-between text-[10px] opacity-55"><span>Reto</span><span>Bem arredondado</span></span>
+                    </label>
+                  )}
                 </div>
 
                 <div className="border-t pt-6" style={{ borderColor: theme.border }}>
