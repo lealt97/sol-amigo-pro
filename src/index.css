@@ -263,7 +263,8 @@ main > #area-risco-page {
 /* Tema interno do formulário público. Os atributos não são uma API de CSS:
    recebem apenas os tokens validados do motor de cores. */
 [data-sol-amigo-form] input:not([type='checkbox']),
-[data-sol-amigo-form] select {
+[data-sol-amigo-form] select,
+[data-sol-amigo-form] textarea {
   background-color: var(--form-input);
   border-color: var(--form-input-border);
   color: var(--form-input-text);
@@ -271,13 +272,15 @@ main > #area-risco-page {
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-[data-sol-amigo-form] input:not([type='checkbox'])::placeholder {
+[data-sol-amigo-form] input:not([type='checkbox'])::placeholder,
+[data-sol-amigo-form] textarea::placeholder {
   color: var(--form-muted);
   opacity: 0.8;
 }
 
 [data-sol-amigo-form] input:not([type='checkbox']):focus,
-[data-sol-amigo-form] select:focus {
+[data-sol-amigo-form] select:focus,
+[data-sol-amigo-form] textarea:focus {
   border-color: var(--form-action);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--form-action) 14%, transparent);
 }
@@ -305,6 +308,28 @@ main > #area-risco-page {
 
 [data-sol-amigo-form] [data-secondary-action]:hover {
   filter: brightness(0.97);
+}
+
+/* O arredondamento é aplicado por tokens numéricos seguros. No widget, os
+   tokens podem ser derivados do site hospedeiro sem importar o CSS externo. */
+[data-sol-amigo-form] [data-form-card] {
+  border-radius: var(--form-radius-card) !important;
+}
+
+[data-sol-amigo-form] [data-form-panel] {
+  border-radius: var(--form-radius-panel) !important;
+}
+
+[data-sol-amigo-form] [data-form-compact] {
+  border-radius: var(--form-radius-compact) !important;
+}
+
+[data-sol-amigo-form] input:not([type='checkbox']),
+[data-sol-amigo-form] select,
+[data-sol-amigo-form] textarea,
+[data-sol-amigo-form] [data-primary-action],
+[data-sol-amigo-form] [data-secondary-action] {
+  border-radius: var(--form-radius-control) !important;
 }
 
 #clientes-page select option,
