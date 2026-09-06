@@ -209,6 +209,7 @@ export interface LeadCaptureForm {
 }
 
 export type FormColorMode = 'automatic' | 'detailed';
+export type FormBorderRadiusMode = 'automatic' | 'manual';
 
 export interface FormThemeColors {
   pageBackground: string;
@@ -244,6 +245,8 @@ export interface WebsiteFormSettings extends LeadCaptureForm {
   floatingButtonLogoUrl?: string;
   sideImageUrls: string[];
   sideImageRotationEnabled: boolean;
+  borderRadiusMode: FormBorderRadiusMode;
+  borderRadius: number;
   colorMode: FormColorMode;
   primaryColor: string;
   secondaryColor: string;
