@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Building2,
   CalendarClock,
+  Calculator,
   Check,
   CheckCircle2,
   Clipboard,
@@ -35,6 +36,7 @@ import {
   LeadCaptureForm,
   LeadStage,
   LeadTask,
+  OpportunitySizing,
   ThemeConfig,
 } from '../types';
 import {
@@ -52,6 +54,8 @@ import {
   saveLeadDetails,
   updateLeadStage,
 } from '../services/leads';
+import { fetchOpportunitySizing } from '../services/solarSizing';
+import { SolarSizingEditor } from './SolarSizingEditor';
 import { getContrastFg } from '../utils/themeEngine';
 import { formatPhone } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
@@ -122,6 +126,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
   const [updatingStage, setUpdatingStage] = useState(false);
   const [leadTasks, setLeadTasks] = useState<LeadTask[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
+  const [leadSizing, setLeadSizing] = useState<OpportunitySizing | null>(null);
+  const [sizingEditorOpen, setSizingEditorOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMode, setActionMode] = useState<'contact' | 'qualify' | 'lost' | null>(null);
@@ -200,6 +206,8 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
     if (!selectedLeadId) {
       setLeadTasks([]);
       setLeadActivities([]);
+      setLeadSizing(null);
+      setSizingEditorOpen(false);
       setActionMode(null);
       return;
     }
@@ -213,18 +221,25 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
     setLostReason(lead?.lostReason ?? '');
     setTaskTitle('');
     setTaskDueAt(defaultFutureDateTime());
+    setLeadSizing(null);
+    setSizingEditorOpen(false);
 
     let cancelled = false;
     setDetailsLoading(true);
-    void Promise.all([fetchLeadTasks(selectedLeadId), fetchLeadActivities(selectedLeadId)])
-      .then(([tasks, activities]) => {
+    void Promise.all([
+      fetchLeadTasks(selectedLeadId),
+      fetchLeadActivities(selectedLeadId),
+      fetchOpportunitySizing(selectedLeadId),
+    ])
+      .then(([tasks, activities, sizing]) => {
         if (cancelled) return;
         setLeadTasks(tasks);
         setLeadActivities(activities);
+        setLeadSizing(sizing);
       })
       .catch((detailsError) => {
         console.error('load lead details error', detailsError);
-        if (!cancelled) onShowToast('Não foi possível carregar tarefas e histórico.');
+        if (!cancelled) onShowToast('Não foi possível carregar todos os dados da oportunidade.');
       })
       .finally(() => {
         if (!cancelled) setDetailsLoading(false);
@@ -317,12 +332,28 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
   };
 
   const refreshLeadDetails = async (leadId: string) => {
-    const [tasks, activities] = await Promise.all([
+    const [tasks, activities, sizing] = await Promise.all([
       fetchLeadTasks(leadId),
       fetchLeadActivities(leadId),
+      fetchOpportunitySizing(leadId),
     ]);
     setLeadTasks(tasks);
     setLeadActivities(activities);
+    setLeadSizing(sizing);
+  };
+
+  const handleSizingSaved = (sizing: OpportunitySizing) => {
+    setLeadSizing(sizing);
+    setLeads((current) =>
+      current.map((lead) =>
+        lead.id === sizing.leadId && lead.status === 'qualificado'
+          ? { ...lead, status: 'em_estudo', updatedAt: new Date().toISOString() }
+          : lead
+      )
+    );
+    void refreshLeadDetails(sizing.leadId).catch((detailsError) => {
+      console.error('refresh sizing details error', detailsError);
+    });
   };
 
   const handleSaveDetails = async () => {
@@ -780,6 +811,59 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
                 </div>
               </section>
 
+              {selectedLead.clientId && selectedLead.consumerUnitId && selectedLead.status !== 'perdido' && (
+                <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="flex items-center gap-2 text-xs font-extrabold">
+                        <Calculator className="h-4 w-4" style={{ color: theme.secondary }} /> Dimensionamento
+                      </h3>
+                      <p className="mt-1 text-[10px]" style={{ color: mutedText }}>
+                        Consumo, irradiação, perdas, módulos e inversores em um cálculo auditável.
+                      </p>
+                    </div>
+                    {leadSizing && (
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide ${leadSizing.status === 'concluido' ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/35 bg-amber-500/10 text-amber-300'}`}
+                      >
+                        {leadSizing.status === 'concluido' ? 'Concluído' : 'Rascunho'}
+                      </span>
+                    )}
+                  </div>
+
+                  {leadSizing ? (
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {[
+                        ['Potência', `${leadSizing.installedPowerKWp.toLocaleString('pt-BR')} kWp`],
+                        ['Módulos', String(leadSizing.modulesCount)],
+                        ['Geração mensal', `${Math.round(leadSizing.estimatedMonthlyGenerationKWh).toLocaleString('pt-BR')} kWh`],
+                        ['Cobertura', `${leadSizing.estimatedCoveragePercent.toLocaleString('pt-BR')}%`],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-lg border p-3" style={{ borderColor: theme.border }}>
+                          <p className="text-[9px] font-bold" style={{ color: mutedText }}>{label}</p>
+                          <p className="mt-1 text-xs font-extrabold">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-lg border border-dashed p-3 text-center text-[10px]" style={{ borderColor: theme.border, color: mutedText }}>
+                      Nenhum dimensionamento iniciado para esta oportunidade.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSizingEditorOpen(true)}
+                    disabled={selectedLead.status === 'ganho' || detailsLoading}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ backgroundColor: theme.secondary, color: getContrastFg(theme.secondary) }}
+                  >
+                    {detailsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                    {leadSizing ? 'Editar dimensionamento' : 'Iniciar dimensionamento'}
+                  </button>
+                </section>
+              )}
+
               <section className="rounded-xl border p-4" style={{ backgroundColor: panelAltBg, borderColor: theme.border }}>
                 <h3 className="flex items-center gap-2 text-xs font-extrabold">
                   <ListTodo className="h-4 w-4" style={{ color: theme.secondary }} /> Tarefas
@@ -927,6 +1011,17 @@ export const OportunidadesView: React.FC<OportunidadesViewProps> = ({ theme, onS
             </div>
           </aside>
         </div>
+      )}
+
+      {selectedLead && sizingEditorOpen && (
+        <SolarSizingEditor
+          lead={selectedLead}
+          existingSizing={leadSizing}
+          theme={theme}
+          onClose={() => setSizingEditorOpen(false)}
+          onSaved={handleSizingSaved}
+          onShowToast={onShowToast}
+        />
       )}
     </div>
   );
