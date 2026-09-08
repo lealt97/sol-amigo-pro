@@ -188,7 +188,8 @@ export type LeadActivityType =
   | 'qualificado'
   | 'conversao'
   | 'perdido'
-  | 'reaberto';
+  | 'reaberto'
+  | 'dimensionamento';
 
 export interface LeadActivity {
   id: string;
@@ -302,30 +303,34 @@ export interface EnergySurvey {
 }
 
 export type SizingStatus = 'rascunho' | 'concluido';
-export type SizingInputMethod = 'consumo_medio' | 'levantamento_carga';
+export type SolarConnectionType = 'Monofásica' | 'Bifásica' | 'Trifásica';
 
-export interface LoadSurveyItem {
-  id: string;
-  description: string;
-  quantity: number;
-  powerW: number;
-  hoursPerDay: number;
-  daysPerMonth: number;
-}
-
-export interface OpportunitySizing {
-  inputMethod: SizingInputMethod;
-  directAverageConsumptionKWh: number;
-  loadSurveyItems: LoadSurveyItem[];
-  loadSurveyMonthlyConsumptionKWh: number;
-  sourceConsumptionKWh: number;
-  sunHoursPerDay: number;
-  performanceRatio: number;
+export interface SolarSizingInputs {
+  connectionType: SolarConnectionType;
+  monthlyConsumptionKWh: number[];
+  monthlySunHours: number[];
   targetCoveragePercent: number;
   futureConsumptionKWh: number;
+  inclinationFactor: number;
+  temperatureLossPercent: number;
+  otherLossesPercent: number;
+  transformerLossPercent: number;
   modulePowerW: number;
   moduleAreaM2: number;
+  inverterPowerKW: number;
+  inverterCount: number;
+  notes: string;
+}
+
+export interface SolarSizingResults {
+  averageConsumptionKWh: number;
+  availabilityCostKWh: number;
+  compensableConsumptionKWh: number;
   designConsumptionKWh: number;
+  averageCorrectedSunHours: number;
+  totalLossPercent: number;
+  performanceRatio: number;
+  theoreticalPowerKWp: number;
   requiredPowerKWp: number;
   modulesCount: number;
   installedPowerKWp: number;
@@ -333,7 +338,19 @@ export interface OpportunitySizing {
   estimatedAnnualGenerationKWh: number;
   estimatedCoveragePercent: number;
   estimatedAreaM2: number;
+  dcAcRatio: number;
+  dcAcStatus: 'ok' | 'atencao';
+  monthlyGenerationKWh: number[];
+}
+
+export interface OpportunitySizing extends SolarSizingInputs, SolarSizingResults {
+  id: string;
+  leadId: string;
+  consumerUnitId?: string;
+  calculationVersion: 'sa-sizing-v1';
   status: SizingStatus;
+  completedAt?: string;
+  createdAt: string;
   updatedAt: string;
 }
 
