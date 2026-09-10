@@ -347,9 +347,9 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
               className="rounded-md px-2 py-1.5 font-semibold"
               style={{ backgroundColor: draft.secondary, color: secondaryFg }}
             >
-              Propostas
+              Formulário no site
             </div>
-            <div className="rounded-md px-2 py-1.5 opacity-70">Clientes</div>
+            <div className="rounded-md px-2 py-1.5 opacity-70">Configurações</div>
           </div>
         </div>
 
@@ -363,7 +363,7 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
               className="rounded-lg px-3 py-2 text-xs font-semibold"
               style={{ backgroundColor: draft.secondary, color: secondaryFg }}
             >
-              Nova proposta
+              Editar formulário
             </button>
           </div>
 

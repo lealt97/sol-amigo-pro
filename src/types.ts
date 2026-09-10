@@ -25,11 +25,8 @@ export interface PdfSettingsConfig {
 
 export type PageKey =
   | 'dashboard'
-  | 'oportunidades'
-  | 'clientes'
   | 'levantamento'
   | 'empresas'
-  | 'propostas'
   | 'contratos'
   | 'produtos'
   | 'tarefas'

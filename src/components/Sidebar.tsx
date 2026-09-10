@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
-  UsersRound,
   Settings,
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
-  Target,
-  FileText,
 } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
 import { getContrastFg } from '../utils/themeEngine';
@@ -42,9 +39,6 @@ type SidebarProfile = {
 
 const NAV_ITEMS: NavItemDef[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'oportunidades', label: 'Oportunidades', icon: Target },
-  { key: 'propostas', label: 'Propostas', icon: FileText },
-  { key: 'clientes', label: 'Clientes', icon: UsersRound },
 ];
 
 function mixHex(base: string, target: string, amount: number): string {

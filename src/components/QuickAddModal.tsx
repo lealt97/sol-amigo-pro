@@ -1,8 +1,6 @@
 import React from 'react';
 import {
   Plus,
-  FileText,
-  Target,
   CheckSquare,
   X,
 } from 'lucide-react';
@@ -12,7 +10,6 @@ interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (page: PageKey) => void;
-  onOpenNewProposal: () => void;
   onShowToast: (msg: string) => void;
 }
 
@@ -20,31 +17,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   isOpen,
   onClose,
   onNavigate,
-  onOpenNewProposal,
 }) => {
   if (!isOpen) return null;
 
   const actions = [
-    {
-      title: 'Nova Oportunidade',
-      desc: 'Iniciar uma venda e concentrar todo o fluxo comercial em uma única ficha',
-      icon: Target,
-      color: 'bg-indigo-500 text-white',
-      action: () => {
-        onClose();
-        onNavigate('oportunidades');
-      },
-    },
-    {
-      title: 'Nova Proposta Solar',
-      desc: 'Fluxo legado temporário enquanto a proposta é integrada à oportunidade',
-      icon: FileText,
-      color: 'bg-amber-500 text-white',
-      action: () => {
-        onClose();
-        onOpenNewProposal();
-      },
-    },
     {
       title: 'Tarefa / Homologação',
       desc: 'Protocolo de acesso, vistoria e atividades operacionais',

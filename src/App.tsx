@@ -14,12 +14,9 @@ import { ProfileView } from './components/ProfileView';
 import { RiskAreaView } from './components/RiskAreaView';
 import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
-import { ClientesView } from './components/ClientesView';
 import { HelpModal } from './components/HelpModal';
-import { OportunidadesView } from './components/OportunidadesView';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
-import { PropostasView } from './components/PropostasView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -306,17 +303,6 @@ export default function App() {
 
   const renderCurrentView = () => {
     switch (activePage) {
-      case 'oportunidades':
-        return <OportunidadesView theme={currentTheme} onShowToast={showToast} />;
-      case 'clientes':
-        return <ClientesView theme={currentTheme} />;
-      case 'propostas':
-        return (
-          <PropostasView
-            theme={currentTheme}
-            onNavigateToOpportunities={() => setActivePage('oportunidades')}
-          />
-        );
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
