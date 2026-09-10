@@ -12,11 +12,8 @@ interface TopbarProps {
 
 const PAGE_TITLES: Record<PageKey, string> = {
   dashboard: 'Dashboard',
-  oportunidades: 'Oportunidades',
-  clientes: 'Clientes',
   levantamento: 'Levantamento',
   empresas: 'Empresas',
-  propostas: 'Propostas',
   contratos: 'Contratos',
   produtos: 'Produtos',
   tarefas: 'Tarefas',

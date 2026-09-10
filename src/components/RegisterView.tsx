@@ -168,7 +168,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onBackTo
           {imageSrc ? <img src={imageSrc} alt="Chalé A-frame com módulos solares ao pôr do sol" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 bg-[linear-gradient(145deg,#183956_0%,#315B70_42%,#FACB5C_100%)]" />}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,35,55,0.03)_20%,rgba(14,35,55,0.72)_100%)]" />
           <div className="absolute left-10 top-10 flex items-center gap-2 rounded-full border border-white/25 bg-[#0E2337]/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md"><span className="h-2 w-2 rounded-full bg-[#FACB5C] shadow-[0_0_0_4px_rgba(250,203,92,0.16)]" />Sua operação solar começa aqui</div>
-          <div className="absolute bottom-0 left-0 right-0 p-10 xl:p-14"><div className="max-w-[560px] text-white"><div className="mb-4 h-1 w-14 rounded-full bg-[#B4BF8A]" /><h2 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] xl:text-[38px]">Transforme oportunidades em projetos solares.</h2><p className="mt-4 max-w-[500px] text-sm leading-6 text-white/80">Tenha clientes, propostas e gestão comercial organizados em uma única plataforma.</p></div></div>
+          <div className="absolute bottom-0 left-0 right-0 p-10 xl:p-14"><div className="max-w-[560px] text-white"><div className="mb-4 h-1 w-14 rounded-full bg-[#B4BF8A]" /><h2 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] xl:text-[38px]">Sua operação solar começa aqui.</h2><p className="mt-4 max-w-[500px] text-sm leading-6 text-white/80">Personalize sua conta e conecte o formulário ao site da sua empresa.</p></div></div>
         </section>
       </div>
     </div>
