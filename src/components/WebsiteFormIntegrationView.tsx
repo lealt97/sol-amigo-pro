@@ -31,6 +31,9 @@ interface WebsiteFormIntegrationViewProps {
 }
 
 type EditorTab = 'appearance' | 'text' | 'service' | 'installation';
+type AppearanceSection = 'brand' | 'images' | 'layout' | 'colors';
+type TextSection = 'form' | 'success';
+type InstallationSection = 'display' | 'access';
 
 const PUBLIC_APP_URL = (
   import.meta.env.VITE_PUBLIC_APP_URL || 'https://lealt97.github.io/sol-amigo-pro/'
@@ -79,6 +82,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<'code' | 'link' | 'token' | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState<EditorTab>('appearance');
+  const [appearanceSection, setAppearanceSection] = useState<AppearanceSection>('brand');
+  const [textSection, setTextSection] = useState<TextSection>('form');
+  const [installationSection, setInstallationSection] = useState<InstallationSection>('display');
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [previewStage, setPreviewStage] = useState<'form' | 'success'>('form');
@@ -991,7 +997,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   return (
-    <div id="integracoes-page" className="mx-auto w-full max-w-[1480px] space-y-4">
+    <div id="integracoes-page" className="mx-auto w-full max-w-[1480px] space-y-3">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1003,11 +1009,23 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
               {draft.active ? 'Publicado' : 'Desativado'}
             </span>
           </div>
-          <p className="mt-1 text-xs opacity-60">Edite a aparência, os textos, o atendimento e a instalação.</p>
+          <p className="mt-1 text-xs opacity-60">Configure o formulário e acompanhe o resultado ao lado.</p>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className={`h-2 w-2 rounded-full ${changed ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-          <span className="font-semibold opacity-75">{changed ? 'Alterações não salvas' : 'Tudo salvo'}</span>
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="flex items-center gap-2 text-xs">
+            <span className={`h-2 w-2 rounded-full ${changed ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+            <span className="font-semibold opacity-75">{changed ? 'Alterações não salvas' : 'Tudo salvo'}</span>
+          </div>
+          <button
+            type="button"
+            disabled={saving || !changed}
+            onClick={save}
+            className="btn-filled hidden min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold lg:inline-flex"
+            style={{ backgroundColor: theme.secondary, color: '#fff' }}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
         </div>
       </header>
 
@@ -1017,8 +1035,8 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         </div>
       )}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_440px]">
-        <div className="min-w-0 overflow-hidden rounded-2xl border" style={{ borderColor: theme.border }}>
+      <div className="grid min-w-0 gap-3 lg:h-[calc(100vh-9.75rem)] lg:min-h-[610px] lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_440px]">
+        <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border lg:h-full" style={{ borderColor: theme.border }}>
           <nav
             className="flex min-w-0 overflow-x-auto border-b px-2 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3"
             style={{ borderColor: theme.border }}
@@ -1028,7 +1046,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             {([
               ['appearance', 'Aparência', Palette],
               ['text', 'Textos', Type],
-              ['service', `Atendimento (${draft.serviceStates.length})`, MapPin],
+              ['service', 'Atendimento', MapPin],
               ['installation', 'Instalação', Code2],
             ] as const).map(([tab, label, Icon]) => {
               const active = activeEditorTab === tab;
@@ -1050,13 +1068,32 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             })}
           </nav>
 
-          <div className="min-w-0 p-4 sm:p-5 md:p-6">
+          <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
           <section className={`${activeEditorTab === 'installation' ? '' : 'hidden'} rounded-xl`}>
             <div className="flex items-start gap-3">
               <Code2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
               <div><h3 className="font-bold">Instalação no site</h3><p className="mt-1 text-xs leading-5 opacity-65">Autorize o domínio, escolha como exibir e copie o código.</p></div>
             </div>
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl border p-1" style={{ borderColor: theme.border }} role="tablist" aria-label="Opções de instalação">
+              {([['display', 'Como exibir'], ['access', 'Código e acesso']] as const).map(([section, label]) => {
+                const active = installationSection === section;
+                return (
+                  <button
+                    key={section}
+                    type="button"
+                    onClick={() => setInstallationSection(section)}
+                    className="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+                    style={{ backgroundColor: active ? theme.secondary : 'transparent', color: active ? '#FFFFFF' : theme.text }}
+                    role="tab"
+                    aria-selected={active}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <div className={installationSection === 'access' ? 'space-y-3' : 'hidden'}>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input value={domainInput} onChange={(event) => setDomainInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addDomain(); } }} className="crm-input flex-1" placeholder="https://www.minhaempresa.com.br" inputMode="url" />
                   <button type="button" onClick={addDomain} className="btn-outline inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border px-4 text-xs font-bold" style={{ borderColor: theme.border }}><Plus className="h-4 w-4" /> Adicionar domínio</button>
@@ -1069,21 +1106,20 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     </span>
                   )) : <span className="text-xs opacity-55">Nenhum domínio autorizado.</span>}
                 </div>
-                <div className="space-y-2.5">
+              </div>
+                <div className={installationSection === 'display' ? 'space-y-2.5' : 'hidden'}>
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider">
-                      Modo de exibição no site (caixas de seleção)
-                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Modo de exibição</span>
                     <span className="text-[11px] font-medium opacity-75">
                       {draft.widgetMode === 'both'
-                        ? '✨ Ambos ativos (formulário + botão flutuante)'
+                        ? 'Formulário e botão'
                         : draft.widgetMode === 'inline'
-                        ? '📄 Apenas formulário na página ativo'
-                        : '🔘 Apenas botão flutuante ativo'}
+                        ? 'Formulário na página'
+                        : 'Botão flutuante'}
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed opacity-65">
-                    Marque as caixas abaixo para ativar o formulário no seu site. Você pode marcar ambas para funcionarem juntas simultaneamente, ou apenas uma das duas:
+                    Ative uma ou as duas formas de exibição.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2 pt-1">
                     {/* Opção 1: Formulário incorporado na página */}
@@ -1118,7 +1154,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       <div className="min-w-0 flex-1">
                         <span className="text-sm font-bold">Formulário na página</span>
                         <p className="mt-1 text-xs leading-relaxed opacity-65">
-                          Ocupa um bloco fixo dentro do layout da página do seu site.
+                          Fica incorporado ao conteúdo do site.
                         </p>
                       </div>
                     </div>
@@ -1155,27 +1191,12 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       <div className="min-w-0 flex-1">
                         <span className="text-sm font-bold">Botão flutuante</span>
                         <p className="mt-1 text-xs leading-relaxed opacity-65">
-                          Botão redondo fixo no canto inferior com balão interativo que abre sobre a página.
+                          Abre o formulário sobre a página.
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {draft.widgetMode === 'both' && (
-                    <div
-                      className="flex items-center gap-2.5 rounded-lg border px-3.5 py-2 text-xs"
-                      style={{
-                        borderColor: `${theme.secondary}40`,
-                        backgroundColor: `${theme.secondary}12`,
-                        color: theme.text,
-                      }}
-                    >
-                      <Sparkles className="h-4 w-4 shrink-0" style={{ color: theme.secondary }} />
-                      <span>
-                        <strong>Ambos ativos:</strong> o visitante do seu site pode interagir tanto com o formulário embutido na página quanto com o botão flutuante no canto da tela!
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {hasButton && (
@@ -1307,6 +1328,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     </div>
                   </div>
                 )}
+              <div className={installationSection === 'access' ? 'mt-4 space-y-4' : 'hidden'}>
                 <div className="relative">
                   <pre className="max-h-48 min-w-0 overflow-y-auto whitespace-pre-wrap break-all rounded-xl border p-4 pr-12 font-mono text-[11px] leading-5" style={{ borderColor: theme.border, backgroundColor: `${theme.primary}22` }}><code>{installCode}</code></pre>
                   <button type="button" onClick={() => copy('code', installCode)} className="absolute right-2 top-2 rounded-lg border p-2" style={{ borderColor: theme.border }} aria-label="Copiar código de instalação">{copied === 'code' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</button>
@@ -1346,6 +1368,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
                   Testar conexão
                 </button>
+              </div>
             </div>
           </section>
 
@@ -1372,23 +1395,31 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   <button type="button" onClick={() => setField('serviceStates', [...ALL_BRAZIL_STATE_CODES])} className="btn-outline rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>Selecionar todos</button>
                   <button type="button" onClick={() => setField('serviceStates', [])} className="btn-outline rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>Limpar</button>
                 </div>
-                <div className="mt-4 space-y-4">
-                  {BRAZIL_STATE_GROUPS.map(({ region, states }) => (
-                    <fieldset key={region}>
-                      <legend className="mb-2 text-xs font-bold opacity-70">{region}</legend>
-                      <div className="flex flex-wrap gap-2">
-                        {states.map(([code, name]) => {
-                          const checked = draft.serviceStates.includes(code);
-                          return (
-                            <label key={code} className="cursor-pointer rounded-lg border px-3 py-2 text-xs" style={{ borderColor: checked ? theme.secondary : theme.border, backgroundColor: checked ? `${theme.secondary}20` : undefined }} title={name}>
-                              <input type="checkbox" checked={checked} onChange={() => setField('serviceStates', checked ? draft.serviceStates.filter((state) => state !== code) : [...draft.serviceStates, code])} className="mr-2" style={{ accentColor: theme.secondary }} />
-                              <strong>{code}</strong> <span className="opacity-65">{name}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  ))}
+                <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7 lg:grid-cols-9">
+                  {BRAZIL_STATE_GROUPS.flatMap(({ states }) => states).map(([code, name]) => {
+                    const checked = draft.serviceStates.includes(code);
+                    return (
+                      <label
+                        key={code}
+                        className="flex min-h-10 cursor-pointer items-center justify-center rounded-lg border px-2 py-2 text-sm font-extrabold transition-colors"
+                        style={{
+                          borderColor: checked ? theme.secondary : theme.border,
+                          backgroundColor: checked ? `${theme.secondary}20` : undefined,
+                          color: checked ? theme.secondary : theme.text,
+                        }}
+                        title={name}
+                        aria-label={`${name} (${code})`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setField('serviceStates', checked ? draft.serviceStates.filter((state) => state !== code) : [...draft.serviceStates, code])}
+                          className="sr-only"
+                        />
+                        {code}
+                      </label>
+                    );
+                  })}
                 </div>
             </div>
           </section>
@@ -1409,19 +1440,59 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                 </div>
               </div>
             </div>
-            <div className="mt-5 space-y-6">
+            {activeEditorTab === 'appearance' && (
+              <div className="mt-4 grid grid-cols-4 gap-1 rounded-xl border p-1" style={{ borderColor: theme.border }} role="tablist" aria-label="Opções de aparência">
+                {([['brand', 'Marca'], ['images', 'Imagens'], ['layout', 'Formato'], ['colors', 'Cores']] as const).map(([section, label]) => {
+                  const active = appearanceSection === section;
+                  return (
+                    <button
+                      key={section}
+                      type="button"
+                      onClick={() => setAppearanceSection(section)}
+                      className="rounded-lg px-2 py-2 text-xs font-bold transition-colors"
+                      style={{ backgroundColor: active ? theme.secondary : 'transparent', color: active ? '#FFFFFF' : theme.text }}
+                      role="tab"
+                      aria-selected={active}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {activeEditorTab === 'text' && (
+              <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl border p-1" style={{ borderColor: theme.border }} role="tablist" aria-label="Opções de texto">
+                {([['form', 'Formulário'], ['success', 'Conclusão']] as const).map(([section, label]) => {
+                  const active = textSection === section;
+                  return (
+                    <button
+                      key={section}
+                      type="button"
+                      onClick={() => setTextSection(section)}
+                      className="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+                      style={{ backgroundColor: active ? theme.secondary : 'transparent', color: active ? '#FFFFFF' : theme.text }}
+                      role="tab"
+                      aria-selected={active}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className={activeEditorTab === 'text' && textSection === 'success' ? 'hidden' : 'mt-4 space-y-4'}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className={`${activeEditorTab === 'text' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Nome da empresa</span><input className="crm-input" value={draft.companyName} maxLength={100} onChange={(event) => setField('companyName', event.target.value)} /></label>
-                  <fieldset className={`${activeEditorTab === 'appearance' ? '' : 'hidden'} sm:col-span-2`}>
+                  <label className={`${activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Nome da empresa</span><input className="crm-input" value={draft.companyName} maxLength={100} onChange={(event) => setField('companyName', event.target.value)} /></label>
+                  <fieldset className={`${activeEditorTab === 'appearance' && appearanceSection === 'brand' ? '' : 'hidden'} sm:col-span-2`}>
                     <legend className="text-xs font-bold">Logotipo</legend>
                     <p className="mt-1 text-[11px] opacity-60">Use um logo já cadastrado no perfil.</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <button type="button" onClick={() => setField('logoUrl', '')} aria-pressed={!draft.logoUrl} className="flex min-h-24 items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold" style={{ borderColor: !draft.logoUrl ? theme.secondary : theme.border, boxShadow: !draft.logoUrl ? `0 0 0 2px ${theme.secondary}25` : undefined }}><Image className="h-4 w-4 opacity-60" /> Sem logo {!draft.logoUrl && <Check className="h-4 w-4" style={{ color: theme.accent }} />}</button>
+                      <button type="button" onClick={() => setField('logoUrl', '')} aria-pressed={!draft.logoUrl} className="flex min-h-20 items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold" style={{ borderColor: !draft.logoUrl ? theme.secondary : theme.border, boxShadow: !draft.logoUrl ? `0 0 0 2px ${theme.secondary}25` : undefined }}><Image className="h-4 w-4 opacity-60" /> Sem logo {!draft.logoUrl && <Check className="h-4 w-4" style={{ color: theme.accent }} />}</button>
                       {profileLogos.map((logo) => {
                         const selected = draft.logoUrl === logo.url;
                         return (
-                          <button key={logo.id} type="button" onClick={() => setField('logoUrl', logo.url)} aria-pressed={selected} className="relative min-h-24 overflow-hidden rounded-xl border p-3 text-left" style={{ borderColor: selected ? theme.secondary : theme.border, backgroundColor: logo.background === 'dark' ? '#0E2337' : '#F4F7FA', boxShadow: selected ? `0 0 0 2px ${theme.secondary}25` : undefined }}>
-                            <img src={logo.url} alt={logo.label} className="mx-auto h-12 max-w-full object-contain" />
+                          <button key={logo.id} type="button" onClick={() => setField('logoUrl', logo.url)} aria-pressed={selected} className="relative min-h-20 overflow-hidden rounded-xl border p-3 text-left" style={{ borderColor: selected ? theme.secondary : theme.border, backgroundColor: logo.background === 'dark' ? '#0E2337' : '#F4F7FA', boxShadow: selected ? `0 0 0 2px ${theme.secondary}25` : undefined }}>
+                            <img src={logo.url} alt={logo.label} className="mx-auto h-10 max-w-full object-contain" />
                             <span className={`mt-2 block truncate text-[10px] font-bold ${logo.background === 'dark' ? 'text-white' : 'text-[#0E2337]'}`}>{logo.label}</span>
                             {selected && <Check className="absolute right-2 top-2 h-4 w-4 text-emerald-400" />}
                           </button>
@@ -1431,7 +1502,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   </fieldset>
 
                   {hasButton && (
-                    <fieldset className={`${activeEditorTab === 'appearance' ? '' : 'hidden'} sm:col-span-2`}>
+                    <fieldset className={`${activeEditorTab === 'appearance' && appearanceSection === 'brand' ? '' : 'hidden'} sm:col-span-2`}>
                       <legend className="text-xs font-bold">Ícone do botão flutuante</legend>
                       <p className="mt-1 text-[11px] opacity-60">Escolha o logo exibido no botão redondo.</p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -1467,13 +1538,13 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     </fieldset>
                   )}
 
-                  <fieldset className={`${activeEditorTab === 'appearance' ? '' : 'hidden'} sm:col-span-2`}>
+                  <fieldset className={`${activeEditorTab === 'appearance' && appearanceSection === 'images' ? '' : 'hidden'} sm:col-span-2`}>
                     <legend className="text-xs font-bold">Fotos laterais no computador</legend>
                     <p className="mt-1 text-[11px] leading-5 opacity-60">Envie até três fotos. Elas ficam ocultas no celular.</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {draft.sideImageUrls.map((imageUrl, index) => (
                         <div key={imageUrl} className="overflow-hidden rounded-xl border" style={{ borderColor: theme.border }}>
-                          <img src={imageUrl} alt={`Foto lateral ${index + 1}`} className="h-28 w-full object-cover" />
+                          <img src={imageUrl} alt={`Foto lateral ${index + 1}`} className="h-24 w-full object-cover" />
                           <div className="flex items-center justify-between gap-2 p-2">
                             <span className="text-[10px] font-bold">Foto {index + 1}</span>
                             <div className="flex gap-1">
@@ -1484,7 +1555,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                         </div>
                       ))}
                       {draft.sideImageUrls.length < 3 && (
-                        <label className="theme-interactive flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-center" style={{ borderColor: theme.secondary }}>
+                        <label className="theme-interactive flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-center" style={{ borderColor: theme.secondary }}>
                           {uploadingImage === draft.sideImageUrls.length ? <Loader2 className="h-6 w-6 animate-spin" /> : <Image className="h-6 w-6 opacity-65" />}
                           <span className="text-xs font-bold">{uploadingImage === draft.sideImageUrls.length ? 'Enviando foto...' : 'Adicionar foto'}</span>
                           <span className="text-[10px] opacity-55">{draft.sideImageUrls.length + 1} de 3</span>
@@ -1500,9 +1571,9 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                     )}
                   </fieldset>
 
-                  <label className={`${activeEditorTab === 'text' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>
-                  <label className={`${activeEditorTab === 'text' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Texto de apoio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.subheadline} maxLength={240} onChange={(event) => setField('subheadline', event.target.value)} /></label>
-                  <label className={activeEditorTab === 'text' ? '' : 'hidden'}>
+                  <label className={`${activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Título</span><input className="crm-input" value={draft.headline} maxLength={160} onChange={(event) => setField('headline', event.target.value)} /></label>
+                  <label className={`${activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'} sm:col-span-2`}><span className="mb-1.5 block text-xs font-bold">Texto de apoio</span><textarea className="min-h-20 w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none" style={{ borderColor: theme.border }} value={draft.subheadline} maxLength={240} onChange={(event) => setField('subheadline', event.target.value)} /></label>
+                  <label className={activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'}>
                     <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold">
                       <span>Texto do botão {hasButton ? '/ balão flutuante' : ''}</span>
                       {hasButton && (
@@ -1524,11 +1595,11 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       </span>
                     )}
                   </label>
-                  <label className={activeEditorTab === 'text' ? '' : 'hidden'}><span className="mb-1.5 block text-xs font-bold">Política de privacidade</span><input className="crm-input" value={draft.privacyUrl} maxLength={500} inputMode="url" placeholder="https://..." onChange={(event) => setField('privacyUrl', event.target.value)} /></label>
-                  <label className={`${activeEditorTab === 'text' ? 'flex' : 'hidden'} sm:col-span-2 items-center gap-3 rounded-lg border p-3`} style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
+                  <label className={activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'}><span className="mb-1.5 block text-xs font-bold">Política de privacidade</span><input className="crm-input" value={draft.privacyUrl} maxLength={500} inputMode="url" placeholder="https://..." onChange={(event) => setField('privacyUrl', event.target.value)} /></label>
+                  <label className={`${activeEditorTab === 'text' && textSection === 'form' ? 'flex' : 'hidden'} sm:col-span-2 items-center gap-3 rounded-lg border p-3`} style={{ borderColor: theme.border }}><input type="checkbox" checked={draft.showPoweredBy} onChange={(event) => setField('showPoweredBy', event.target.checked)} style={{ accentColor: theme.secondary }} /><span className="text-xs font-semibold">Exibir “Tecnologia Sol Amigo PRO”</span></label>
                 </div>
 
-                <div className={activeEditorTab === 'appearance' ? 'flex items-start gap-3 rounded-xl border p-3.5' : 'hidden'} style={{ borderColor: theme.border }}>
+                <div className={activeEditorTab === 'appearance' && appearanceSection === 'layout' ? 'flex items-start gap-3 rounded-xl border p-3.5' : 'hidden'} style={{ borderColor: theme.border }}>
                   <Type className="mt-0.5 h-4 w-4 shrink-0" style={{ color: theme.accent }} />
                   <div>
                     <p className="text-xs font-bold">Fonte automática do site</p>
@@ -1536,7 +1607,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   </div>
                 </div>
 
-                <div className={activeEditorTab === 'appearance' ? 'border-t pt-6' : 'hidden'} style={{ borderColor: theme.border }}>
+                <div className={activeEditorTab === 'appearance' && appearanceSection === 'layout' ? 'border-t pt-4' : 'hidden'} style={{ borderColor: theme.border }}>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="max-w-xl">
                       <div className="flex items-center gap-2">
@@ -1601,7 +1672,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   )}
                 </div>
 
-                <div className={activeEditorTab === 'appearance' ? 'border-t pt-6' : 'hidden'} style={{ borderColor: theme.border }}>
+                <div className={activeEditorTab === 'appearance' && appearanceSection === 'colors' ? '' : 'hidden'} style={{ borderColor: theme.border }}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div><h4 className="text-sm font-bold">Motor de cores</h4><p className="mt-1 text-[11px] leading-5 opacity-60">O modo automático cria um conjunto completo e legível. Use o detalhado somente para controlar cada área.</p></div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1653,7 +1724,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
             </div>
           </section>
 
-          <section className={`${activeEditorTab === 'text' ? '' : 'hidden'} mt-6 border-t pt-6`} style={{ borderColor: theme.border }}>
+          <section className={`${activeEditorTab === 'text' && textSection === 'success' ? '' : 'hidden'} rounded-xl`} style={{ borderColor: theme.border }}>
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} />
               <div>
@@ -1796,7 +1867,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
           {previewExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
-        <aside className={`${previewExpanded ? 'block' : 'hidden'} min-w-0 space-y-3 lg:sticky lg:top-4 lg:block lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1`}>
+        <aside className={`${previewExpanded ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:h-full lg:overflow-y-auto lg:pr-1`}>
           {renderFormPreviewCard(false)}
           <div className="flex items-center justify-between rounded-xl border p-3 text-xs" style={{ borderColor: theme.border }}>
             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400" /><span className="opacity-80">Atualização em tempo real</span></div>
@@ -1829,7 +1900,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
         </div>
       )}
 
-      <div className="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border p-3 shadow-2xl backdrop-blur sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
+      <div className="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border p-3 shadow-2xl backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:hidden" style={{ borderColor: theme.border, backgroundColor: `${theme.background}F2` }}>
         <div className="hidden sm:block">
           <p className="text-sm font-bold">{changed ? 'Existem alterações não salvas' : 'Configuração salva'}</p>
           <p className="mt-0.5 text-xs opacity-60">A prévia acompanha cada alteração.</p>
