@@ -17,6 +17,8 @@ import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { HelpModal } from './components/HelpModal';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
+import { DashboardView } from './components/DashboardView';
+import { AtendimentosView } from './components/atendimentos/AtendimentosView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -26,7 +28,9 @@ const getBlankPageId = (page: PageKey) => {
 };
 
 export default function App() {
-  const publicLeadFormToken = new URLSearchParams(window.location.search).get('captacao');
+  const publicLeadFormToken =
+    new URLSearchParams(window.location.search).get('captacao') ||
+    new URLSearchParams(window.location.search).get('formToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
@@ -303,6 +307,22 @@ export default function App() {
 
   const renderCurrentView = () => {
     switch (activePage) {
+      case 'dashboard':
+        return (
+          <DashboardView
+            theme={currentTheme}
+            onNavigate={(page) => setActivePage(page)}
+            onShowToast={showToast}
+          />
+        );
+      case 'atendimentos':
+        return (
+          <AtendimentosView
+            theme={currentTheme}
+            pdfSettings={currentPdfSettings}
+            onShowToast={showToast}
+          />
+        );
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':

@@ -226,6 +226,8 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     '--form-input-text': resolvedTheme.inputText,
     '--form-action': resolvedTheme.primaryButtonBackground,
     '--form-action-text': resolvedTheme.primaryButtonText,
+    '--form-action-hover': resolvedTheme.primaryButtonHover,
+    '--form-action-hover-text': resolvedTheme.primaryButtonHoverText,
     '--form-secondary-action': resolvedTheme.secondaryButtonBackground,
     '--form-secondary-text': resolvedTheme.secondaryButtonText,
     '--form-progress': resolvedTheme.progressActive,
@@ -523,11 +525,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   href={successDetails.actionButtonUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-extrabold shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    backgroundColor: resolvedTheme.primaryButtonBackground,
-                    color: resolvedTheme.primaryButtonText,
-                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-extrabold shadow-lg transition-all active:scale-[0.98]"
                 >
                   {successDetails.actionButtonLabel}
                 </a>

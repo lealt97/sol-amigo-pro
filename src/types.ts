@@ -25,6 +25,7 @@ export interface PdfSettingsConfig {
 
 export type PageKey =
   | 'dashboard'
+  | 'atendimentos'
   | 'levantamento'
   | 'empresas'
   | 'contratos'
@@ -222,6 +223,8 @@ export interface FormThemeColors {
   inputText: string;
   primaryButtonBackground: string;
   primaryButtonText: string;
+  primaryButtonHover: string;
+  primaryButtonHoverText: string;
   secondaryButtonBackground: string;
   secondaryButtonText: string;
   progressActive: string;

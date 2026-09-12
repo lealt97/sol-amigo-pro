@@ -318,3 +318,78 @@ export const ensureLeadCaptureForm = async (): Promise<LeadCaptureForm> => {
 
   return captureFormFromRow(data as LeadCaptureFormRow);
 };
+
+export const createManualLead = async (params: {
+  name: string;
+  phone: string;
+  email?: string;
+  city: string;
+  state: string;
+  propertyType: Lead['propertyType'];
+  averageMonthlyBill?: number;
+  averageConsumptionKWh?: number;
+  distributor?: string;
+  propertyStatus?: Lead['propertyStatus'];
+  notes?: string;
+  responsible?: string;
+}): Promise<Lead> => {
+  const form = await ensureLeadCaptureForm();
+
+  const payload = {
+    formToken: form.publicToken,
+    name: params.name.trim(),
+    phone: params.phone.trim(),
+    email: params.email?.trim() || null,
+    city: params.city.trim(),
+    state: params.state.trim().toUpperCase(),
+    propertyType: params.propertyType,
+    averageMonthlyBill: params.averageMonthlyBill ?? null,
+    averageConsumptionKWh: params.averageConsumptionKWh ?? null,
+    distributor: params.distributor?.trim() || null,
+    propertyStatus: params.propertyStatus ?? null,
+    notes: params.notes?.trim() || null,
+    source: 'Atendimento manual',
+    consent: true,
+    landingPage: window.location.origin,
+  };
+
+  const { data, error } = await supabase.functions.invoke('capture-lead', {
+    body: payload,
+  });
+
+  if (error || data?.error) {
+    throw new Error(data?.error || error?.message || 'Não foi possível registrar o atendimento.');
+  }
+
+  // Se um responsável foi informado, atualiza os detalhes do lead
+  const leads = await fetchLeads();
+  const rawPhone = params.phone.replace(/\D/g, '');
+  const created =
+    leads.find((l) => l.name === params.name && l.phone.replace(/\D/g, '') === rawPhone) ||
+    leads[0];
+
+  if (created && (params.responsible || params.notes)) {
+    try {
+      return await saveLeadDetails(created.id, params.responsible || '', params.notes || '');
+    } catch {
+      return created;
+    }
+  }
+
+  return created;
+};
+
+export const reopenLead = async (id: string): Promise<Lead> => {
+  const updated = await updateLeadStage(id, 'em_contato');
+  const userId = await getCurrentUserId();
+  await supabase.from('lead_activities').insert({
+    user_id: userId,
+    lead_id: id,
+    activity_type: 'reaberto',
+    title: 'Atendimento reaberto',
+    description: 'O atendimento foi reaberto e retornado para a etapa Em Contato.',
+    metadata: {},
+  });
+  return updated;
+};
+

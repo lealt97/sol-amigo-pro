@@ -140,6 +140,14 @@
     var buttonTextColor = detailedTheme && /^#[0-9a-f]{6}$/i.test(detailedTheme.primaryButtonText || "")
       ? detailedTheme.primaryButtonText
       : readableTextColor(color);
+    var hoverColor = detailedTheme && /^#[0-9a-f]{6}$/i.test(detailedTheme.primaryButtonHover || "")
+      ? detailedTheme.primaryButtonHover
+      : publicConfig && /^#[0-9a-f]{6}$/i.test(publicConfig.secondaryColor || "")
+      ? publicConfig.secondaryColor
+      : color;
+    var hoverTextColor = detailedTheme && /^#[0-9a-f]{6}$/i.test(detailedTheme.primaryButtonHoverText || "")
+      ? detailedTheme.primaryButtonHoverText
+      : readableTextColor(hoverColor);
     var buttonLabel = publicConfig && typeof publicConfig.submitLabel === "string" && publicConfig.submitLabel.trim()
       ? publicConfig.submitLabel.trim().slice(0, 60)
       : fallbackButtonLabel;
@@ -312,7 +320,7 @@
       openButton.style.boxShadow = "0 12px 28px -4px rgba(15, 23, 42, .38), 0 4px 10px -2px rgba(15, 23, 42, .2)";
       openButton.style.cursor = "pointer";
       openButton.style.outline = "none";
-      openButton.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease";
+      openButton.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease";
       openButton.style.pointerEvents = "auto";
 
       if (floatingLogoUrl) {
@@ -365,9 +373,9 @@
         bubble.style.transform = "translateX(0)";
         openButton.style.transform = "scale(1.1)";
         openButton.style.boxShadow = "0 16px 36px -4px rgba(15, 23, 42, .48), 0 6px 14px -2px rgba(15, 23, 42, .24)";
-        openButton.style.setProperty("background", color, "important");
-        openButton.style.setProperty("background-color", color, "important");
-        openButton.style.setProperty("color", buttonTextColor, "important");
+        openButton.style.setProperty("background", hoverColor, "important");
+        openButton.style.setProperty("background-color", hoverColor, "important");
+        openButton.style.setProperty("color", hoverTextColor, "important");
         openButton.style.border = buttonBorder;
       }
 

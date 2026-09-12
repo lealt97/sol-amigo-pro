@@ -109,6 +109,7 @@ const THEME_COLOR_KEYS = [
   "pageBackground", "cardBackground", "headerBackground", "headerText",
   "headerMutedText", "bodyText", "mutedText", "inputBackground", "inputBorder",
   "inputText", "primaryButtonBackground", "primaryButtonText",
+  "primaryButtonHover", "primaryButtonHoverText",
   "secondaryButtonBackground", "secondaryButtonText", "progressActive",
   "progressInactive", "consentBackground", "successBackground", "successAccent",
   "errorBackground", "errorAccent",

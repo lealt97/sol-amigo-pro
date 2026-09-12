@@ -40,6 +40,8 @@ export const FORM_THEME_COLOR_GROUPS = [
     fields: [
       ['primaryButtonBackground', 'Botão principal'],
       ['primaryButtonText', 'Texto do botão principal'],
+      ['primaryButtonHover', 'Hover do botão (ao passar o mouse)'],
+      ['primaryButtonHoverText', 'Texto do hover'],
       ['secondaryButtonBackground', 'Botão secundário'],
       ['secondaryButtonText', 'Texto do botão secundário'],
       ['progressActive', 'Etapa ativa'],
@@ -138,6 +140,8 @@ export const createAutomaticFormTheme = (
     inputText: ensureReadableText(safeSecondary, inputBackground),
     primaryButtonBackground: safePrimary,
     primaryButtonText: readableTextColor(safePrimary),
+    primaryButtonHover: safeSecondary !== safePrimary ? safeSecondary : mixHexColors(safePrimary, '#000000', 0.82),
+    primaryButtonHoverText: readableTextColor(safeSecondary !== safePrimary ? safeSecondary : mixHexColors(safePrimary, '#000000', 0.82)),
     secondaryButtonBackground: card,
     secondaryButtonText: ensureReadableText(safeSecondary, card),
     progressActive: safePrimary,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
+  FolderKanban,
   Settings,
   ChevronRight,
   PanelLeftClose,
@@ -39,6 +40,7 @@ type SidebarProfile = {
 
 const NAV_ITEMS: NavItemDef[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'atendimentos', label: 'Atendimentos', icon: FolderKanban },
 ];
 
 function mixHex(base: string, target: string, amount: number): string {
