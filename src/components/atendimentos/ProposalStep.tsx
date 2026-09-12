@@ -44,6 +44,7 @@ import {
   markProposalAsSent,
   saveProposalVersion,
 } from '../../services/proposals';
+import { SolarFinancingSimulator } from '../SolarFinancingSimulator';
 
 interface ProposalStepProps {
   lead: Lead;
@@ -482,6 +483,77 @@ export const ProposalStep: React.FC<ProposalStepProps> = ({
         </div>
       </div>
 
+      {/* Rastreamento de Acesso & Engajamento do Cliente */}
+      {proposalRecord && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-3 ${
+            proposalRecord.viewedAt
+              ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+              : 'bg-[#161B22] border-[#30363D] text-[#8B949E]'
+          }`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              proposalRecord.viewedAt ? 'bg-blue-500/20 text-blue-400' : 'bg-[#21262D] text-[#8B949E]'
+            }`}>
+              <Eye className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold block text-white">Visualização pelo Cliente</span>
+              <span className="text-[11px] block mt-0.5">
+                {proposalRecord.viewedAt
+                  ? `Visualizou em ${new Date(proposalRecord.viewedAt).toLocaleString('pt-BR')}`
+                  : 'Link gerado, aguardando abertura pelo cliente'}
+              </span>
+            </div>
+          </div>
+
+          <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-3 ${
+            proposalRecord.status === 'aprovada'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : proposalRecord.status === 'recusada'
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              : 'bg-[#161B22] border-[#30363D] text-[#8B949E]'
+          }`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              proposalRecord.status === 'aprovada'
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : proposalRecord.status === 'recusada'
+                ? 'bg-rose-500/20 text-rose-400'
+                : 'bg-[#21262D] text-[#8B949E]'
+            }`}>
+              {proposalRecord.status === 'aprovada' ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : proposalRecord.status === 'recusada' ? (
+                <AlertTriangle className="w-4 h-4" />
+              ) : (
+                <Clock className="w-4 h-4" />
+              )}
+            </div>
+            <div>
+              <span className="font-bold block text-white">Status da Decisão</span>
+              <span className="text-[11px] block mt-0.5 capitalize">
+                {proposalRecord.status === 'aprovada'
+                  ? '🎉 Aceite Digital Confirmado!'
+                  : proposalRecord.status === 'recusada'
+                  ? 'Solicitou Ajustes / Recusou'
+                  : `Em andamento (${proposalRecord.status})`}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-[#161B22] border border-[#30363D] rounded-xl text-xs flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold block text-white">Segurança & Validade</span>
+              <span className="text-[11px] text-[#8B949E] block mt-0.5">
+                Snapshot imutável com link assinado
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabela de Equipamentos do Kit */}
       <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -745,6 +817,15 @@ export const ProposalStep: React.FC<ProposalStepProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Simulador de Financiamento Solar & Troca de Conta para WhatsApp */}
+      <SolarFinancingSimulator
+        totalValue={finalSalePrice}
+        currentMonthlyBill={Number(lead.average_monthly_bill) || 0}
+        clientName={lead.name}
+        isPublicView={false}
+        onShowToast={onShowToast}
+      />
 
       {/* Histórico de Versões da Proposta (Requisito 13) */}
       {proposalRecord && proposalRecord.versions && proposalRecord.versions.length > 0 && (
