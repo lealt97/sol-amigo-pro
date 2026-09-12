@@ -6,7 +6,8 @@ export type AttendanceTab =
   | 'dimensionamento'
   | 'composicao'
   | 'proposta'
-  | 'acompanhamento';
+  | 'acompanhamento'
+  | 'resultado';
 
 export interface AttendanceStageConfig {
   key: LeadStage;

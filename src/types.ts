@@ -55,9 +55,76 @@ export type OpportunityStage =
   | 'visita_tecnica'
   | 'proposta_enviada';
 
+export type ProposalStatus =
+  | 'rascunho'
+  | 'enviada'
+  | 'visualizada'
+  | 'em_negociacao'
+  | 'aprovada'
+  | 'recusada'
+  | 'expirada';
+
+export type ProposalVersionStatus =
+  | 'rascunho'
+  | 'enviada'
+  | 'visualizada'
+  | 'aprovada'
+  | 'recusada'
+  | 'substituida';
+
+export interface ProposalVersion {
+  id: string;
+  proposalId: string;
+  userId: string;
+  versionNumber: number;
+  status: ProposalVersionStatus;
+  validUntil?: string;
+  totalValue: number;
+  sizingSnapshot: OpportunitySizing;
+  equipmentSnapshot: KitEquipmentItem[];
+  costsSnapshot: OpportunityKitCosts;
+  commercialConditions: {
+    paymentMethods?: string;
+    warrantyTerms?: string;
+    deliveryTimeframe?: string;
+    notes?: string;
+  };
+  pdfSettingsSnapshot?: PdfSettingsConfig;
+  customNotes?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+}
+
+export interface ProposalRecord {
+  id: string;
+  userId: string;
+  leadId: string;
+  code: string;
+  publicToken: string;
+  status: ProposalStatus;
+  currentVersionNumber: number;
+  totalValue: number;
+  validUntil?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  decidedAt?: string;
+  decisionNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  versions?: ProposalVersion[];
+  currentVersion?: ProposalVersion;
+}
+
 export interface SolarProposal {
   id: string;
   code: string;
+  publicToken?: string;
+  versionNumber?: number;
+  versionsCount?: number;
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
@@ -74,13 +141,21 @@ export interface SolarProposal {
   totalValue: number;
   estimatedMonthlySavings: number;
   paybackYears: number;
-  status: 'Aprovada' | 'Em negociação' | 'Pendente' | 'Recusada';
+  status: 'Aprovada' | 'Em negociação' | 'Pendente' | 'Recusada' | 'Enviada' | 'Visualizada' | 'Rascunho';
   createdAt: string;
   validUntil?: string;
   co2SavedTonsYear?: number;
   treesEquivalent?: number;
   co2AvoidedTons?: number;
   treesPlanted?: number;
+  sizing?: OpportunitySizing;
+  pricing?: OpportunityKitCosts;
+  commercialConditions?: {
+    paymentMethods?: string;
+    warrantyTerms?: string;
+    deliveryTimeframe?: string;
+    notes?: string;
+  };
 }
 
 export type ClientCrmStatus =

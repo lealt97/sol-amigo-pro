@@ -16,6 +16,7 @@ import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { HelpModal } from './components/HelpModal';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
+import { PublicProposalView } from './components/PublicProposalView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
 import { DashboardView } from './components/DashboardView';
 import { AtendimentosView } from './components/atendimentos/AtendimentosView';
@@ -31,6 +32,9 @@ export default function App() {
   const publicLeadFormToken =
     new URLSearchParams(window.location.search).get('captacao') ||
     new URLSearchParams(window.location.search).get('formToken');
+  const publicProposalToken =
+    new URLSearchParams(window.location.search).get('proposta') ||
+    new URLSearchParams(window.location.search).get('proposalToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
@@ -262,6 +266,10 @@ export default function App() {
 
   if (publicLeadFormToken) {
     return <PublicLeadFormView formToken={publicLeadFormToken} />;
+  }
+
+  if (publicProposalToken) {
+    return <PublicProposalView token={publicProposalToken} />;
   }
 
   if (authLoading) {

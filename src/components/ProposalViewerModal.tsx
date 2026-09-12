@@ -12,6 +12,10 @@ import {
   MapPin,
   CheckCircle,
   FileText,
+  MessageCircle,
+  Mail,
+  Copy,
+  AlertTriangle,
 } from 'lucide-react';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
 
@@ -39,15 +43,30 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
     ? theme.secondary
     : pdfSettings.secondary;
 
+  const proposalUrl = `${window.location.origin}${window.location.pathname}?proposta=${proposal.publicToken || proposal.id}`;
+
   const handlePrint = () => {
     window.print();
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(
-      `https://solamigo.com.br/proposta/${proposal.code}?auth=demo`
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(proposalUrl);
+    onShowToast('Link público da proposta copiado para a área de transferência!');
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(
+      `Olá, ${proposal.clientName}! Segue a proposta comercial ${proposal.code} da Sol Amigo PRO no valor de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proposal.totalValue)}:\n${proposalUrl}`
     );
-    onShowToast('Link da proposta copiado para a área de transferência!');
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
+  const handleShareEmail = () => {
+    const subject = encodeURIComponent(`Proposta Comercial ${proposal.code} - Sol Amigo PRO`);
+    const body = encodeURIComponent(
+      `Olá, ${proposal.clientName}!\n\nSegue o link para visualização e aprovação da sua proposta técnica e comercial:\n${proposalUrl}\n\nFicamos à disposição para quaisquer esclarecimentos.`
+    );
+    window.location.href = `mailto:${proposal.clientEmail || ''}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -64,13 +83,30 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
             </h3>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
-              onClick={handleShare}
-              className="p-1.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#8B949E] hover:text-white transition-colors cursor-pointer"
-              title="Copiar Link"
+              onClick={handleCopyLink}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#8B949E] hover:text-white transition-colors cursor-pointer text-xs"
+              title="Copiar Link Público"
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Copy className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Copiar Link</span>
+            </button>
+            <button
+              onClick={handleShareWhatsApp}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#8B949E] hover:text-white transition-colors cursor-pointer text-xs"
+              title="Compartilhar no WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </button>
+            <button
+              onClick={handleShareEmail}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#8B949E] hover:text-white transition-colors cursor-pointer text-xs"
+              title="Abrir E-mail"
+            >
+              <Mail className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">E-mail</span>
             </button>
             <button
               onClick={handlePrint}
@@ -294,6 +330,14 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Legal estimation notice */}
+          <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Aviso de responsabilidade técnica:</strong> Os valores de geração de energia, economia financeira e retorno de investimento são estimativas baseadas na irradiação solar e histórico de consumo fornecido. A homologação final e instalação dependem de vistoria técnica e aprovação da concessionária de energia.
+            </p>
+          </div>
 
           {/* Footer with contacts and engineering guarantee */}
           {pdfSettings.showFooter && (

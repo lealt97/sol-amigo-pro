@@ -23,6 +23,8 @@ import {
 import { Lead, LeadCaptureForm, LeadStage, ThemeConfig } from '../../types';
 import { ATTENDANCE_STAGES, getStageConfig } from './types';
 import { formatPhone } from '../../utils/formatters';
+import { AttendanceKanban } from './AttendanceKanban';
+import { updateLeadStage } from '../../services/leads';
 
 interface AttendanceListProps {
   leads: Lead[];
@@ -53,6 +55,19 @@ export const AttendanceList: React.FC<AttendanceListProps> = ({
   const [search, setSearch] = useState('');
   const [propertyFilter, setPropertyFilter] = useState<'Todos' | Lead['propertyType']>('Todos');
   const [stageFilter, setStageFilter] = useState<'Todos' | LeadStage>('Todos');
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
+
+  const handleUpdateStage = async (leadId: string, newStage: LeadStage) => {
+    setUpdatingLeadId(leadId);
+    try {
+      await updateLeadStage(leadId, newStage);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to update stage in kanban', err);
+    } finally {
+      setUpdatingLeadId(null);
+    }
+  };
 
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
 
@@ -255,95 +270,12 @@ export const AttendanceList: React.FC<AttendanceListProps> = ({
 
       {/* Main Content Area: Pipeline vs List */}
       {viewMode === 'pipeline' ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-8 gap-3 overflow-x-auto pb-4">
-          {ATTENDANCE_STAGES.map((stage) => {
-            const stageLeads = leadsByStage[stage.key];
-            return (
-              <div
-                key={stage.key}
-                className="bg-[#161B22]/70 border border-[#30363D] rounded-xl flex flex-col min-w-[250px] md:min-w-[210px] xl:min-w-0"
-              >
-                {/* Column Header */}
-                <div className="p-3 border-b border-[#30363D] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: stage.color }}
-                    />
-                    <h3 className="text-xs font-bold text-white truncate">{stage.shortLabel}</h3>
-                  </div>
-                  <span
-                    className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: stage.badgeBg, color: stage.textColor }}
-                  >
-                    {stageLeads.length}
-                  </span>
-                </div>
-
-                {/* Cards Container */}
-                <div className="p-2 space-y-2 flex-1 overflow-y-auto max-h-[680px]">
-                  {stageLeads.length === 0 ? (
-                    <div className="py-6 text-center text-[11px] text-[#484F58]">
-                      Nenhum atendimento
-                    </div>
-                  ) : (
-                    stageLeads.map((lead) => {
-                      const isSelected = lead.id === selectedLeadId;
-                      return (
-                        <div
-                          key={lead.id}
-                          onClick={() => onSelectLead(lead)}
-                          className={`group bg-[#0D1117] border rounded-lg p-3 cursor-pointer transition-all hover:border-blue-500/70 hover:shadow-lg ${
-                            isSelected
-                              ? 'border-blue-500 ring-1 ring-blue-500 bg-[#0E1B2D]'
-                              : 'border-[#30363D]'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-1.5">
-                            <h4 className="font-semibold text-white text-xs group-hover:text-blue-400 transition-colors line-clamp-1">
-                              {lead.name}
-                            </h4>
-                            {lead.clientId && (
-                              <span
-                                className="text-[9px] bg-purple-500/20 text-purple-300 font-mono px-1 py-0.5 rounded shrink-0"
-                                title="Interessado qualificado com Cliente e UC gerados"
-                              >
-                                Cliente
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-2 space-y-1 text-[11px] text-[#8B949E]">
-                            <div className="flex items-center gap-1.5">
-                              <Phone className="w-3 h-3 text-[#484F58] shrink-0" />
-                              <span className="font-mono">{formatPhone(lead.phone)}</span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <MapPin className="w-3 h-3 text-[#484F58] shrink-0" />
-                              <span className="truncate">
-                                {lead.city}/{lead.state}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-1 border-t border-[#21262D] mt-2 font-medium">
-                              <span className="text-white">
-                                {formatCurrency(lead.averageMonthlyBill)}
-                              </span>
-                              <span className="text-[10px] text-[#484F58] uppercase">
-                                {lead.propertyType}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AttendanceKanban
+          leads={filteredLeads}
+          onSelectLead={onSelectLead}
+          onUpdateStage={handleUpdateStage}
+          updatingLeadId={updatingLeadId}
+        />
       ) : (
         /* Table / List View */
         <div className="bg-[#161B22] border border-[#30363D] rounded-xl overflow-hidden">

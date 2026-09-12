@@ -102,6 +102,7 @@ export const SolarSizingEditor: React.FC<SolarSizingEditorProps> = ({
   }, [inputs]);
 
   const usesReferenceHsp = inputs.monthlySunHours.every((value) => value === 5);
+  const [hspConfirmed, setHspConfirmed] = useState(false);
 
   const updateInput = <Key extends keyof SolarSizingInputs>(
     key: Key,
@@ -138,6 +139,13 @@ export const SolarSizingEditor: React.FC<SolarSizingEditorProps> = ({
   const handleSave = async (status: SizingStatus) => {
     if (!calculation.results || savingStatus) {
       setFormError(calculation.error || 'Revise os dados antes de salvar.');
+      return;
+    }
+
+    if (status === 'concluido' && usesReferenceHsp && !hspConfirmed) {
+      setFormError(
+        'Atenção: A irradiação solar (HSP) está no valor de referência padrão (5,00 h/dia). Ajuste a irradiação da localidade ou confirme explicitamente o uso desta estimativa antes de concluir o dimensionamento definitivo.'
+      );
       return;
     }
 
@@ -428,6 +436,31 @@ export const SolarSizingEditor: React.FC<SolarSizingEditorProps> = ({
                 </div>
               )}
             </section>
+
+            {usesReferenceHsp && (
+              <div
+                className="rounded-lg border p-3 text-xs space-y-2"
+                style={{ borderColor: theme.border, backgroundColor: `${theme.primary}0D` }}
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                  <p style={{ color: theme.text }}>
+                    A irradiação solar mensal está utilizando a média nacional de referência (5,00 h/dia).
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer pt-1 border-t" style={{ borderColor: theme.border }}>
+                  <input
+                    type="checkbox"
+                    checked={hspConfirmed}
+                    onChange={(e) => setHspConfirmed(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-semibold" style={{ color: theme.text }}>
+                    Confirmo o uso da HSP de referência para esta localidade
+                  </span>
+                </label>
+              </div>
+            )}
 
             {(formError || calculation.error) && (
               <div className="rounded-lg border border-red-500/35 bg-red-500/10 p-3 text-xs font-bold text-red-300">
