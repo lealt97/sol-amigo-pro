@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sol Amigo Pro - Propostas FV & CRM Solar</title>
+    <meta name="description" content="Plataforma SaaS para gestão de propostas fotovoltaicas, CRM de energia solar, motor de cores e personalização de relatórios e PDFs." />
+    <script>
+      if (new URLSearchParams(window.location.search).get('embed') === '1') {
+        document.documentElement.classList.add('sol-amigo-embedded');
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Lato:wght@300;400;700;900&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      #boot-fallback {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 14px;
+        background: #0E2337;
+        color: #fff;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #boot-fallback .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255,255,255,.22);
+        border-top-color: #B4BF8A;
+        border-radius: 50%;
+        animation: boot-spin .8s linear infinite;
+      }
+      #boot-fallback strong { font-size: 16px; }
+      #boot-fallback span {
+        max-width: 320px;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: center;
+        opacity: .68;
+      }
+      #boot-fallback button {
+        display: none;
+        min-height: 42px;
+        padding: 0 18px;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 10px;
+        background: #fff;
+        color: #0E2337;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #boot-fallback.is-error .spinner { display: none; }
+      #boot-fallback.is-error button { display: inline-flex; align-items: center; }
+      html.sol-amigo-embedded,
+      html.sol-amigo-embedded body,
+      html.sol-amigo-embedded #root,
+      html.sol-amigo-embedded #boot-fallback {
+        background: transparent !important;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-fallback" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <strong>Sol Amigo Pro</strong>
+        <span>Carregando o sistema...</span>
+        <button type="button" onclick="retryBoot()">Tentar novamente</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      function retryBoot() {
+        var url = new URL(window.location.href);
+        url.searchParams.set('_sol_retry', Date.now().toString());
+        window.location.replace(url.toString());
+      }
+
+      window.setTimeout(function () {
+        var fallback = document.getElementById('boot-fallback');
+        if (!fallback) return;
+
+        fallback.classList.add('is-error');
+        fallback.querySelector('strong').textContent = 'Não foi possível carregar o sistema';
+        fallback.querySelector('span').textContent =
+          'Verifique sua conexão e tente novamente. Se o problema continuar, aguarde alguns minutos.';
+      }, 8000);
+    </script>
+  </body>
+</html>

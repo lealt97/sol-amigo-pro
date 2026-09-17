@@ -1,0 +1,379 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #183956;
+  --primary-fg: #ffffff;
+  --secondary: #0076DD;
+  --secondary-fg: #ffffff;
+  --neutral: #0E2337;
+  --neutral-fg: #ffffff;
+  --auxiliary: #B4BF8A;
+  --auxiliary-fg: #0F172A;
+  --border: #35536E;
+  --text: #ffffff;
+  --disabled-color: #ffffff;
+  --disabled-opacity: 0.38;
+  --accent: var(--auxiliary);
+  --bg: var(--neutral);
+  --surface: #183956;
+  --surface-alt: #213F5D;
+  --elevated: #294866;
+  --muted: #B8C5D1;
+  --dim: #7F95A8;
+  --sidebar: 258px;
+
+  /* Estados interativos derivados do motor de cores */
+  --button-filled-hover-bg: var(--primary);
+  --button-filled-hover-fg: #ffffff;
+  --button-outline-hover-bg: var(--secondary);
+  --button-outline-hover-fg: #ffffff;
+  --interactive-hover-link: color-mix(in srgb, var(--secondary) 88%, var(--text));
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background-color: var(--neutral);
+  -webkit-font-smoothing: antialiased;
+}
+
+html.sol-amigo-embedded,
+html.sol-amigo-embedded body,
+html.sol-amigo-embedded #root {
+  min-height: 0;
+  background: transparent !important;
+}
+
+button:not(:disabled),
+a[href],
+select:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="color"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+label[for],
+label:has(input[type="file"]:not(:disabled)),
+summary,
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:not(:disabled),
+a[href],
+label:has(input[type="file"]:not(:disabled)),
+[role="button"]:not([aria-disabled="true"]) {
+  transition-property: background-color, border-color, color, filter, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+/*
+  Padrão global de hover:
+  1) Controles sem preenchimento / com borda recebem a cor SECUNDÁRIA.
+  2) Controles que já possuem preenchimento recebem a cor PRIMÁRIA.
+  Em ambos os casos, o texto fica branco.
+*/
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover,
+input[type="button"]:not(:disabled):hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="reset"]:not(:disabled):hover,
+label:has(input[type="file"]:not(:disabled)):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover {
+  background-color: var(--button-outline-hover-bg) !important;
+  border-color: var(--button-outline-hover-bg) !important;
+  color: var(--button-outline-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botões com preenchimento via style inline do React */
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[style*="background-color"]:hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botões com preenchimento via classes utilitárias Tailwind */
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Links em formato de botão preservam o fundo e alteram somente a cor da fonte. */
+button[data-sol-amigo-text-hover]:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--secondary) !important;
+  filter: none !important;
+}
+
+/* Botão flutuante do formulário preserva 100% da cor configurada em qualquer estado */
+[data-sol-amigo-floating-btn],
+[data-sol-amigo-floating-btn]:hover,
+[data-sol-amigo-floating-btn]:focus,
+button[data-sol-amigo-floating-btn],
+button[data-sol-amigo-floating-btn]:hover,
+button[data-sol-amigo-floating-btn]:focus {
+  background-color: var(--floating-btn-bg, inherit) !important;
+  color: var(--floating-btn-fg, inherit) !important;
+  border-color: var(--floating-btn-border, inherit) !important;
+  filter: none !important;
+}
+
+/* Botão de fechar do formulário modal preserva a mesma borda e estilo do formulário */
+[data-sol-amigo-close-btn],
+[data-sol-amigo-close-btn]:hover,
+[data-sol-amigo-close-btn]:focus,
+button[data-sol-amigo-close-btn],
+button[data-sol-amigo-close-btn]:hover,
+button[data-sol-amigo-close-btn]:focus {
+  background-color: var(--close-btn-bg, inherit) !important;
+  color: var(--close-btn-fg, inherit) !important;
+  border-color: var(--close-btn-border, inherit) !important;
+  filter: none !important;
+}
+[data-sol-amigo-close-btn]:hover,
+button[data-sol-amigo-close-btn]:hover {
+  opacity: 0.85;
+}
+
+a[href]:hover {
+  color: var(--interactive-hover-link);
+}
+
+/* Classe opcional para forçar explicitamente o comportamento de botão preenchido. */
+.btn-filled:hover {
+  background-color: var(--button-filled-hover-bg) !important;
+  border-color: var(--button-filled-hover-bg) !important;
+  color: var(--button-filled-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Classe opcional para forçar explicitamente o comportamento de botão com borda. */
+.btn-outline:hover,
+.theme-interactive:hover {
+  background-color: var(--button-outline-hover-bg) !important;
+  border-color: var(--button-outline-hover-bg) !important;
+  color: var(--button-outline-hover-fg) !important;
+  filter: none !important;
+}
+
+/* Botão de perigo / ação de exclusão: padrão branco com texto/ícone/borda vermelhos, e hover com o estilo original preenchido em vermelho */
+.btn-danger-outline {
+  background-color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+.btn-danger-outline svg {
+  color: #dc2626 !important;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.btn-danger-outline:hover:not(:disabled) svg {
+  color: #ffffff !important;
+}
+
+#app-topbar {
+  background-color: var(--primary) !important;
+  color: var(--primary-fg) !important;
+  border-color: var(--border) !important;
+}
+
+#app-topbar #topbar-sidebar-toggle-btn,
+#app-topbar #topbar-mobile-menu-btn {
+  color: var(--primary-fg) !important;
+  background-color: color-mix(in srgb, var(--primary-fg) 10%, transparent) !important;
+  border-color: var(--border) !important;
+}
+
+main {
+  background-color: var(--neutral) !important;
+  color: var(--text) !important;
+}
+
+footer {
+  background-color: var(--primary) !important;
+  color: var(--primary-fg) !important;
+  border-color: var(--border) !important;
+}
+
+#app-topbar ~ footer {
+  display: none !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  color: var(--disabled-color) !important;
+  opacity: var(--disabled-opacity) !important;
+  cursor: not-allowed !important;
+}
+
+main > * {
+  display: none !important;
+}
+
+main > #dashboard-view,
+main > #leads-page,
+main > #propostas-page,
+main > #personalizacao-page,
+main > #clientes-page,
+main > #dimensionamento-page,
+main > #oportunidades-page,
+main > #levantamento-page,
+main > #integracoes-page,
+main > #seguranca-page,
+main > #perfil-page,
+main > #area-risco-page {
+  display: block !important;
+}
+
+.crm-input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.crm-input[type='search'] {
+  padding-left: 40px !important;
+}
+
+.crm-input:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 16%, transparent);
+}
+
+.crm-input::placeholder {
+  color: color-mix(in srgb, var(--text) 42%, transparent);
+}
+
+/* Tema interno do formulário público. Os atributos não são uma API de CSS:
+   recebem apenas os tokens validados do motor de cores. */
+[data-sol-amigo-form] input:not([type='checkbox']),
+[data-sol-amigo-form] select,
+[data-sol-amigo-form] textarea {
+  background-color: var(--form-input);
+  border-color: var(--form-input-border);
+  color: var(--form-input-text);
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-sol-amigo-form] input:not([type='checkbox'])::placeholder,
+[data-sol-amigo-form] textarea::placeholder {
+  color: var(--form-muted);
+  opacity: 0.8;
+}
+
+[data-sol-amigo-form] input:not([type='checkbox']):focus,
+[data-sol-amigo-form] select:focus,
+[data-sol-amigo-form] textarea:focus {
+  border-color: var(--form-action);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--form-action) 14%, transparent);
+}
+
+[data-sol-amigo-form] [data-primary-action] {
+  min-height: 3rem;
+  background-color: var(--form-action);
+  color: var(--form-action-text);
+  font-family: inherit;
+  transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 180ms ease,
+              transform 160ms ease,
+              filter 160ms ease;
+}
+
+[data-sol-amigo-form] [data-primary-action]:hover:not(:disabled) {
+  background-color: var(--form-action-hover, var(--form-action));
+  color: var(--form-action-hover-text, var(--form-action-text));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -4px color-mix(in srgb, var(--form-action-hover, var(--form-action)) 38%, transparent);
+}
+
+[data-sol-amigo-form] [data-secondary-action] {
+  min-height: 3rem;
+  background-color: var(--form-secondary-action);
+  border-color: var(--form-input-border);
+  color: var(--form-secondary-text);
+  font-family: inherit;
+  transition: filter 160ms ease;
+}
+
+[data-sol-amigo-form] [data-secondary-action]:hover {
+  filter: brightness(0.97);
+}
+
+/* O arredondamento é aplicado por tokens numéricos seguros. No widget, os
+   tokens podem ser derivados do site hospedeiro sem importar o CSS externo. */
+[data-sol-amigo-form] [data-form-card] {
+  border-radius: var(--form-radius-card) !important;
+}
+
+[data-sol-amigo-form] [data-form-panel] {
+  border-radius: var(--form-radius-panel) !important;
+}
+
+[data-sol-amigo-form] [data-form-compact] {
+  border-radius: var(--form-radius-compact) !important;
+}
+
+[data-sol-amigo-form] input:not([type='checkbox']),
+[data-sol-amigo-form] select,
+[data-sol-amigo-form] textarea,
+[data-sol-amigo-form] [data-primary-action],
+[data-sol-amigo-form] [data-secondary-action] {
+  border-radius: var(--form-radius-control) !important;
+}
+
+#clientes-page select option,
+#oportunidades-page select option,
+#levantamento-page select option,
+#integracoes-page select option,
+.crm-input option {
+  background-color: var(--neutral);
+  color: var(--text);
+}
+
+#sidebar-toggle-btn {
+  display: none !important;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--neutral);
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary) 35%, var(--neutral));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--primary) 55%, var(--neutral));
+}
