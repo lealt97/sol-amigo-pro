@@ -17,6 +17,7 @@ import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { HelpModal } from './components/HelpModal';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
+import { LeadsView } from './components/LeadsView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -36,7 +37,7 @@ export default function App() {
   const [mfaError, setMfaError] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
 
-  const [activePage, setActivePage] = useState<PageKey>('perfil');
+  const [activePage, setActivePage] = useState<PageKey>('leads');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -308,6 +309,8 @@ export default function App() {
     switch (activePage) {
       case 'dashboard':
         return <div id="dashboard-view" />;
+      case 'leads':
+        return <LeadsView theme={currentTheme} onShowToast={showToast} />;
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
