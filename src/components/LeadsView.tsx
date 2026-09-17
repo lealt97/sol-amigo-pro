@@ -181,7 +181,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredLeads.map((lead) => (
-            <article key={lead.id} className="relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xl shadow-black/10">
+            <article key={lead.id} className="theme-shadow relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -196,7 +196,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                     <MoreVertical className="h-4 w-4" />
                   </button>
                   {openMenuId === lead.id && (
-                    <div className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--elevated)] py-1 text-[var(--text)] shadow-2xl">
+                    <div className="theme-shadow absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--elevated)] py-1 text-[var(--text)]">
                       <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"><FilePlus2 className="h-4 w-4 text-[var(--secondary)]" />Gerar proposta</button>
                       <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"><UserPlus className="h-4 w-4 text-[var(--auxiliary)]" />{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</button>
                       <div className="my-1 border-t border-[var(--border)]" />
@@ -223,8 +223,8 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
       )}
 
       {proposalLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
+          <div className="theme-shadow w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)]">
             <div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Gerar proposta</h2><p className="mt-1 text-sm text-[var(--muted)]">{proposalLead.name}</p></div><button onClick={() => setProposalLead(null)} className="p-1 text-[var(--dim)]"><X className="h-5 w-5" /></button></div>
             <label className="mt-5 block text-xs font-semibold">Tipo do sistema</label>
             <div className="mt-2 grid grid-cols-2 gap-3">{(['On-Grid', 'Híbrido'] as ProposalSystemType[]).map((type) => <button key={type} onClick={() => setSystemType(type)} className="rounded-lg border px-4 py-3 text-sm font-semibold" style={systemType === type ? { borderColor: theme.secondary, backgroundColor: 'color-mix(in srgb, var(--secondary) 18%, transparent)', color: 'var(--secondary)' } : { borderColor: 'var(--border)', color: 'var(--text)' }}>{type}</button>)}</div>
@@ -235,8 +235,8 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
       )}
 
       {deleteLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl" style={{ borderColor: 'color-mix(in srgb, var(--danger) 40%, transparent)' }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
+          <div className="theme-shadow w-full max-w-md rounded-xl border bg-[var(--surface)] p-5 text-[var(--text)]" style={{ borderColor: 'color-mix(in srgb, var(--danger) 40%, transparent)' }}>
             <div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Excluir lead</h2><p className="mt-1 text-sm text-[var(--muted)]">Esta ação removerá definitivamente <strong>{deleteLead.name}</strong>.</p></div><button onClick={() => setDeleteLead(null)} className="p-1 text-[var(--dim)]"><X className="h-5 w-5" /></button></div>
             <label htmlFor="lead-delete-password" className="mt-5 block text-xs font-semibold">Digite sua senha para confirmar</label>
             <input id="lead-delete-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void handleDelete(); }} className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--neutral)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--danger)]" />
