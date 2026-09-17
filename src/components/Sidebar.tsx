@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Users,
   Settings,
   ChevronRight,
   PanelLeftClose,
@@ -36,7 +37,9 @@ type SidebarProfile = {
   photoUrl: string;
 };
 
-const NAV_ITEMS: NavItemDef[] = [];
+const NAV_ITEMS: NavItemDef[] = [
+  { key: 'leads', label: 'Leads', icon: Users },
+];
 
 function mixHex(base: string, target: string, amount: number): string {
   const normalize = (hex: string) => hex.replace('#', '');
