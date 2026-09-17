@@ -15,12 +15,13 @@
   --disabled-opacity: 0.38;
   --accent: var(--auxiliary);
   --bg: var(--neutral);
-  /* Superfícies e textos auxiliares seguem automaticamente o motor de cores. */
-  --surface: color-mix(in srgb, var(--primary) 34%, var(--neutral));
-  --surface-alt: color-mix(in srgb, var(--primary) 48%, var(--neutral));
-  --elevated: color-mix(in srgb, var(--primary) 62%, var(--neutral));
-  --muted: color-mix(in srgb, var(--text) 72%, var(--neutral));
-  --dim: color-mix(in srgb, var(--text) 52%, var(--neutral));
+  /* Superfícies usam somente as cores escolhidas no motor de cores. */
+  --surface: var(--primary);
+  --surface-alt: var(--neutral);
+  --elevated: var(--primary);
+  /* Textos auxiliares preservam a mesma cor, variando apenas a transparência. */
+  --muted: color-mix(in srgb, var(--text) 72%, transparent);
+  --dim: color-mix(in srgb, var(--text) 52%, transparent);
   --danger: #dc2626;
   --danger-fg: #ffffff;
   --sidebar: 258px;
@@ -168,6 +169,10 @@ a[href]:hover {
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
   filter: none !important;
+}
+
+.theme-shadow {
+  box-shadow: 0 18px 45px color-mix(in srgb, var(--secondary) 18%, transparent);
 }
 
 /* Botão de perigo / ação de exclusão: padrão branco com texto/ícone/borda vermelhos, e hover com o estilo original preenchido em vermelho */
