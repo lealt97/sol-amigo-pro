@@ -192,7 +192,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                   <p className="mt-1 text-xs text-[var(--muted)]">{lead.propertyType} · {lead.source}</p>
                 </div>
                 <div ref={openMenuId === lead.id ? menuRef : undefined} className="relative">
-                  <button aria-label={`Ações de ${lead.name}`} onClick={() => setOpenMenuId((current) => current === lead.id ? null : lead.id)} className="flex h-9 w-9 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}>
+                  <button aria-label={`Ações de ${lead.name}`} onClick={() => setOpenMenuId((current) => current === lead.id ? null : lead.id)} className="lead-actions-button flex h-9 w-9 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}>
                     <MoreVertical className="h-4 w-4" />
                   </button>
                   {openMenuId === lead.id && (
