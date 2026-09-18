@@ -42,6 +42,8 @@ type PublicFormData = {
   email: string;
   city: string;
   state: string;
+  street: string;
+  addressNumber: string;
   propertyType: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
   averageMonthlyBill: string;
   averageConsumptionKWh: string;
@@ -136,6 +138,8 @@ const INITIAL_FORM: PublicFormData = {
   email: '',
   city: '',
   state: '',
+  street: '',
+  addressNumber: '',
   propertyType: 'Residencial',
   averageMonthlyBill: '',
   averageConsumptionKWh: '',
@@ -396,6 +400,9 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
     }
     if (form.city.trim().length < 2 || !form.state) {
       return setError('Informe sua cidade e seu estado.');
+    }
+    if (form.street.trim().length < 3 || !form.addressNumber.trim()) {
+      return setError('Informe o endereço e o número do imóvel.');
     }
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -701,11 +708,13 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                         ))}
                       </select>
                     </label>
-                    <label className="sm:col-span-2">
-                      <span className="mb-1.5 block text-xs font-bold">Tipo de imóvel *</span>
-                      <select value={form.propertyType} onChange={(event) => setField('propertyType', event.target.value as PublicFormData['propertyType'])} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
-                        <option>Residencial</option><option>Comercial</option><option>Rural</option><option>Industrial</option>
-                      </select>
+                    <label className="">
+                      <span className="mb-1.5 block text-xs font-bold">Endereço *</span>
+                      <input value={form.street} onChange={(event) => setField('street', event.target.value)} autoComplete="address-line1" maxLength={160} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Rua, avenida ou estrada" />
+                    </label>
+                    <label className="">
+                      <span className="mb-1.5 block text-xs font-bold">Número *</span>
+                      <input value={form.addressNumber} onChange={(event) => setField('addressNumber', event.target.value)} autoComplete="address-line2" maxLength={20} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10" placeholder="Ex.: 123 ou S/N" />
                     </label>
                   </div>
 
