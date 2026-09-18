@@ -100,7 +100,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     const query = search.trim().toLocaleLowerCase('pt-BR');
     if (!query) return leads;
     return leads.filter((lead) =>
-      [lead.name, lead.phone, lead.email, lead.city, lead.state, lead.source]
+      [lead.name, lead.phone, lead.email, lead.street, lead.addressNumber, lead.city, lead.state, lead.source]
         .filter(Boolean)
         .some((value) => String(value).toLocaleLowerCase('pt-BR').includes(query))
     );
@@ -276,7 +276,9 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                     {lead.clientId && <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: 'color-mix(in srgb, var(--auxiliary) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--auxiliary) 18%, transparent)', color: 'var(--auxiliary)' }}>Cliente</span>}
                   </div>
                   <h2 className="truncate text-lg font-bold text-[var(--text)]" title={lead.name}>{lead.name}</h2>
-                  <p className="mt-1 text-xs text-[var(--muted)]">{lead.propertyType} · {lead.source}</p>
+                  <p className="mt-1 truncate text-xs text-[var(--muted)]" title={lead.street ? `${lead.street}, ${lead.addressNumber || 'S/N'}` : 'Endereço não informado'}>
+                    {lead.street ? `${lead.street}, ${lead.addressNumber || 'S/N'}` : 'Endereço não informado'}
+                  </p>
                 </div>
                 <div ref={openMenuId === lead.id ? menuRef : undefined} className="relative">
                   <button aria-label={`Ações de ${lead.name}`} onClick={() => setOpenMenuId((current) => current === lead.id ? null : lead.id)} className="lead-actions-button flex h-9 w-9 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}>

@@ -199,6 +199,8 @@ export interface Client {
   phone: string;
   city: string;
   state: string;
+  street?: string;
+  addressNumber?: string;
   concessionaria?: string;
   avgConsumptionKWh?: number;
   proposalsCount?: number;
@@ -258,6 +260,8 @@ export interface Lead {
   email?: string;
   city: string;
   state: string;
+  street?: string;
+  addressNumber?: string;
   propertyType: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
   averageMonthlyBill?: number;
   averageConsumptionKWh?: number;

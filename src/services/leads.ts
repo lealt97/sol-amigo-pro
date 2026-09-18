@@ -20,6 +20,8 @@ const mapLead = (row: LeadRow): Lead => ({
   email: row.email ?? undefined,
   city: row.city,
   state: row.state,
+  street: row.street ?? undefined,
+  addressNumber: row.address_number ?? undefined,
   propertyType: row.property_type,
   averageMonthlyBill: row.average_monthly_bill == null ? undefined : Number(row.average_monthly_bill),
   averageConsumptionKWh: row.average_consumption_kwh == null ? undefined : Number(row.average_consumption_kwh),
