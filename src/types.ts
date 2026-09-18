@@ -29,6 +29,9 @@ export type PageKey =
   | 'clientes'
   | 'dimensionamento'
   | 'propostas'
+  | 'kits'
+  | 'pos-venda'
+  | 'anotacoes'
   | 'levantamento'
   | 'empresas'
   | 'contratos'
@@ -186,22 +189,29 @@ export type ClientCrmStatus =
 
 export interface Client {
   id: string;
+  userId?: string;
+  sourceLeadId?: string;
   name: string;
-  document: string;
+  document?: string;
   type: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
+  propertyType?: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
   email: string;
   phone: string;
   city: string;
   state: string;
-  concessionaria: string;
-  avgConsumptionKWh: number;
-  proposalsCount: number;
-  activeStatus: 'Ativo' | 'Em atendimento' | 'Inativo';
+  concessionaria?: string;
+  avgConsumptionKWh?: number;
+  proposalsCount?: number;
+  activeStatus?: 'Ativo' | 'Em atendimento' | 'Inativo';
+  status?: 'ativo' | 'inativo';
   crmStatus?: ClientCrmStatus;
   responsible?: string;
   source?: string;
   lastInteraction?: string;
   createdAt?: string;
+  updatedAt?: string;
+  archivedAt?: string;
+  trashedAt?: string;
   avgMonthlyBill?: number;
   connectionType?: 'Monofásica' | 'Bifásica' | 'Trifásica';
   consumerUnit?: string;

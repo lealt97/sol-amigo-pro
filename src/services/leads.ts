@@ -84,3 +84,48 @@ export async function deleteOwnedLead(leadId: string): Promise<void> {
   if (error) throw error;
   if (!data) throw new Error('Lead não encontrado ou sem permissão para excluir.');
 }
+
+export async function updateLeadNotes(leadId: string, notes: string): Promise<void> {
+  const { error } = await supabase
+    .from('leads')
+    .update({ notes, updated_at: new Date().toISOString() })
+    .eq('id', leadId);
+  if (error) throw error;
+}
+
+export interface UpdateLeadParamsInput {
+  status?: Lead['status'];
+  propertyType?: Lead['propertyType'];
+  propertyStatus?: Lead['propertyStatus'];
+  distributor?: string;
+  averageMonthlyBill?: number;
+  averageConsumptionKWh?: number;
+  installationTimeframe?: string;
+  preferredContactTime?: string;
+  responsible?: string;
+}
+
+export async function updateLeadParameters(
+  leadId: string,
+  params: UpdateLeadParamsInput
+): Promise<void> {
+  const payload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (params.status !== undefined) payload.status = params.status;
+  if (params.propertyType !== undefined) payload.property_type = params.propertyType;
+  if (params.propertyStatus !== undefined) payload.property_status = params.propertyStatus;
+  if (params.distributor !== undefined) payload.distributor = params.distributor;
+  if (params.averageMonthlyBill !== undefined) payload.average_monthly_bill = params.averageMonthlyBill;
+  if (params.averageConsumptionKWh !== undefined) payload.average_consumption_kwh = params.averageConsumptionKWh;
+  if (params.installationTimeframe !== undefined) payload.installation_timeframe = params.installationTimeframe;
+  if (params.preferredContactTime !== undefined) payload.preferred_contact_time = params.preferredContactTime;
+  if (params.responsible !== undefined) payload.responsible = params.responsible;
+
+  const { error } = await supabase
+    .from('leads')
+    .update(payload)
+    .eq('id', leadId);
+  if (error) throw error;
+}
+

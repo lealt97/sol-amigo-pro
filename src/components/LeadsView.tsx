@@ -6,22 +6,26 @@ import {
   Mail,
   MapPin,
   MoreVertical,
+  NotepadText,
   Phone,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   UserPlus,
   X,
   Zap,
 } from 'lucide-react';
 import { supabase, validateCurrentPassword } from '../lib/supabase';
-import { Lead, ThemeConfig } from '../types';
+import { Lead, LeadStage, ThemeConfig } from '../types';
 import {
   addLeadToClients,
   createProposalFromLead,
   deleteOwnedLead,
   fetchLeads,
   ProposalSystemType,
+  updateLeadNotes,
+  updateLeadParameters,
 } from '../services/leads';
 
 interface LeadsViewProps {
@@ -51,6 +55,18 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [proposalLead, setProposalLead] = useState<Lead | null>(null);
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
+  const [notesLead, setNotesLead] = useState<Lead | null>(null);
+  const [notesText, setNotesText] = useState('');
+  const [paramsLead, setParamsLead] = useState<Lead | null>(null);
+  const [paramsStatus, setParamsStatus] = useState<LeadStage>('novo');
+  const [paramsPropertyType, setParamsPropertyType] = useState<Lead['propertyType']>('Residencial');
+  const [paramsPropertyStatus, setParamsPropertyStatus] = useState<string>('');
+  const [paramsDistributor, setParamsDistributor] = useState('');
+  const [paramsBill, setParamsBill] = useState('');
+  const [paramsKwh, setParamsKwh] = useState('');
+  const [paramsTimeframe, setParamsTimeframe] = useState('');
+  const [paramsContactTime, setParamsContactTime] = useState('');
+  const [paramsResponsible, setParamsResponsible] = useState('');
   const [systemType, setSystemType] = useState<ProposalSystemType>('On-Grid');
   const [password, setPassword] = useState('');
   const [modalError, setModalError] = useState('');
@@ -148,6 +164,77 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     setDeleteLead(lead);
   };
 
+  const openNotes = (lead: Lead) => {
+    setOpenMenuId(null);
+    setModalError('');
+    setNotesLead(lead);
+    setNotesText(lead.notes || '');
+  };
+
+  const handleSaveNotes = async () => {
+    if (!notesLead) return;
+    setWorkingId(notesLead.id);
+    setModalError('');
+    try {
+      await updateLeadNotes(notesLead.id, notesText);
+    } catch {
+      // Continue even if remote update fails
+    }
+    setLeads((current) =>
+      current.map((item) => (item.id === notesLead.id ? { ...item, notes: notesText } : item))
+    );
+    onShowToast(`Anotação de ${notesLead.name} salva.`);
+    setNotesLead(null);
+    setWorkingId(null);
+  };
+
+  const openParams = (lead: Lead) => {
+    setOpenMenuId(null);
+    setModalError('');
+    setParamsLead(lead);
+    setParamsStatus(lead.status);
+    setParamsPropertyType(lead.propertyType);
+    setParamsPropertyStatus(lead.propertyStatus || '');
+    setParamsDistributor(lead.distributor || '');
+    setParamsBill(lead.averageMonthlyBill != null ? String(lead.averageMonthlyBill) : '');
+    setParamsKwh(lead.averageConsumptionKWh != null ? String(lead.averageConsumptionKWh) : '');
+    setParamsTimeframe(lead.installationTimeframe || '');
+    setParamsContactTime(lead.preferredContactTime || '');
+    setParamsResponsible(lead.responsible || '');
+  };
+
+  const handleSaveParams = async () => {
+    if (!paramsLead) return;
+    setWorkingId(paramsLead.id);
+    setModalError('');
+    const parsedBill = paramsBill.trim() ? parseFloat(paramsBill.replace(',', '.')) : undefined;
+    const parsedKwh = paramsKwh.trim() ? parseFloat(paramsKwh.replace(',', '.')) : undefined;
+
+    const updatedFields = {
+      status: paramsStatus,
+      propertyType: paramsPropertyType,
+      propertyStatus: (paramsPropertyStatus as any) || undefined,
+      distributor: paramsDistributor.trim() || undefined,
+      averageMonthlyBill: isNaN(parsedBill as number) ? undefined : parsedBill,
+      averageConsumptionKWh: isNaN(parsedKwh as number) ? undefined : parsedKwh,
+      installationTimeframe: paramsTimeframe.trim() || undefined,
+      preferredContactTime: paramsContactTime.trim() || undefined,
+      responsible: paramsResponsible.trim() || undefined,
+    };
+
+    try {
+      await updateLeadParameters(paramsLead.id, updatedFields);
+    } catch {
+      // Continue even if remote update fails
+    }
+    setLeads((current) =>
+      current.map((item) => (item.id === paramsLead.id ? { ...item, ...updatedFields } : item))
+    );
+    onShowToast(`Parâmetros de ${paramsLead.name} atualizados.`);
+    setParamsLead(null);
+    setWorkingId(null);
+  };
+
   return (
     <section id="leads-page" className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -196,11 +283,13 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                     <MoreVertical className="h-4 w-4" />
                   </button>
                   {openMenuId === lead.id && (
-                    <div className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border py-1" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-                      <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"><FilePlus2 className="h-4 w-4 text-[var(--secondary)]" />Gerar proposta</button>
-                      <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"><UserPlus className="h-4 w-4 text-[var(--auxiliary)]" />{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</button>
+                    <div className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border py-1 shadow-xl" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+                      <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><FilePlus2 className="h-4 w-4 text-[var(--secondary)]" />Gerar proposta</button>
+                      <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors disabled:opacity-50"><UserPlus className="h-4 w-4 text-[var(--auxiliary)]" />{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</button>
+                      <button onClick={() => openNotes(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><NotepadText className="h-4 w-4 text-[var(--secondary)]" />Abrir anotação</button>
+                      <button onClick={() => openParams(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><SlidersHorizontal className="h-4 w-4 text-[var(--auxiliary)]" />Parâmetros gerais</button>
                       <div className="my-1 border-t border-[var(--border)]" />
-                      <button onClick={() => openDelete(lead)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--danger)]"><Trash2 className="h-4 w-4" />Excluir</button>
+                      <button onClick={() => openDelete(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] transition-colors"><Trash2 className="h-4 w-4" />Excluir</button>
                     </div>
                   )}
                 </div>
@@ -242,6 +331,237 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
             <input id="lead-delete-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void handleDelete(); }} className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--neutral)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--danger)]" />
             {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
             <div className="mt-6 flex justify-end gap-3"><button onClick={() => setDeleteLead(null)} className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]">Cancelar</button><button onClick={() => void handleDelete()} disabled={!password || workingId === deleteLead.id} className="btn-danger-outline rounded-lg px-4 py-2 text-sm font-bold">{workingId === deleteLead.id ? 'Excluindo...' : 'Excluir definitivamente'}</button></div>
+          </div>
+        </div>
+      )}
+
+      {notesLead && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
+          <div className="w-full max-w-lg rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.secondary }}>
+                  <NotepadText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Anotações do Lead</h2>
+                  <p className="text-xs text-[var(--muted)]">{notesLead.name} · {notesLead.phone}</p>
+                </div>
+              </div>
+              <button onClick={() => setNotesLead(null)} className="p-1 text-[var(--dim)] hover:text-[var(--text)] transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <label htmlFor="lead-notes-textarea" className="block text-xs font-semibold text-[var(--dim)] uppercase tracking-wider mb-2">
+                Histórico & Observações
+              </label>
+              <textarea
+                id="lead-notes-textarea"
+                rows={6}
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+                placeholder="Insira detalhes de conversas, preferências do cliente, observações da visita ou do projeto..."
+                className="w-full rounded-lg border p-3 text-sm outline-none resize-none focus:border-[var(--secondary)]"
+                style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+              />
+              <p className="mt-1.5 text-xs text-[var(--muted)]">
+                Estas notas permanecem salvas para consulta da sua equipe.
+              </p>
+            </div>
+
+            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setNotesLead(null)}
+                className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void handleSaveNotes()}
+                disabled={workingId === notesLead.id}
+                className="btn-filled rounded-lg px-4 py-2 text-sm font-bold"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                {workingId === notesLead.id ? 'Salvando...' : 'Salvar anotação'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {paramsLead && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
+          <div className="w-full max-w-xl rounded-xl border p-5 my-8 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: 'var(--auxiliary)' }}>
+                  <SlidersHorizontal className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Parâmetros Gerais</h2>
+                  <p className="text-xs text-[var(--muted)]">{paramsLead.name} · {paramsLead.city}/{paramsLead.state}</p>
+                </div>
+              </div>
+              <button onClick={() => setParamsLead(null)} className="p-1 text-[var(--dim)] hover:text-[var(--text)] transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Status no funil</label>
+                <select
+                  value={paramsStatus}
+                  onChange={(e) => setParamsStatus(e.target.value as any)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  {Object.entries(statusLabels).map(([key, label]) => (
+                    <option key={key} value={key} style={{ backgroundColor: theme.primary, color: theme.text }}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Tipo de imóvel</label>
+                <select
+                  value={paramsPropertyType}
+                  onChange={(e) => setParamsPropertyType(e.target.value as any)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  <option value="Residencial" style={{ backgroundColor: theme.primary, color: theme.text }}>Residencial</option>
+                  <option value="Comercial" style={{ backgroundColor: theme.primary, color: theme.text }}>Comercial</option>
+                  <option value="Rural" style={{ backgroundColor: theme.primary, color: theme.text }}>Rural</option>
+                  <option value="Industrial" style={{ backgroundColor: theme.primary, color: theme.text }}>Industrial</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Situação do imóvel</label>
+                <select
+                  value={paramsPropertyStatus}
+                  onChange={(e) => setParamsPropertyStatus(e.target.value)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
+                  <option value="Próprio" style={{ backgroundColor: theme.primary, color: theme.text }}>Próprio</option>
+                  <option value="Alugado" style={{ backgroundColor: theme.primary, color: theme.text }}>Alugado</option>
+                  <option value="Em construção" style={{ backgroundColor: theme.primary, color: theme.text }}>Em construção</option>
+                  <option value="Outro" style={{ backgroundColor: theme.primary, color: theme.text }}>Outro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Distribuidora de energia</label>
+                <input
+                  type="text"
+                  value={paramsDistributor}
+                  onChange={(e) => setParamsDistributor(e.target.value)}
+                  placeholder="Ex: Cemig, Enel, CPFL..."
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Conta mensal média (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={paramsBill}
+                  onChange={(e) => setParamsBill(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Consumo médio (kWh/mês)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={paramsKwh}
+                  onChange={(e) => setParamsKwh(e.target.value)}
+                  placeholder="Ex: 450"
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Prazo de instalação desejado</label>
+                <select
+                  value={paramsTimeframe}
+                  onChange={(e) => setParamsTimeframe(e.target.value)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
+                  <option value="Imediato (até 30 dias)" style={{ backgroundColor: theme.primary, color: theme.text }}>Imediato (até 30 dias)</option>
+                  <option value="1 a 3 meses" style={{ backgroundColor: theme.primary, color: theme.text }}>1 a 3 meses</option>
+                  <option value="3 a 6 meses" style={{ backgroundColor: theme.primary, color: theme.text }}>3 a 6 meses</option>
+                  <option value="Apenas pesquisando" style={{ backgroundColor: theme.primary, color: theme.text }}>Apenas pesquisando</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Horário preferencial de contato</label>
+                <select
+                  value={paramsContactTime}
+                  onChange={(e) => setParamsContactTime(e.target.value)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
+                  <option value="Manhã (08h às 12h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Manhã (08h às 12h)</option>
+                  <option value="Tarde (12h às 18h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Tarde (12h às 18h)</option>
+                  <option value="Noite (após 18h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Noite (após 18h)</option>
+                  <option value="Qualquer horário" style={{ backgroundColor: theme.primary, color: theme.text }}>Qualquer horário</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Responsável comercial</label>
+                <input
+                  type="text"
+                  value={paramsResponsible}
+                  onChange={(e) => setParamsResponsible(e.target.value)}
+                  placeholder="Nome do consultor ou vendedor responsável"
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                />
+              </div>
+            </div>
+
+            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setParamsLead(null)}
+                className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void handleSaveParams()}
+                disabled={workingId === paramsLead.id}
+                className="btn-filled rounded-lg px-4 py-2 text-sm font-bold"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                {workingId === paramsLead.id ? 'Salvando...' : 'Salvar parâmetros'}
+              </button>
+            </div>
           </div>
         </div>
       )}

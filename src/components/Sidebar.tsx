@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
+  LayoutDashboard,
   Users,
+  UserCheck,
+  FileText,
+  Package,
+  Wrench,
+  NotepadText,
   Settings,
   ChevronRight,
   PanelLeftClose,
@@ -38,7 +44,13 @@ type SidebarProfile = {
 };
 
 const NAV_ITEMS: NavItemDef[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'leads', label: 'Leads', icon: Users },
+  { key: 'clientes', label: 'Clientes', icon: UserCheck },
+  { key: 'propostas', label: 'Propostas', icon: FileText },
+  { key: 'kits', label: 'Kits', icon: Package },
+  { key: 'pos-venda', label: 'Pós-venda', icon: Wrench },
+  { key: 'anotacoes', label: 'Anotações', icon: NotepadText },
 ];
 
 function mixHex(base: string, target: string, amount: number): string {

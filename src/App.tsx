@@ -311,6 +311,16 @@ export default function App() {
         return <div id="dashboard-view" />;
       case 'leads':
         return <LeadsView theme={currentTheme} onShowToast={showToast} />;
+      case 'clientes':
+        return <div id="clientes-page" />;
+      case 'propostas':
+        return <div id="propostas-page" />;
+      case 'kits':
+        return <div id="kits-page" />;
+      case 'pos-venda':
+        return <div id="pos-venda-page" />;
+      case 'anotacoes':
+        return <div id="anotacoes-page" />;
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
