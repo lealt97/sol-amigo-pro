@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   CalendarDays,
-  FilePlus2,
+  FileText,
   Mail,
   MapPin,
   MoreVertical,
@@ -25,24 +25,19 @@ import {
   fetchLeads,
   ProposalSystemType,
   updateLeadNotes,
-  updateLeadParameters,
 } from '../services/leads';
+import { LeadParametersModal } from './LeadParametersModal';
+import { formatPhone } from '../utils/formatters';
+import { getContrastFg } from '../utils/themeEngine';
+import { LEAD_STAGE_LABELS, getLeadStatusStyle } from '../utils/leadStatus';
+import { fetchAndSyncLeadNotifications, markLeadAsRead } from '../services/leadNotifications';
 
 interface LeadsViewProps {
   theme: ThemeConfig;
   onShowToast: (message: string) => void;
 }
 
-const statusLabels: Record<Lead['status'], string> = {
-  novo: 'Novo',
-  em_contato: 'Em contato',
-  qualificado: 'Qualificado',
-  em_estudo: 'Em estudo',
-  proposta_enviada: 'Proposta enviada',
-  negociacao: 'Negociação',
-  ganho: 'Ganho',
-  perdido: 'Perdido',
-};
+const statusLabels: Record<Lead['status'], string> = LEAD_STAGE_LABELS;
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -51,6 +46,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [proposalLead, setProposalLead] = useState<Lead | null>(null);
@@ -58,15 +54,6 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
   const [notesLead, setNotesLead] = useState<Lead | null>(null);
   const [notesText, setNotesText] = useState('');
   const [paramsLead, setParamsLead] = useState<Lead | null>(null);
-  const [paramsStatus, setParamsStatus] = useState<LeadStage>('novo');
-  const [paramsPropertyType, setParamsPropertyType] = useState<Lead['propertyType']>('Residencial');
-  const [paramsPropertyStatus, setParamsPropertyStatus] = useState<string>('');
-  const [paramsDistributor, setParamsDistributor] = useState('');
-  const [paramsBill, setParamsBill] = useState('');
-  const [paramsKwh, setParamsKwh] = useState('');
-  const [paramsTimeframe, setParamsTimeframe] = useState('');
-  const [paramsContactTime, setParamsContactTime] = useState('');
-  const [paramsResponsible, setParamsResponsible] = useState('');
   const [systemType, setSystemType] = useState<ProposalSystemType>('On-Grid');
   const [password, setPassword] = useState('');
   const [modalError, setModalError] = useState('');
@@ -77,6 +64,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     setError('');
     try {
       setLeads(await fetchLeads());
+      void fetchAndSyncLeadNotifications();
     } catch (err: any) {
       setError(err?.message || 'Não foi possível carregar os leads.');
     } finally {
@@ -96,15 +84,18 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     return () => document.removeEventListener('mousedown', closeMenu);
   }, []);
 
+  const isLight = getContrastFg(theme.primary) === '#0F172A';
+
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-BR');
-    if (!query) return leads;
-    return leads.filter((lead) =>
-      [lead.name, lead.phone, lead.email, lead.street, lead.addressNumber, lead.city, lead.state, lead.source]
+    return leads.filter((lead) => {
+      if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+      if (!query) return true;
+      return [lead.name, lead.phone, lead.email, lead.street, lead.addressNumber, lead.city, lead.state, lead.source]
         .filter(Boolean)
-        .some((value) => String(value).toLocaleLowerCase('pt-BR').includes(query))
-    );
-  }, [leads, search]);
+        .some((value) => String(value).toLocaleLowerCase('pt-BR').includes(query));
+    });
+  }, [leads, search, statusFilter]);
 
   const handleAddClient = async (lead: Lead) => {
     setOpenMenuId(null);
@@ -169,6 +160,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     setModalError('');
     setNotesLead(lead);
     setNotesText(lead.notes || '');
+    markLeadAsRead(lead.id);
   };
 
   const handleSaveNotes = async () => {
@@ -190,49 +182,8 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
 
   const openParams = (lead: Lead) => {
     setOpenMenuId(null);
-    setModalError('');
     setParamsLead(lead);
-    setParamsStatus(lead.status);
-    setParamsPropertyType(lead.propertyType);
-    setParamsPropertyStatus(lead.propertyStatus || '');
-    setParamsDistributor(lead.distributor || '');
-    setParamsBill(lead.averageMonthlyBill != null ? String(lead.averageMonthlyBill) : '');
-    setParamsKwh(lead.averageConsumptionKWh != null ? String(lead.averageConsumptionKWh) : '');
-    setParamsTimeframe(lead.installationTimeframe || '');
-    setParamsContactTime(lead.preferredContactTime || '');
-    setParamsResponsible(lead.responsible || '');
-  };
-
-  const handleSaveParams = async () => {
-    if (!paramsLead) return;
-    setWorkingId(paramsLead.id);
-    setModalError('');
-    const parsedBill = paramsBill.trim() ? parseFloat(paramsBill.replace(',', '.')) : undefined;
-    const parsedKwh = paramsKwh.trim() ? parseFloat(paramsKwh.replace(',', '.')) : undefined;
-
-    const updatedFields = {
-      status: paramsStatus,
-      propertyType: paramsPropertyType,
-      propertyStatus: (paramsPropertyStatus as any) || undefined,
-      distributor: paramsDistributor.trim() || undefined,
-      averageMonthlyBill: isNaN(parsedBill as number) ? undefined : parsedBill,
-      averageConsumptionKWh: isNaN(parsedKwh as number) ? undefined : parsedKwh,
-      installationTimeframe: paramsTimeframe.trim() || undefined,
-      preferredContactTime: paramsContactTime.trim() || undefined,
-      responsible: paramsResponsible.trim() || undefined,
-    };
-
-    try {
-      await updateLeadParameters(paramsLead.id, updatedFields);
-    } catch {
-      // Continue even if remote update fails
-    }
-    setLeads((current) =>
-      current.map((item) => (item.id === paramsLead.id ? { ...item, ...updatedFields } : item))
-    );
-    onShowToast(`Parâmetros de ${paramsLead.name} atualizados.`);
-    setParamsLead(null);
-    setWorkingId(null);
+    markLeadAsRead(lead.id);
   };
 
   return (
@@ -243,15 +194,71 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
           <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Leads</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">Interessados enviados pelo formulário do seu site.</p>
         </div>
-        <button onClick={() => void load()} disabled={loading} className="btn-outline inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
+        <button
+          onClick={() => void load()}
+          disabled={loading}
+          className="btn-outline inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-all hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)]"
+          style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
+        >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
         </button>
       </div>
 
-      <div className="rounded-xl border p-3" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
+      <div className="rounded-xl border p-3 space-y-2.5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dim)]" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, telefone, cidade ou e-mail" className="h-10 w-full rounded-lg border pl-10 pr-4 text-sm outline-none focus:border-[var(--secondary)]" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+        </div>
+
+        {/* Barra de Filtro Rápido com Cores Semânticas de Cada Status */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs pt-0.5 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`rounded-full px-3 py-1 font-semibold transition-all shrink-0 border inline-flex items-center gap-1.5 ${
+              statusFilter === 'all'
+                ? 'border-[var(--secondary)] bg-[var(--secondary)] text-[var(--secondary-fg)] shadow-sm'
+                : 'border-[var(--border)] text-[var(--dim)] hover:text-[var(--text)]'
+            }`}
+            style={statusFilter === 'all' ? undefined : { backgroundColor: theme.background }}
+          >
+            <span>Todos</span>
+            <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold opacity-85">
+              {leads.length}
+            </span>
+          </button>
+          {(Object.keys(LEAD_STAGE_LABELS) as LeadStage[]).map((stKey) => {
+            const count = leads.filter((l) => l.status === stKey).length;
+            const st = getLeadStatusStyle(stKey, isLight);
+            const isSelected = statusFilter === stKey;
+            return (
+              <button
+                key={stKey}
+                type="button"
+                onClick={() => setStatusFilter(isSelected ? 'all' : stKey)}
+                className="rounded-full px-3 py-1 font-semibold transition-all shrink-0 border inline-flex items-center gap-1.5"
+                style={{
+                  backgroundColor: isSelected ? st.color : st.bg,
+                  borderColor: isSelected ? st.color : st.border,
+                  color: isSelected ? '#ffffff' : st.color,
+                }}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: isSelected ? '#ffffff' : st.color }}
+                />
+                <span>{st.label}</span>
+                <span
+                  className="rounded-full px-1.5 py-0.2 text-[10px] font-bold"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(0,0,0,0.25)' : 'color-mix(in srgb, currentColor 15%, transparent)',
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -267,14 +274,29 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredLeads.map((lead) => (
-            <article key={lead.id} className="relative rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide" style={{ borderColor: 'color-mix(in srgb, var(--secondary) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--secondary) 18%, transparent)', color: 'var(--secondary)' }}>{statusLabels[lead.status]}</span>
-                    {lead.clientId && <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: 'color-mix(in srgb, var(--auxiliary) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--auxiliary) 18%, transparent)', color: 'var(--auxiliary)' }}>Cliente</span>}
-                  </div>
+          {filteredLeads.map((lead) => {
+            const statusStyle = getLeadStatusStyle(lead.status, isLight);
+            return (
+              <article key={lead.id} className="relative rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all"
+                        style={{
+                          borderColor: statusStyle.border,
+                          backgroundColor: statusStyle.bg,
+                          color: statusStyle.color,
+                        }}
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: statusStyle.color }}
+                        />
+                        {statusStyle.label}
+                      </span>
+                      {lead.clientId && <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: 'color-mix(in srgb, var(--auxiliary) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--auxiliary) 18%, transparent)', color: 'var(--auxiliary)' }}>Cliente</span>}
+                    </div>
                   <h2 className="truncate text-lg font-bold text-[var(--text)]" title={lead.name}>{lead.name}</h2>
                   <p className="mt-1 truncate text-xs text-[var(--muted)]" title={lead.street ? `${lead.street}, ${lead.addressNumber || 'S/N'}` : 'Endereço não informado'}>
                     {lead.street ? `${lead.street}, ${lead.addressNumber || 'S/N'}` : 'Endereço não informado'}
@@ -285,20 +307,35 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                     <MoreVertical className="h-4 w-4" />
                   </button>
                   {openMenuId === lead.id && (
-                    <div className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border py-1 shadow-xl" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-                      <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><FilePlus2 className="h-4 w-4 text-[var(--secondary)]" />Gerar proposta</button>
-                      <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors disabled:opacity-50"><UserPlus className="h-4 w-4 text-[var(--auxiliary)]" />{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</button>
-                      <button onClick={() => openNotes(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><NotepadText className="h-4 w-4 text-[var(--secondary)]" />Abrir anotação</button>
-                      <button onClick={() => openParams(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-colors"><SlidersHorizontal className="h-4 w-4 text-[var(--auxiliary)]" />Parâmetros gerais</button>
+                    <div className="lead-actions-dropdown absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border py-1 shadow-xl" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+                      <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
+                        <FileText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                        <span className="font-medium group-hover:text-white transition-colors">Gerar proposta</span>
+                      </button>
+                      <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors disabled:opacity-50">
+                        <UserPlus className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                        <span className="font-medium group-hover:text-white transition-colors">{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</span>
+                      </button>
+                      <button onClick={() => openNotes(lead)} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
+                        <NotepadText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                        <span className="font-medium group-hover:text-white transition-colors">Abrir anotação</span>
+                      </button>
+                      <button onClick={() => openParams(lead)} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
+                        <SlidersHorizontal className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                        <span className="font-medium group-hover:text-white transition-colors">Parâmetros gerais</span>
+                      </button>
                       <div className="my-1 border-t border-[var(--border)]" />
-                      <button onClick={() => openDelete(lead)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] transition-colors"><Trash2 className="h-4 w-4" />Excluir</button>
+                      <button onClick={() => openDelete(lead)} className="lead-menu-item-danger group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-[var(--danger)] transition-colors">
+                        <Trash2 className="h-4 w-4 shrink-0 group-hover:text-white group-hover:stroke-white transition-colors" />
+                        <span className="font-medium group-hover:text-white transition-colors">Excluir</span>
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
 
               <dl className="mt-5 space-y-2.5 text-sm">
-                <div className="flex items-center gap-2 text-[var(--text)]"><Phone className="h-4 w-4 text-[var(--dim)]" /><a href={`tel:${lead.phone}`}>{lead.phone}</a></div>
+                <div className="flex items-center gap-2 text-[var(--text)]"><Phone className="h-4 w-4 text-[var(--dim)]" /><a href={`tel:${lead.phone}`}>{formatPhone(lead.phone)}</a></div>
                 {lead.email && <div className="flex min-w-0 items-center gap-2 text-[var(--text)]"><Mail className="h-4 w-4 shrink-0 text-[var(--dim)]" /><a href={`mailto:${lead.email}`} className="truncate">{lead.email}</a></div>}
                 <div className="flex items-center gap-2 text-[var(--text)]"><MapPin className="h-4 w-4 text-[var(--dim)]" />{lead.city}/{lead.state}</div>
                 {lead.distributor && <div className="flex items-center gap-2 text-[var(--text)]"><Building2 className="h-4 w-4 text-[var(--dim)]" />{lead.distributor}</div>}
@@ -309,18 +346,86 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                 <div><p className="text-[10px] uppercase tracking-wide text-[var(--dim)]">Recebido em</p><p className="mt-1 flex items-center gap-1 text-sm font-semibold text-[var(--text)]"><CalendarDays className="h-3.5 w-3.5" />{new Date(lead.createdAt).toLocaleDateString('pt-BR')}</p></div>
               </div>
             </article>
-          ))}
+          );
+        })}
         </div>
       )}
 
       {proposalLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
-          <div className="w-full max-w-md rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-            <div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Gerar proposta</h2><p className="mt-1 text-sm text-[var(--muted)]">{proposalLead.name}</p></div><button onClick={() => setProposalLead(null)} className="p-1 text-[var(--dim)]"><X className="h-5 w-5" /></button></div>
-            <label className="mt-5 block text-xs font-semibold">Tipo do sistema</label>
-            <div className="mt-2 grid grid-cols-2 gap-3">{(['On-Grid', 'Híbrido'] as ProposalSystemType[]).map((type) => <button key={type} onClick={() => setSystemType(type)} className="rounded-lg border px-4 py-3 text-sm font-semibold" style={systemType === type ? { borderColor: theme.secondary, backgroundColor: 'color-mix(in srgb, var(--secondary) 18%, transparent)', color: 'var(--secondary)' } : { borderColor: 'var(--border)', color: 'var(--text)' }}>{type}</button>)}</div>
-            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
-            <div className="mt-6 flex justify-end gap-3"><button onClick={() => setProposalLead(null)} className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]">Cancelar</button><button onClick={() => void handleCreateProposal()} disabled={workingId === proposalLead.id} className="btn-filled rounded-lg px-4 py-2 text-sm font-bold" style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}>{workingId === proposalLead.id ? 'Criando...' : 'Criar rascunho'}</button></div>
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border p-5 shadow-2xl space-y-4"
+            style={{
+              backgroundColor: theme.primary,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
+              <div className="flex items-center gap-2.5">
+                <FileText className="h-5 w-5 text-[var(--secondary)]" />
+                <h3 className="text-base font-bold">Gerar Nova Proposta</h3>
+              </div>
+              <button
+                onClick={() => setProposalLead(null)}
+                className="p-1 text-[var(--dim)] hover:text-[var(--text)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-[var(--muted)]">
+                Criar uma nova proposta comercial para <strong>{proposalLead.name}</strong>.
+              </p>
+              <div>
+                <label className="block font-semibold text-[var(--dim)] mb-1">Tipo de Sistema Solar</label>
+                <select
+                  value={systemType}
+                  onChange={(e) => setSystemType(e.target.value as ProposalSystemType)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                >
+                  <option value="On-Grid" style={{ backgroundColor: theme.primary, color: theme.text }}>On-Grid (Conectado à rede)</option>
+                  <option value="Híbrido" style={{ backgroundColor: theme.primary, color: theme.text }}>Híbrido (Rede + Baterias)</option>
+                </select>
+              </div>
+              {modalError && <p className="text-xs text-[var(--danger)]">{modalError}</p>}
+            </div>
+
+            <div className="pt-3 flex justify-end gap-3 border-t" style={{ borderColor: theme.border }}>
+              <button
+                type="button"
+                onClick={() => setProposalLead(null)}
+                className="btn-outline px-4 py-2 rounded-lg border text-xs font-semibold hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)]"
+                style={{ borderColor: theme.border }}
+              >
+                Cancelar
+              </button>
+              <button
+                id="btn-lead-confirmar-gerar-proposta"
+                type="button"
+                onClick={() => void handleCreateProposal()}
+                disabled={workingId === proposalLead.id}
+                className="btn-filled px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 active:scale-[0.98]"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                {workingId === proposalLead.id ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    Gerando proposta...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-3.5 w-3.5" />
+                    Gerar Proposta
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -347,7 +452,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Anotações do Lead</h2>
-                  <p className="text-xs text-[var(--muted)]">{notesLead.name} · {notesLead.phone}</p>
+                  <p className="text-xs text-[var(--muted)]">{notesLead.name} · {formatPhone(notesLead.phone)}</p>
                 </div>
               </div>
               <button onClick={() => setNotesLead(null)} className="p-1 text-[var(--dim)] hover:text-[var(--text)] transition-colors">
@@ -396,176 +501,19 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
       )}
 
       {paramsLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
-          <div className="w-full max-w-xl rounded-xl border p-5 my-8 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: 'var(--auxiliary)' }}>
-                  <SlidersHorizontal className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Parâmetros Gerais</h2>
-                  <p className="text-xs text-[var(--muted)]">{paramsLead.name} · {paramsLead.city}/{paramsLead.state}</p>
-                </div>
-              </div>
-              <button onClick={() => setParamsLead(null)} className="p-1 text-[var(--dim)] hover:text-[var(--text)] transition-colors">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Status no funil</label>
-                <select
-                  value={paramsStatus}
-                  onChange={(e) => setParamsStatus(e.target.value as any)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  {Object.entries(statusLabels).map(([key, label]) => (
-                    <option key={key} value={key} style={{ backgroundColor: theme.primary, color: theme.text }}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Tipo de imóvel</label>
-                <select
-                  value={paramsPropertyType}
-                  onChange={(e) => setParamsPropertyType(e.target.value as any)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="Residencial" style={{ backgroundColor: theme.primary, color: theme.text }}>Residencial</option>
-                  <option value="Comercial" style={{ backgroundColor: theme.primary, color: theme.text }}>Comercial</option>
-                  <option value="Rural" style={{ backgroundColor: theme.primary, color: theme.text }}>Rural</option>
-                  <option value="Industrial" style={{ backgroundColor: theme.primary, color: theme.text }}>Industrial</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Situação do imóvel</label>
-                <select
-                  value={paramsPropertyStatus}
-                  onChange={(e) => setParamsPropertyStatus(e.target.value)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
-                  <option value="Próprio" style={{ backgroundColor: theme.primary, color: theme.text }}>Próprio</option>
-                  <option value="Alugado" style={{ backgroundColor: theme.primary, color: theme.text }}>Alugado</option>
-                  <option value="Em construção" style={{ backgroundColor: theme.primary, color: theme.text }}>Em construção</option>
-                  <option value="Outro" style={{ backgroundColor: theme.primary, color: theme.text }}>Outro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Distribuidora de energia</label>
-                <input
-                  type="text"
-                  value={paramsDistributor}
-                  onChange={(e) => setParamsDistributor(e.target.value)}
-                  placeholder="Ex: Cemig, Enel, CPFL..."
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Conta mensal média (R$)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={paramsBill}
-                  onChange={(e) => setParamsBill(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Consumo médio (kWh/mês)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={paramsKwh}
-                  onChange={(e) => setParamsKwh(e.target.value)}
-                  placeholder="Ex: 450"
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Prazo de instalação desejado</label>
-                <select
-                  value={paramsTimeframe}
-                  onChange={(e) => setParamsTimeframe(e.target.value)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
-                  <option value="Imediato (até 30 dias)" style={{ backgroundColor: theme.primary, color: theme.text }}>Imediato (até 30 dias)</option>
-                  <option value="1 a 3 meses" style={{ backgroundColor: theme.primary, color: theme.text }}>1 a 3 meses</option>
-                  <option value="3 a 6 meses" style={{ backgroundColor: theme.primary, color: theme.text }}>3 a 6 meses</option>
-                  <option value="Apenas pesquisando" style={{ backgroundColor: theme.primary, color: theme.text }}>Apenas pesquisando</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Horário preferencial de contato</label>
-                <select
-                  value={paramsContactTime}
-                  onChange={(e) => setParamsContactTime(e.target.value)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
-                  <option value="Manhã (08h às 12h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Manhã (08h às 12h)</option>
-                  <option value="Tarde (12h às 18h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Tarde (12h às 18h)</option>
-                  <option value="Noite (após 18h)" style={{ backgroundColor: theme.primary, color: theme.text }}>Noite (após 18h)</option>
-                  <option value="Qualquer horário" style={{ backgroundColor: theme.primary, color: theme.text }}>Qualquer horário</option>
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-[var(--dim)] mb-1">Responsável comercial</label>
-                <input
-                  type="text"
-                  value={paramsResponsible}
-                  onChange={(e) => setParamsResponsible(e.target.value)}
-                  placeholder="Nome do consultor ou vendedor responsável"
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-              </div>
-            </div>
-
-            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setParamsLead(null)}
-                className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void handleSaveParams()}
-                disabled={workingId === paramsLead.id}
-                className="btn-filled rounded-lg px-4 py-2 text-sm font-bold"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                {workingId === paramsLead.id ? 'Salvando...' : 'Salvar parâmetros'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LeadParametersModal
+          lead={paramsLead}
+          theme={theme}
+          statusLabels={statusLabels}
+          onClose={() => setParamsLead(null)}
+          onLeadUpdated={(updatedLead) => {
+            setLeads((current) =>
+              current.map((item) => (item.id === updatedLead.id ? updatedLead : item))
+            );
+            setParamsLead(updatedLead);
+          }}
+          onShowToast={onShowToast}
+        />
       )}
     </section>
   );

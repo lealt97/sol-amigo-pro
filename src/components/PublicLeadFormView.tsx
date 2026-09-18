@@ -31,6 +31,7 @@ import {
   DEFAULT_FORM_BORDER_RADIUS,
   normalizeFormBorderRadius,
 } from '../utils/formRadius';
+import { formatPhone } from '../utils/formatters';
 
 interface PublicLeadFormViewProps {
   formToken: string;
@@ -111,25 +112,6 @@ const normalizeSiteRadius = (value: string | null) => {
   if (value === null || value.trim() === '') return null;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? normalizeFormBorderRadius(numericValue) : null;
-};
-
-const formatPhone = (value: string): string => {
-  let digits = value.replace(/\D/g, '');
-  if (digits.startsWith('55') && digits.length > 11) {
-    digits = digits.slice(2);
-  }
-  digits = digits.slice(0, 11);
-  if (!digits) return '';
-  if (digits.length <= 2) {
-    return `(${digits}`;
-  }
-  if (digits.length <= 6) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  }
-  if (digits.length <= 10) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  }
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
 const INITIAL_FORM: PublicFormData = {

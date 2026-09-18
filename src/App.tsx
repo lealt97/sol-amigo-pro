@@ -397,6 +397,7 @@ export default function App() {
           theme={currentTheme}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenHelp={() => setIsHelpModalOpen(true)}
+          onNavigate={(page) => setActivePage(page)}
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">

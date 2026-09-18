@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const borderColor = theme.border;
   const activeFg = getContrastFg(theme.secondary);
   const mutedOpacity = sidebarIsDark ? 0.68 : 0.72;
-  const hoverClass = sidebarIsDark ? 'hover:bg-white/10' : 'hover:bg-black/5';
+  const hoverClass = 'hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)] hover:opacity-100';
   const shortName = getShortName(profile.fullName);
   const displayName = shortName.toLocaleLowerCase('pt-BR') === 'renan hora' ? 'Renan Leal' : shortName;
   const companyName = profile.company.trim() || 'Conta autenticada';

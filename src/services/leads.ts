@@ -93,9 +93,32 @@ export async function updateLeadNotes(leadId: string, notes: string): Promise<vo
     .update({ notes, updated_at: new Date().toISOString() })
     .eq('id', leadId);
   if (error) throw error;
+
+  try {
+    const userResponse = await supabase.auth.getUser();
+    const userId = userResponse.data?.user?.id;
+    if (userId) {
+      await supabase.from('lead_activities').insert({
+        user_id: userId,
+        lead_id: leadId,
+        activity_type: 'nota',
+        title: 'Anotação atualizada',
+        description: notes.slice(0, 300),
+      });
+    }
+  } catch {
+    // Non-blocking
+  }
 }
 
 export interface UpdateLeadParamsInput {
+  name?: string;
+  phone?: string;
+  email?: string;
+  street?: string;
+  addressNumber?: string;
+  city?: string;
+  state?: string;
   status?: Lead['status'];
   propertyType?: Lead['propertyType'];
   propertyStatus?: Lead['propertyStatus'];
@@ -105,6 +128,7 @@ export interface UpdateLeadParamsInput {
   installationTimeframe?: string;
   preferredContactTime?: string;
   responsible?: string;
+  notes?: string;
 }
 
 export async function updateLeadParameters(
@@ -114,6 +138,13 @@ export async function updateLeadParameters(
   const payload: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
+  if (params.name !== undefined) payload.name = params.name;
+  if (params.phone !== undefined) payload.phone = params.phone;
+  if (params.email !== undefined) payload.email = params.email;
+  if (params.street !== undefined) payload.street = params.street;
+  if (params.addressNumber !== undefined) payload.address_number = params.addressNumber;
+  if (params.city !== undefined) payload.city = params.city;
+  if (params.state !== undefined) payload.state = params.state;
   if (params.status !== undefined) payload.status = params.status;
   if (params.propertyType !== undefined) payload.property_type = params.propertyType;
   if (params.propertyStatus !== undefined) payload.property_status = params.propertyStatus;
@@ -123,6 +154,7 @@ export async function updateLeadParameters(
   if (params.installationTimeframe !== undefined) payload.installation_timeframe = params.installationTimeframe;
   if (params.preferredContactTime !== undefined) payload.preferred_contact_time = params.preferredContactTime;
   if (params.responsible !== undefined) payload.responsible = params.responsible;
+  if (params.notes !== undefined) payload.notes = params.notes;
 
   const { error } = await supabase
     .from('leads')
@@ -130,4 +162,105 @@ export async function updateLeadParameters(
     .eq('id', leadId);
   if (error) throw error;
 }
+
+export interface LeadProposalItem {
+  id: string;
+  code: string;
+  systemType: string;
+  status: string;
+  createdAt: string;
+  clientId?: string | null;
+}
+
+export async function fetchLeadProposals(leadId: string): Promise<LeadProposalItem[]> {
+  const { data, error } = await supabase
+    .from('proposals')
+    .select('id, code, system_type, status, created_at, client_id')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('Erro ao carregar propostas do lead:', error);
+    return [];
+  }
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    code: row.code,
+    systemType: row.system_type || 'On-Grid',
+    status: row.status,
+    createdAt: row.created_at,
+    clientId: row.client_id,
+  }));
+}
+
+export async function deleteLeadProposal(proposalId: string): Promise<void> {
+  const { error } = await supabase
+    .from('proposals')
+    .delete()
+    .eq('id', proposalId);
+  if (error) throw error;
+}
+
+export interface LeadDocumentItem {
+  id: string;
+  leadId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  objectPath: string;
+  documentType: string;
+  createdAt: string;
+}
+
+export async function fetchLeadEnergyBills(leadId: string): Promise<LeadDocumentItem[]> {
+  const { data, error } = await supabase
+    .from('lead_documents')
+    .select('id, lead_id, original_name, mime_type, size_bytes, object_path, document_type, created_at')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('Erro ao carregar documentos do lead:', error);
+    return [];
+  }
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    leadId: row.lead_id,
+    originalName: row.original_name,
+    mimeType: row.mime_type,
+    sizeBytes: Number(row.size_bytes || 0),
+    objectPath: row.object_path,
+    documentType: row.document_type,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function getEnergyBillSignedUrl(objectPath: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('lead-energy-bills')
+      .createSignedUrl(objectPath, 3600);
+    if (error || !data?.signedUrl) {
+      console.warn('Erro ao gerar URL assinada da conta de luz:', error);
+      return null;
+    }
+    return data.signedUrl;
+  } catch (err) {
+    console.warn('Falha na criação de URL assinada:', err);
+    return null;
+  }
+}
+
+export async function fetchLeadNotesCount(leadId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('lead_activities')
+      .select('id', { count: 'exact', head: true })
+      .eq('lead_id', leadId)
+      .eq('activity_type', 'nota');
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 

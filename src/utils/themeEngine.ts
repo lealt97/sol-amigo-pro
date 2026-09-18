@@ -264,6 +264,12 @@ export function applyThemeToDOM(theme: ThemeConfig) {
   root.style.setProperty('--disabled-color', theme.text);
   root.style.setProperty('--disabled-opacity', String(DISABLED_OPACITY));
 
+  // Estados interativos sincronizados com o tema ativo
+  root.style.setProperty('--button-filled-hover-bg', `color-mix(in srgb, ${theme.secondary} 88%, #ffffff)`);
+  root.style.setProperty('--button-filled-hover-fg', getContrastFg(theme.secondary));
+  root.style.setProperty('--button-outline-hover-bg', theme.secondary);
+  root.style.setProperty('--button-outline-hover-fg', '#ffffff');
+
   // Aliases mantidos para compatibilidade com componentes existentes.
   root.style.setProperty('--bg', theme.background);
   root.style.setProperty('--accent', theme.accent);

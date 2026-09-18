@@ -27,8 +27,8 @@
   --sidebar: 258px;
 
   /* Estados interativos derivados do motor de cores */
-  --button-filled-hover-bg: var(--primary);
-  --button-filled-hover-fg: #ffffff;
+  --button-filled-hover-bg: color-mix(in srgb, var(--secondary) 88%, #ffffff);
+  --button-filled-hover-fg: var(--secondary-fg, #ffffff);
   --button-outline-hover-bg: var(--secondary);
   --button-outline-hover-fg: #ffffff;
   --interactive-hover-link: color-mix(in srgb, var(--secondary) 88%, var(--text));
@@ -92,32 +92,55 @@ label:has(input[type="file"]:not(:disabled)):hover,
   filter: none !important;
 }
 
-/* Botões com preenchimento via style inline do React */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button)[style*="background-color"]:hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button)[style*="background-color"]:hover {
-  background-color: var(--button-filled-hover-bg) !important;
-  border-color: var(--button-filled-hover-bg) !important;
-  color: var(--button-filled-hover-fg) !important;
-  filter: none !important;
+/* Ícones de botões no hover com fundo preenchido ficam brancos */
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):hover svg,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):hover svg *,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover svg,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover svg * {
+  color: var(--button-outline-hover-fg, #ffffff) !important;
+  stroke: var(--button-outline-hover-fg, #ffffff) !important;
 }
 
-/* Botões com preenchimento via classes utilitárias Tailwind */
+/* Botões com preenchimento via style inline do React ou classes utilitárias: preservam a cor preenchida com brilho e realce */
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline)[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline)[style*="background-color"]:hover,
 button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
 button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
 [role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
+.btn-filled:not(:disabled):hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
-  color: var(--button-filled-hover-fg) !important;
-  filter: none !important;
+  color: var(--button-filled-hover-fg, #ffffff) !important;
+  filter: brightness(1.08) saturate(1.06) !important;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--secondary) 28%, transparent) !important;
+}
+
+#topbar-notifications-badge {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #161b22 !important;
 }
 
 /* Links em formato de botão preservam o fundo e alteram somente a cor da fonte. */
-button[data-sol-amigo-text-hover]:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover {
+button[data-sol-amigo-text-hover]:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover,
+button[data-sol-amigo-text-hover]:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover * {
   background-color: transparent !important;
   border-color: transparent !important;
   color: var(--secondary) !important;
   filter: none !important;
+}
+
+#notifications-view-all-leads-btn,
+#notifications-view-all-leads-btn * {
+  color: #FFFFFF !important;
+}
+
+#notifications-view-all-leads-btn:hover,
+#notifications-view-all-leads-btn:hover * {
+  color: var(--secondary) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 /* Botão flutuante do formulário preserva 100% da cor configurada em qualquer estado */
@@ -163,12 +186,17 @@ a[href]:hover {
 }
 
 /* Classe opcional para forçar explicitamente o comportamento de botão com borda. */
-.btn-outline:hover,
-.theme-interactive:hover {
-  background-color: var(--button-outline-hover-bg) !important;
-  border-color: var(--button-outline-hover-bg) !important;
-  color: var(--button-outline-hover-fg) !important;
+.btn-outline:hover:not(:disabled),
+.theme-interactive:hover:not(:disabled) {
+  background-color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+  color: var(--secondary-fg, #ffffff) !important;
   filter: none !important;
+}
+
+.btn-outline:hover:not(:disabled) svg,
+.theme-interactive:hover:not(:disabled) svg {
+  color: var(--secondary-fg, #ffffff) !important;
 }
 
 .theme-shadow {
@@ -179,6 +207,54 @@ a[href]:hover {
   background-color: var(--secondary) !important;
   border-color: var(--secondary) !important;
   color: var(--secondary-fg) !important;
+}
+
+/* Hover dos botões da navegação principal com a cor secundária do sistema */
+#sidebar-nav button:not(:disabled):hover,
+#nav-item-settings-toggle:not(:disabled):hover,
+#settings-submenu button:not(:disabled):hover,
+#sidebar-toggle-btn:not(:disabled):hover,
+#topbar-sidebar-toggle-btn:not(:disabled):hover,
+#topbar-mobile-menu-btn:not(:disabled):hover,
+#lead-modal-nav button:not(:disabled):hover,
+nav[aria-label="Navegação do lead"] button:not(:disabled):hover,
+.lead-modal-nav-btn:not(:disabled):hover {
+  background-color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+  color: var(--secondary-fg, #ffffff) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+#sidebar-nav button:not(:disabled):hover *,
+#nav-item-settings-toggle:not(:disabled):hover *,
+#settings-submenu button:not(:disabled):hover *,
+#sidebar-toggle-btn:not(:disabled):hover *,
+#topbar-sidebar-toggle-btn:not(:disabled):hover *,
+#topbar-mobile-menu-btn:not(:disabled):hover *,
+#lead-modal-nav button:not(:disabled):hover *,
+nav[aria-label="Navegação do lead"] button:not(:disabled):hover *,
+.lead-modal-nav-btn:not(:disabled):hover *,
+.lead-actions-dropdown button:not(:disabled):hover *,
+.lead-actions-dropdown .lead-menu-item:not(:disabled):hover * {
+  color: var(--secondary-fg, #ffffff) !important;
+  stroke: var(--secondary-fg, #ffffff) !important;
+  opacity: 1 !important;
+}
+
+.lead-actions-dropdown button.lead-menu-item-danger:not(:disabled):hover,
+.lead-actions-dropdown button.lead-menu-item-danger:not(:disabled):hover * {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+#lead-modal-nav button:not(:disabled):hover .tab-badge,
+nav[aria-label="Navegação do lead"] button:not(:disabled):hover .tab-badge,
+.lead-modal-nav-btn:not(:disabled):hover .tab-badge {
+  background-color: color-mix(in srgb, var(--secondary-fg, #ffffff) 25%, transparent) !important;
+  color: var(--secondary-fg, #ffffff) !important;
 }
 
 /* Botão de perigo / ação de exclusão: padrão branco com texto/ícone/borda vermelhos, e hover com o estilo original preenchido em vermelho */
@@ -213,6 +289,29 @@ a[href]:hover {
   color: var(--primary-fg) !important;
   background-color: color-mix(in srgb, var(--primary-fg) 10%, transparent) !important;
   border-color: var(--border) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+#app-topbar #topbar-sidebar-toggle-btn:not(:disabled):hover,
+#app-topbar #topbar-mobile-menu-btn:not(:disabled):hover,
+#app-topbar #topbar-notifications-btn:not(:disabled):hover,
+#topbar-sidebar-toggle-btn:not(:disabled):hover,
+#topbar-mobile-menu-btn:not(:disabled):hover {
+  background-color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+  color: var(--secondary-fg, #ffffff) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+#app-topbar #topbar-sidebar-toggle-btn:not(:disabled):hover *,
+#app-topbar #topbar-mobile-menu-btn:not(:disabled):hover *,
+#app-topbar #topbar-notifications-btn:not(:disabled):hover *,
+#topbar-sidebar-toggle-btn:not(:disabled):hover *,
+#topbar-mobile-menu-btn:not(:disabled):hover * {
+  color: var(--secondary-fg, #ffffff) !important;
+  opacity: 1 !important;
 }
 
 main {
