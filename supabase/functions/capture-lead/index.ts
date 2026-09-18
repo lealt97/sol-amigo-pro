@@ -418,7 +418,11 @@ Deno.serve(async (req: Request) => {
     const email = asOptionalText(input.email, 160)?.toLowerCase() ?? null;
     const city = asText(input.city, 120);
     const state = asText(input.state, 2).toUpperCase();
-    const propertyType = asText(input.propertyType, 30);
+    const street = asText(input.street, 160);
+    const addressNumber = asText(input.addressNumber, 20);
+    // O tipo do imóvel passa a ser qualificado depois da captação. O valor
+    // legado mantém compatibilidade com as tabelas e os formulários antigos.
+    const propertyType = asText(input.propertyType, 30) || "Residencial";
     const propertyStatus = asOptionalText(input.propertyStatus, 30);
     const consent = input.consent === true;
 
@@ -431,6 +435,9 @@ Deno.serve(async (req: Request) => {
     }
     if (city.length < 2 || !/^[A-Z]{2}$/.test(state)) {
       return json({ error: "Informe a cidade e o estado." }, 400, requestOrigin);
+    }
+    if (street.length < 3 || !addressNumber) {
+      return json({ error: "Informe o endereço e o número do imóvel." }, 400, requestOrigin);
     }
     if (!(form.service_states ?? []).includes(state)) {
       return json({ error: "Este integrador ainda não atende o estado selecionado." }, 422, requestOrigin);
@@ -461,6 +468,8 @@ Deno.serve(async (req: Request) => {
       email,
       city.toLowerCase(),
       state,
+      street.toLowerCase(),
+      addressNumber.toLowerCase(),
       propertyType,
       propertyStatus,
       averageMonthlyBill,
@@ -590,6 +599,8 @@ Deno.serve(async (req: Request) => {
         email,
         city,
         state,
+        street,
+        address_number: addressNumber,
         property_type: propertyType,
         average_monthly_bill: averageMonthlyBill,
         average_consumption_kwh: averageConsumptionKWh,
