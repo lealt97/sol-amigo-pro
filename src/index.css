@@ -78,27 +78,170 @@ label:has(input[type="file"]:not(:disabled)),
   Padrão global de hover:
   1) Controles sem preenchimento / com borda recebem a cor SECUNDÁRIA.
   2) Controles que já possuem preenchimento recebem a cor PRIMÁRIA.
-  Em ambos os casos, o texto fica branco.
+  3) Botões de exclusão/perigo mantêm a cor semântica de perigo (vermelho).
+  4) Botões de apenas texto / Cancelar alteram apenas a cor da fonte com a cor secundária.
 */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover,
-input[type="button"]:not(:disabled):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover,
+input[type="button"]:not(:disabled):not(.btn-cancel):not(.btn-text):hover,
 input[type="submit"]:not(:disabled):hover,
-input[type="reset"]:not(:disabled):hover,
+input[type="reset"]:not(:disabled):not(.btn-cancel):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover {
   background-color: var(--button-outline-hover-bg) !important;
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
   filter: none !important;
 }
 
-/* Ícones de botões no hover com fundo preenchido ficam brancos */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):hover svg,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):hover svg *,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover svg,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):hover svg * {
+/* Ícones de botões padrão no hover com fundo preenchido ficam brancos */
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg *,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover svg,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover svg * {
   color: var(--button-outline-hover-fg, #ffffff) !important;
   stroke: var(--button-outline-hover-fg, #ffffff) !important;
+}
+
+/* ==========================================================================
+   ELEMENTOS CLICÁVEIS COM APENAS FONTES ESCRITAS (TEXT-ONLY / CANCELAR / LINKS)
+   No hover, alteram a cor da fonte usando o motor de cores do sistema (cor secundária)
+   sem preenchimento de fundo em bloco.
+   ========================================================================== */
+button.btn-text,
+button.btn-cancel,
+button[data-text-only],
+button[data-sol-amigo-text-hover],
+button.btn-ghost,
+.btn-text,
+.btn-cancel {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--text) !important;
+  filter: none !important;
+  transition: color 150ms ease, border-color 150ms ease, opacity 150ms ease !important;
+}
+
+button.btn-text:not(:disabled):hover,
+button.btn-cancel:not(:disabled):hover,
+button[data-text-only]:not(:disabled):hover,
+button[data-sol-amigo-text-hover]:not(:disabled):hover,
+button.btn-ghost:not(:disabled):hover,
+.btn-text:hover,
+.btn-cancel:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--secondary) !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+button.btn-text:not(:disabled):hover *,
+button.btn-cancel:not(:disabled):hover *,
+button[data-text-only]:not(:disabled):hover *,
+button[data-sol-amigo-text-hover]:not(:disabled):hover *,
+button.btn-ghost:not(:disabled):hover *,
+.btn-text:hover *,
+.btn-cancel:hover * {
+  color: var(--secondary) !important;
+  stroke: var(--secondary) !important;
+}
+
+/* Botões com borda contorno que representam ação de cancelar ou dispensar */
+button.btn-outline-cancel,
+button.btn-outline.btn-cancel,
+button[data-cancel-outline] {
+  background-color: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease !important;
+}
+
+button.btn-outline-cancel:not(:disabled):hover,
+button.btn-outline.btn-cancel:not(:disabled):hover,
+button[data-cancel-outline]:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--secondary) 10%, transparent) !important;
+  border-color: var(--secondary) !important;
+  color: var(--secondary) !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+button.btn-outline-cancel:not(:disabled):hover *,
+button.btn-outline.btn-cancel:not(:disabled):hover *,
+button[data-cancel-outline]:not(:disabled):hover * {
+  color: var(--secondary) !important;
+  stroke: var(--secondary) !important;
+}
+
+/* ==========================================================================
+   BOTÕES DE EXCLUSÃO E AÇÕES DELETIVAS (COR SEMÂNTICA DE PERIGO / DANGER)
+   Sempre utilizam vermelho/danger tanto em repouso quanto em hover,
+   nunca a cor secundária (laranja/azul).
+   ========================================================================== */
+button[data-delete-btn],
+button.btn-delete,
+button.btn-danger,
+button.btn-danger-outline,
+button.lead-menu-item-danger,
+button:has(svg.lucide-trash-2),
+button:has(svg.lucide-trash) {
+  --danger-color: var(--danger, #dc2626);
+}
+
+/* Hover de botões de exclusão outline/ícone */
+button[data-delete-btn]:not(:disabled):not(.btn-danger-solid):hover,
+button.btn-delete:not(:disabled):not(.btn-danger-solid):hover,
+button.lead-menu-item-danger:not(:disabled):not(.btn-danger-solid):hover,
+button.btn-danger-outline:not(:disabled):hover,
+button:has(svg.lucide-trash-2):not(:disabled):not(.btn-danger-solid):hover,
+button:has(svg.lucide-trash):not(:disabled):not(.btn-danger-solid):hover {
+  background-color: color-mix(in srgb, var(--danger, #dc2626) 16%, transparent) !important;
+  border-color: var(--danger, #dc2626) !important;
+  color: var(--danger, #dc2626) !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Ícones de botões de exclusão ficam vermelhos no hover */
+button[data-delete-btn]:not(:disabled):not(.btn-danger-solid):hover svg,
+button[data-delete-btn]:not(:disabled):not(.btn-danger-solid):hover svg *,
+button.btn-delete:not(:disabled):not(.btn-danger-solid):hover svg,
+button.btn-delete:not(:disabled):not(.btn-danger-solid):hover svg *,
+button.lead-menu-item-danger:not(:disabled):not(.btn-danger-solid):hover svg,
+button.lead-menu-item-danger:not(:disabled):not(.btn-danger-solid):hover svg *,
+button.lead-menu-item-danger:not(:disabled):not(.btn-danger-solid):hover span,
+button.btn-danger-outline:not(:disabled):hover svg,
+button.btn-danger-outline:not(:disabled):hover svg *,
+button:has(svg.lucide-trash-2):not(:disabled):not(.btn-danger-solid):hover svg,
+button:has(svg.lucide-trash-2):not(:disabled):not(.btn-danger-solid):hover svg *,
+button:has(svg.lucide-trash):not(:disabled):not(.btn-danger-solid):hover svg,
+button:has(svg.lucide-trash):not(:disabled):not(.btn-danger-solid):hover svg * {
+  color: var(--danger, #dc2626) !important;
+  stroke: var(--danger, #dc2626) !important;
+  background-color: transparent !important;
+}
+
+/* Botão de exclusão sólido definitivo (.btn-danger-solid) */
+.btn-danger-solid,
+button.btn-danger-solid {
+  background-color: var(--danger, #dc2626) !important;
+  border-color: var(--danger, #dc2626) !important;
+  color: #ffffff !important;
+  transition: all 150ms ease !important;
+}
+
+.btn-danger-solid:not(:disabled):hover,
+button.btn-danger-solid:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--danger, #dc2626) 85%, #000000) !important;
+  border-color: color-mix(in srgb, var(--danger, #dc2626) 85%, #000000) !important;
+  color: #ffffff !important;
+  filter: brightness(1.08) !important;
+}
+
+.btn-danger-solid:not(:disabled):hover svg,
+.btn-danger-solid:not(:disabled):hover svg * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 /* Botões com preenchimento via style inline do React ou classes utilitárias: preservam a cor preenchida com brilho e realce */
@@ -235,19 +378,11 @@ nav[aria-label="Navegação do lead"] button:not(:disabled):hover,
 #lead-modal-nav button:not(:disabled):hover *,
 nav[aria-label="Navegação do lead"] button:not(:disabled):hover *,
 .lead-modal-nav-btn:not(:disabled):hover *,
-.lead-actions-dropdown button:not(:disabled):hover *,
-.lead-actions-dropdown .lead-menu-item:not(:disabled):hover * {
+.lead-actions-dropdown button.lead-menu-item:not(:disabled):hover *,
+.lead-actions-dropdown button:not(:disabled):not(.lead-menu-item-danger):not([data-delete-btn]):not(.btn-delete):hover * {
   color: var(--secondary-fg, #ffffff) !important;
   stroke: var(--secondary-fg, #ffffff) !important;
   opacity: 1 !important;
-}
-
-.lead-actions-dropdown button.lead-menu-item-danger:not(:disabled):hover,
-.lead-actions-dropdown button.lead-menu-item-danger:not(:disabled):hover * {
-  background-color: #dc2626 !important;
-  border-color: #dc2626 !important;
-  color: #ffffff !important;
-  stroke: #ffffff !important;
 }
 
 #lead-modal-nav button:not(:disabled):hover .tab-badge,
@@ -348,6 +483,7 @@ main > #leads-page,
 main > #propostas-page,
 main > #personalizacao-page,
 main > #clientes-page,
+main > #anotacoes-page,
 main > #dimensionamento-page,
 main > #oportunidades-page,
 main > #levantamento-page,
@@ -489,4 +625,16 @@ main > #area-risco-page {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--primary) 55%, var(--neutral));
+}
+
+/* Tag de proposta em anotações: link sem preenchimento forte de hover, mantendo estilo sutil */
+.proposal-tag-link,
+.proposal-tag-link:hover,
+.proposal-tag-link:focus,
+.proposal-tag-link:active {
+  background-color: color-mix(in srgb, var(--secondary) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--secondary) 25%, transparent) !important;
+  color: inherit !important;
+  filter: none !important;
+  box-shadow: none !important;
 }

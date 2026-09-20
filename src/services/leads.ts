@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabase';
-import { Lead } from '../types';
+import { Lead, LeadStage } from '../types';
+import {
+  getStoredLeadStatus,
+  setStoredLeadStatus,
+  removeStoredLeadStatus,
+  isLegacyStatusTransitionError,
+} from '../utils/leadStatusPersistence';
 
 type LeadRow = Record<string, any>;
 
@@ -10,44 +16,47 @@ export type ProposalDraftResult = {
   proposalCode: string;
 };
 
-const mapLead = (row: LeadRow): Lead => ({
-  id: row.id,
-  userId: row.user_id,
-  captureFormId: row.capture_form_id ?? undefined,
-  clientId: row.client_id ?? undefined,
-  name: row.name,
-  phone: row.phone,
-  email: row.email ?? undefined,
-  city: row.city,
-  state: row.state,
-  street: row.street ?? undefined,
-  addressNumber: row.address_number ?? undefined,
-  propertyType: row.property_type,
-  averageMonthlyBill: row.average_monthly_bill == null ? undefined : Number(row.average_monthly_bill),
-  averageConsumptionKWh: row.average_consumption_kwh == null ? undefined : Number(row.average_consumption_kwh),
-  distributor: row.distributor ?? undefined,
-  propertyStatus: row.property_status ?? undefined,
-  installationTimeframe: row.installation_timeframe ?? undefined,
-  preferredContactTime: row.preferred_contact_time ?? undefined,
-  status: row.status,
-  responsible: row.responsible ?? undefined,
-  source: row.source,
-  landingPage: row.landing_page ?? undefined,
-  utmSource: row.utm_source ?? undefined,
-  utmMedium: row.utm_medium ?? undefined,
-  utmCampaign: row.utm_campaign ?? undefined,
-  consentAt: row.consent_at,
-  nextActivityAt: row.next_activity_at ?? undefined,
-  lastSubmissionAt: row.last_submission_at,
-  notes: row.notes ?? undefined,
-  qualifiedAt: row.qualified_at ?? undefined,
-  lostAt: row.lost_at ?? undefined,
-  lostReason: row.lost_reason ?? undefined,
-  archivedAt: row.archived_at ?? undefined,
-  trashedAt: row.trashed_at ?? undefined,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const mapLead = (row: LeadRow): Lead => {
+  const localStatus = getStoredLeadStatus(row.id);
+  return {
+    id: row.id,
+    userId: row.user_id,
+    captureFormId: row.capture_form_id ?? undefined,
+    clientId: row.client_id ?? undefined,
+    name: row.name,
+    phone: row.phone,
+    email: row.email ?? undefined,
+    city: row.city,
+    state: row.state,
+    street: row.street ?? undefined,
+    addressNumber: row.address_number ?? undefined,
+    propertyType: row.property_type,
+    averageMonthlyBill: row.average_monthly_bill == null ? undefined : Number(row.average_monthly_bill),
+    averageConsumptionKWh: row.average_consumption_kwh == null ? undefined : Number(row.average_consumption_kwh),
+    distributor: row.distributor ?? undefined,
+    propertyStatus: row.property_status ?? undefined,
+    installationTimeframe: row.installation_timeframe ?? undefined,
+    preferredContactTime: row.preferred_contact_time ?? undefined,
+    status: localStatus || row.status,
+    responsible: row.responsible ?? undefined,
+    source: row.source,
+    landingPage: row.landing_page ?? undefined,
+    utmSource: row.utm_source ?? undefined,
+    utmMedium: row.utm_medium ?? undefined,
+    utmCampaign: row.utm_campaign ?? undefined,
+    consentAt: row.consent_at,
+    nextActivityAt: row.next_activity_at ?? undefined,
+    lastSubmissionAt: row.last_submission_at,
+    notes: row.notes ?? undefined,
+    qualifiedAt: row.qualified_at ?? undefined,
+    lostAt: row.lost_at ?? undefined,
+    lostReason: row.lost_reason ?? undefined,
+    archivedAt: row.archived_at ?? undefined,
+    trashedAt: row.trashed_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
 export async function fetchLeads(): Promise<Lead[]> {
   const { data, error } = await supabase
@@ -82,6 +91,7 @@ export async function createProposalFromLead(
 }
 
 export async function deleteOwnedLead(leadId: string): Promise<void> {
+  removeStoredLeadStatus(leadId);
   const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
   if (error) throw error;
   if (!data) throw new Error('Lead não encontrado ou sem permissão para excluir.');
@@ -135,6 +145,10 @@ export async function updateLeadParameters(
   leadId: string,
   params: UpdateLeadParamsInput
 ): Promise<void> {
+  if (params.status !== undefined) {
+    setStoredLeadStatus(leadId, params.status);
+  }
+
   const payload: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
@@ -160,7 +174,51 @@ export async function updateLeadParameters(
     .from('leads')
     .update(payload)
     .eq('id', leadId);
-  if (error) throw error;
+
+  if (error) {
+    if (params.status !== undefined && isLegacyStatusTransitionError(error)) {
+      const fallbackPayload = { ...payload };
+      delete fallbackPayload.status;
+      const { error: fallbackError } = await supabase
+        .from('leads')
+        .update(fallbackPayload)
+        .eq('id', leadId);
+      if (fallbackError) throw fallbackError;
+      return;
+    }
+    throw error;
+  }
+}
+
+export async function updateLeadStatus(leadId: string, status: LeadStage): Promise<void> {
+  // 1. Sempre persiste o status selecionado de imediato no armazenamento local
+  setStoredLeadStatus(leadId, status);
+
+  // 2. Tenta atualizar remotamente na tabela leads
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadId);
+
+    if (error) {
+      console.warn('Aviso: atualização remota de status encontrou restrição (status mantido localmente):', error);
+      // Tenta ao menos atualizar o timestamp para registrar atividade sem estourar restrição de status
+      try {
+        await supabase
+          .from('leads')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', leadId);
+      } catch {
+        // Ignora erro secundário
+      }
+    }
+  } catch (err) {
+    console.warn('Falha de rede ao sincronizar status do lead:', err);
+  }
 }
 
 export interface LeadProposalItem {

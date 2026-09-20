@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   CalendarDays,
+  Check,
+  ChevronDown,
+  Files,
   FileText,
   Mail,
   MapPin,
@@ -17,7 +20,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { supabase, validateCurrentPassword } from '../lib/supabase';
-import { Lead, LeadStage, ThemeConfig } from '../types';
+import { Lead, LeadStage, PageKey, ThemeConfig } from '../types';
 import {
   addLeadToClients,
   createProposalFromLead,
@@ -25,39 +28,46 @@ import {
   fetchLeads,
   ProposalSystemType,
   updateLeadNotes,
+  updateLeadStatus,
 } from '../services/leads';
+import { syncLeadAsClient } from '../services/clients';
 import { LeadParametersModal } from './LeadParametersModal';
+import { LeadNotesModal } from './LeadNotesModal';
 import { formatPhone } from '../utils/formatters';
 import { getContrastFg } from '../utils/themeEngine';
-import { LEAD_STAGE_LABELS, getLeadStatusStyle } from '../utils/leadStatus';
+import { LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, getLeadStatusStyle } from '../utils/leadStatus';
 import { fetchAndSyncLeadNotifications, markLeadAsRead } from '../services/leadNotifications';
+import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 
 interface LeadsViewProps {
   theme: ThemeConfig;
   onShowToast: (message: string) => void;
+  onNavigate?: (page: PageKey, filter?: string) => void;
 }
 
 const statusLabels: Record<Lead['status'], string> = LEAD_STAGE_LABELS;
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
+export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [proposalLead, setProposalLead] = useState<Lead | null>(null);
   const [deleteLead, setDeleteLead] = useState<Lead | null>(null);
   const [notesLead, setNotesLead] = useState<Lead | null>(null);
-  const [notesText, setNotesText] = useState('');
   const [paramsLead, setParamsLead] = useState<Lead | null>(null);
   const [systemType, setSystemType] = useState<ProposalSystemType>('On-Grid');
   const [password, setPassword] = useState('');
   const [modalError, setModalError] = useState('');
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -77,32 +87,92 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
   }, []);
 
   useEffect(() => {
-    const closeMenu = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpenMenuId(null);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setOpenMenuId(null);
+      }
+      if (statusMenuRef.current && !statusMenuRef.current.contains(target)) {
+        setOpenStatusMenuId(null);
+      }
     };
-    document.addEventListener('mousedown', closeMenu);
-    return () => document.removeEventListener('mousedown', closeMenu);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Sincroniza em tempo real caso o status seja alterado no modal de parâmetros ou em outro componente
+  useEffect(() => {
+    const handleStatusEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ leadId: string; status: LeadStage }>;
+      if (customEvent.detail) {
+        const { leadId, status: newStatus } = customEvent.detail;
+        setLeads((current) =>
+          current.map((item) => (item.id === leadId ? { ...item, status: newStatus } : item))
+        );
+        setParamsLead((current) =>
+          current && current.id === leadId ? { ...current, status: newStatus } : current
+        );
+      }
+    };
+    window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+    return () => window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+  }, []);
+
+  const handleQuickStatusChange = async (lead: Lead, newStatus: LeadStage) => {
+    if (lead.status === newStatus) {
+      setOpenStatusMenuId(null);
+      return;
+    }
+
+    const previousStatus = lead.status;
+    const statusLabel = LEAD_STAGE_LABELS[newStatus] || newStatus;
+
+    // Atualização otimista imediata na UI e no lead aberto em parâmetros
+    setLeads((current) =>
+      current.map((item) => (item.id === lead.id ? { ...item, status: newStatus } : item))
+    );
+    setParamsLead((current) =>
+      current && current.id === lead.id ? { ...current, status: newStatus } : current
+    );
+    setOpenStatusMenuId(null);
+    setUpdatingStatusId(lead.id);
+
+    try {
+      await updateLeadStatus(lead.id, newStatus);
+      onShowToast(`Status de ${lead.name} alterado para "${statusLabel}".`);
+    } catch (err: any) {
+      console.warn('Erro ao atualizar status:', err);
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const isLight = getContrastFg(theme.primary) === '#0F172A';
 
+  const isLeadConverted = (l: Lead) => Boolean(l.clientId || (l.status as string) === 'Cliente');
+
+  const activeLeads = useMemo(() => {
+    return leads.filter((lead) => !isLeadConverted(lead));
+  }, [leads]);
+
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-BR');
-    return leads.filter((lead) => {
+    return activeLeads.filter((lead) => {
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (!query) return true;
       return [lead.name, lead.phone, lead.email, lead.street, lead.addressNumber, lead.city, lead.state, lead.source]
         .filter(Boolean)
         .some((value) => String(value).toLocaleLowerCase('pt-BR').includes(query));
     });
-  }, [leads, search, statusFilter]);
+  }, [activeLeads, search, statusFilter]);
 
   const handleAddClient = async (lead: Lead) => {
     setOpenMenuId(null);
     setWorkingId(lead.id);
     try {
       const clientId = await addLeadToClients(lead.id);
-      setLeads((current) => current.map((item) => item.id === lead.id ? { ...item, clientId } : item));
+      syncLeadAsClient(lead, clientId);
+      setLeads((current) => current.filter((item) => item.id !== lead.id));
       onShowToast(`${lead.name} foi adicionado aos clientes.`);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível adicionar o cliente.');
@@ -159,25 +229,7 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
     setOpenMenuId(null);
     setModalError('');
     setNotesLead(lead);
-    setNotesText(lead.notes || '');
     markLeadAsRead(lead.id);
-  };
-
-  const handleSaveNotes = async () => {
-    if (!notesLead) return;
-    setWorkingId(notesLead.id);
-    setModalError('');
-    try {
-      await updateLeadNotes(notesLead.id, notesText);
-    } catch {
-      // Continue even if remote update fails
-    }
-    setLeads((current) =>
-      current.map((item) => (item.id === notesLead.id ? { ...item, notes: notesText } : item))
-    );
-    onShowToast(`Anotação de ${notesLead.name} salva.`);
-    setNotesLead(null);
-    setWorkingId(null);
   };
 
   const openParams = (lead: Lead) => {
@@ -224,11 +276,11 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
           >
             <span>Todos</span>
             <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold opacity-85">
-              {leads.length}
+              {activeLeads.length}
             </span>
           </button>
           {(Object.keys(LEAD_STAGE_LABELS) as LeadStage[]).map((stKey) => {
-            const count = leads.filter((l) => l.status === stKey).length;
+            const count = activeLeads.filter((l) => l.status === stKey).length;
             const st = getLeadStatusStyle(stKey, isLight);
             const isSelected = statusFilter === stKey;
             return (
@@ -276,25 +328,111 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredLeads.map((lead) => {
             const statusStyle = getLeadStatusStyle(lead.status, isLight);
+            const isStatusMenuOpen = openStatusMenuId === lead.id;
+            const isCardMenuOpen = openMenuId === lead.id;
+            const isUpdatingThisStatus = updatingStatusId === lead.id;
+
             return (
-              <article key={lead.id} className="relative rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
+              <article
+                key={lead.id}
+                className="relative rounded-xl border p-5 transition-shadow"
+                style={{
+                  backgroundColor: theme.primary,
+                  borderColor: theme.border,
+                  color: theme.text,
+                  boxShadow: `0 18px 45px ${theme.secondary}2e`,
+                  zIndex: isStatusMenuOpen || isCardMenuOpen ? 30 : 1,
+                }}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all"
-                        style={{
-                          borderColor: statusStyle.border,
-                          backgroundColor: statusStyle.bg,
-                          color: statusStyle.color,
-                        }}
+                      <div
+                        ref={isStatusMenuOpen ? statusMenuRef : undefined}
+                        className="relative inline-block"
                       >
-                        <span
-                          className="h-1.5 w-1.5 rounded-full shrink-0"
-                          style={{ backgroundColor: statusStyle.color }}
-                        />
-                        {statusStyle.label}
-                      </span>
+                        <button
+                          type="button"
+                          id={`lead-status-btn-${lead.id}`}
+                          aria-label={`Status: ${statusStyle.label}. Clique para alterar.`}
+                          aria-haspopup="listbox"
+                          aria-expanded={isStatusMenuOpen}
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            setOpenStatusMenuId((current) => (current === lead.id ? null : lead.id));
+                          }}
+                          disabled={isUpdatingThisStatus}
+                          className="group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                          style={{
+                            borderColor: statusStyle.border,
+                            backgroundColor: statusStyle.bg,
+                            color: statusStyle.color,
+                          }}
+                          title="Clique para mudar o status diretamente"
+                        >
+                          {isUpdatingThisStatus ? (
+                            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: statusStyle.color }}
+                            />
+                          )}
+                          <span>{statusStyle.label}</span>
+                          <ChevronDown
+                            className={`h-3 w-3 opacity-70 transition-transform group-hover/status:opacity-100 ${
+                              isStatusMenuOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {isStatusMenuOpen && (
+                          <div
+                            className="lead-status-dropdown absolute left-0 top-full mt-1.5 z-50 w-44 overflow-hidden rounded-xl border py-1.5 shadow-2xl backdrop-blur-md"
+                            style={{
+                              backgroundColor: theme.primary,
+                              borderColor: theme.border,
+                              color: theme.text,
+                              boxShadow: `0 14px 38px ${theme.secondary}38`,
+                            }}
+                          >
+                            <div className="px-3 py-1 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1">
+                              Mudar Status
+                            </div>
+                            {(Object.keys(LEAD_STATUS_PALETTE) as LeadStage[]).map((stageKey) => {
+                              const optionStyle = getLeadStatusStyle(stageKey, isLight);
+                              const isCurrent = lead.status === stageKey;
+                              return (
+                                <button
+                                  key={stageKey}
+                                  type="button"
+                                  onClick={() => void handleQuickStatusChange(lead, stageKey)}
+                                  className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="h-2 w-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: optionStyle.color }}
+                                    />
+                                    <span
+                                      className={`font-medium ${isCurrent ? 'font-bold' : ''}`}
+                                      style={{ color: isCurrent ? optionStyle.color : theme.text }}
+                                    >
+                                      {optionStyle.label}
+                                    </span>
+                                  </span>
+                                  {isCurrent && (
+                                    <Check
+                                      className="h-3.5 w-3.5 shrink-0"
+                                      style={{ color: optionStyle.color }}
+                                    />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                       {lead.clientId && <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: 'color-mix(in srgb, var(--auxiliary) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--auxiliary) 18%, transparent)', color: 'var(--auxiliary)' }}>Cliente</span>}
                     </div>
                   <h2 className="truncate text-lg font-bold text-[var(--text)]" title={lead.name}>{lead.name}</h2>
@@ -312,22 +450,39 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
                         <FileText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
                         <span className="font-medium group-hover:text-white transition-colors">Gerar proposta</span>
                       </button>
-                      <button onClick={() => void handleAddClient(lead)} disabled={Boolean(lead.clientId) || workingId === lead.id} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors disabled:opacity-50">
-                        <UserPlus className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
-                        <span className="font-medium group-hover:text-white transition-colors">{lead.clientId ? 'Já é cliente' : 'Adicionar aos clientes'}</span>
-                      </button>
+                      {lead.clientId ? (
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onNavigate?.('propostas', lead.name);
+                          }}
+                          className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors"
+                        >
+                          <Files className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                          <span className="font-medium group-hover:text-white transition-colors">Propostas</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => void handleAddClient(lead)}
+                          disabled={workingId === lead.id}
+                          className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors disabled:opacity-50"
+                        >
+                          <UserPlus className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                          <span className="font-medium group-hover:text-white transition-colors">Adicionar aos clientes</span>
+                        </button>
+                      )}
                       <button onClick={() => openNotes(lead)} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
                         <NotepadText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
-                        <span className="font-medium group-hover:text-white transition-colors">Abrir anotação</span>
+                        <span className="font-medium group-hover:text-white transition-colors">Anotar</span>
                       </button>
                       <button onClick={() => openParams(lead)} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
                         <SlidersHorizontal className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
                         <span className="font-medium group-hover:text-white transition-colors">Parâmetros gerais</span>
                       </button>
                       <div className="my-1 border-t border-[var(--border)]" />
-                      <button onClick={() => openDelete(lead)} className="lead-menu-item-danger group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-[var(--danger)] transition-colors">
-                        <Trash2 className="h-4 w-4 shrink-0 group-hover:text-white group-hover:stroke-white transition-colors" />
-                        <span className="font-medium group-hover:text-white transition-colors">Excluir</span>
+                      <button data-delete-btn="true" onClick={() => openDelete(lead)} className="lead-menu-item-danger group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-[var(--danger)] transition-colors">
+                        <Trash2 className="h-4 w-4 shrink-0 transition-colors" />
+                        <span className="font-medium transition-colors">Excluir</span>
                       </button>
                     </div>
                   )}
@@ -399,8 +554,9 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
             <div className="pt-3 flex justify-end gap-3 border-t" style={{ borderColor: theme.border }}>
               <button
                 type="button"
+                data-cancel-outline="true"
                 onClick={() => setProposalLead(null)}
-                className="btn-outline px-4 py-2 rounded-lg border text-xs font-semibold hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)]"
+                className="btn-outline-cancel px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
                 style={{ borderColor: theme.border }}
               >
                 Cancelar
@@ -437,67 +593,26 @@ export function LeadsView({ theme, onShowToast }: LeadsViewProps) {
             <label htmlFor="lead-delete-password" className="mt-5 block text-xs font-semibold">Digite sua senha para confirmar</label>
             <input id="lead-delete-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void handleDelete(); }} className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--neutral)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--danger)]" />
             {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
-            <div className="mt-6 flex justify-end gap-3"><button onClick={() => setDeleteLead(null)} className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]">Cancelar</button><button onClick={() => void handleDelete()} disabled={!password || workingId === deleteLead.id} className="btn-danger-outline rounded-lg px-4 py-2 text-sm font-bold">{workingId === deleteLead.id ? 'Excluindo...' : 'Excluir definitivamente'}</button></div>
+            <div className="mt-6 flex justify-end gap-3"><button onClick={() => setDeleteLead(null)} data-cancel-outline="true" className="btn-outline-cancel rounded-lg px-4 py-2 text-sm cursor-pointer">Cancelar</button><button onClick={() => void handleDelete()} disabled={!password || workingId === deleteLead.id} data-delete-btn="true" className="btn-danger-solid rounded-lg px-4 py-2 text-sm font-bold cursor-pointer">{workingId === deleteLead.id ? 'Excluindo...' : 'Excluir definitivamente'}</button></div>
           </div>
         </div>
       )}
 
       {notesLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
-          <div className="w-full max-w-lg rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.secondary }}>
-                  <NotepadText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Anotações do Lead</h2>
-                  <p className="text-xs text-[var(--muted)]">{notesLead.name} · {formatPhone(notesLead.phone)}</p>
-                </div>
-              </div>
-              <button onClick={() => setNotesLead(null)} className="p-1 text-[var(--dim)] hover:text-[var(--text)] transition-colors">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-5">
-              <label htmlFor="lead-notes-textarea" className="block text-xs font-semibold text-[var(--dim)] uppercase tracking-wider mb-2">
-                Histórico & Observações
-              </label>
-              <textarea
-                id="lead-notes-textarea"
-                rows={6}
-                value={notesText}
-                onChange={(e) => setNotesText(e.target.value)}
-                placeholder="Insira detalhes de conversas, preferências do cliente, observações da visita ou do projeto..."
-                className="w-full rounded-lg border p-3 text-sm outline-none resize-none focus:border-[var(--secondary)]"
-                style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-              />
-              <p className="mt-1.5 text-xs text-[var(--muted)]">
-                Estas notas permanecem salvas para consulta da sua equipe.
-              </p>
-            </div>
-
-            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setNotesLead(null)}
-                className="btn-outline rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void handleSaveNotes()}
-                disabled={workingId === notesLead.id}
-                className="btn-filled rounded-lg px-4 py-2 text-sm font-bold"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                {workingId === notesLead.id ? 'Salvando...' : 'Salvar anotação'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LeadNotesModal
+          lead={notesLead}
+          theme={theme}
+          onClose={() => setNotesLead(null)}
+          onNotesUpdated={(serializedNotes) => {
+            setLeads((current) =>
+              current.map((item) =>
+                item.id === notesLead.id ? { ...item, notes: serializedNotes } : item
+              )
+            );
+            setNotesLead((prev) => (prev ? { ...prev, notes: serializedNotes } : null));
+          }}
+          onShowToast={onShowToast}
+        />
       )}
 
       {paramsLead && (

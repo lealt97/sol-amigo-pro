@@ -18,6 +18,9 @@ import { HelpModal } from './components/HelpModal';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
 import { LeadsView } from './components/LeadsView';
+import { ClientesView } from './components/ClientesView';
+import { AnotacoesView } from './components/AnotacoesView';
+import { PropostasView } from './components/PropostasView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -38,6 +41,7 @@ export default function App() {
   const [mfaLoading, setMfaLoading] = useState(false);
 
   const [activePage, setActivePage] = useState<PageKey>('leads');
+  const [proposalFilterCode, setProposalFilterCode] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -310,17 +314,65 @@ export default function App() {
       case 'dashboard':
         return <div id="dashboard-view" />;
       case 'leads':
-        return <LeadsView theme={currentTheme} onShowToast={showToast} />;
+        return (
+          <LeadsView
+            theme={currentTheme}
+            onShowToast={showToast}
+            onNavigate={(page, filter) => {
+              if (filter) {
+                setProposalFilterCode(filter);
+              } else {
+                setProposalFilterCode('');
+              }
+              setActivePage(page);
+            }}
+          />
+        );
       case 'clientes':
-        return <div id="clientes-page" />;
+        return (
+          <ClientesView
+            theme={currentTheme}
+            pdfSettings={currentPdfSettings}
+            onShowToast={showToast}
+            onNavigate={(page, filter) => {
+              if (filter) {
+                setProposalFilterCode(filter);
+              } else {
+                setProposalFilterCode('');
+              }
+              setActivePage(page);
+            }}
+          />
+        );
       case 'propostas':
-        return <div id="propostas-page" />;
+        return (
+          <PropostasView
+            theme={currentTheme}
+            pdfSettings={currentPdfSettings}
+            onShowToast={showToast}
+            initialFilterCode={proposalFilterCode}
+            onNavigate={(page) => setActivePage(page)}
+          />
+        );
       case 'kits':
         return <div id="kits-page" />;
       case 'pos-venda':
         return <div id="pos-venda-page" />;
       case 'anotacoes':
-        return <div id="anotacoes-page" />;
+        return (
+          <AnotacoesView
+            theme={currentTheme}
+            onShowToast={showToast}
+            onNavigate={(page, propCode) => {
+              if (propCode) {
+                setProposalFilterCode(propCode);
+              } else {
+                setProposalFilterCode('');
+              }
+              setActivePage(page);
+            }}
+          />
+        );
       case 'perfil':
         return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':

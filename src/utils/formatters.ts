@@ -59,3 +59,14 @@ export const formatWhatsAppLink = (value?: string | null, message?: string): str
   return baseUrl;
 };
 
+/**
+ * Formata um valor numérico em moeda Real Brasileiro (R$).
+ */
+export const formatCurrency = (val?: number | null): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 2,
+  }).format(val || 0);
+};
+

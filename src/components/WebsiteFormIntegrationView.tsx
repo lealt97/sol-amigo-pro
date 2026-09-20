@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Code2, ExternalLink,
   Eye, Globe2, GripHorizontal, Image, Laptop, Loader2, MapPin, Maximize2, MessageCircle,
-  Minimize2, MousePointerClick, Palette, Plus, RefreshCw, RotateCcw, Save,
+  Minimize2, MousePointerClick, MoveRight, Palette, Plus, RefreshCw, RotateCcw, Save,
   Smartphone, Sparkles, Sun, Trash2, Type, UploadCloud, X,
 } from 'lucide-react';
 import type { FormColorMode, FormThemeColors, ThemeConfig, WebsiteFormSettings } from '../types';
@@ -88,6 +88,7 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [previewStage, setPreviewStage] = useState<'form' | 'success'>('form');
+  const [previewFormStep, setPreviewFormStep] = useState<1 | 2>(1);
   const [floatingPreviewOpen, setFloatingPreviewOpen] = useState(false);
   const [floatingMinimized, setFloatingMinimized] = useState(false);
   const [floatingPosition, setFloatingPosition] = useState<{ x: number; y: number } | null>(null);
@@ -946,33 +947,118 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                       )}
 
                       <div className="grid min-w-0 gap-2 p-3 sm:grid-cols-2">
-                        <div className="rounded-lg border px-2.5 py-2 text-[11px] sm:col-span-2" style={previewFieldStyle}>
-                          Nome completo
+                        <div className="sm:col-span-2 flex items-center justify-between gap-1 pb-1 text-[11px] font-semibold border-b" style={{ borderColor: resolvedTheme.inputBorder }}>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-extrabold"
+                              style={{
+                                backgroundColor: previewFormStep >= 1 ? resolvedTheme.progressActive : resolvedTheme.progressInactive,
+                                color: previewFormStep >= 1 ? resolvedTheme.primaryButtonText : resolvedTheme.mutedText,
+                              }}
+                            >
+                              1
+                            </span>
+                            <span style={{ color: previewFormStep === 1 ? resolvedTheme.bodyText : resolvedTheme.mutedText }}>
+                              Seus dados
+                            </span>
+                          </div>
+                          <span style={{ color: resolvedTheme.mutedText }}>→</span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-extrabold"
+                              style={{
+                                backgroundColor: previewFormStep >= 2 ? resolvedTheme.progressActive : resolvedTheme.progressInactive,
+                                color: previewFormStep >= 2 ? resolvedTheme.primaryButtonText : resolvedTheme.mutedText,
+                              }}
+                            >
+                              2
+                            </span>
+                            <span style={{ color: previewFormStep === 2 ? resolvedTheme.bodyText : resolvedTheme.mutedText }}>
+                              Consumo
+                            </span>
+                          </div>
                         </div>
-                        <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
-                          WhatsApp (00) 00000-0000
-                        </div>
-                        <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
-                          Estado (UF)
-                        </div>
-                        <div
-                          className="flex items-center gap-2 rounded-lg border border-dashed px-2.5 py-2 text-[10px] sm:col-span-2"
-                          style={{ ...previewFieldStyle, color: resolvedTheme.mutedText }}
-                        >
-                          <UploadCloud className="h-3.5 w-3.5 shrink-0" style={{ color: resolvedTheme.progressActive }} />
-                          Enviar conta de luz (opcional) · PDF, JPG ou PNG
-                        </div>
-                        <button
-                          type="button"
-                          className="h-9 w-full rounded-lg text-[11px] font-extrabold sm:col-span-2 shadow-md transition-transform active:scale-[0.98]"
-                          style={{
-                            backgroundColor: resolvedTheme.primaryButtonBackground,
-                            color: resolvedTheme.primaryButtonText,
-                            borderRadius: `${previewRadius.control}px`,
-                          }}
-                        >
-                          {draft.submitLabel || 'Simular economia'}
-                        </button>
+
+                        {previewFormStep === 1 ? (
+                          <>
+                            <div className="rounded-lg border px-2.5 py-2 text-[11px] sm:col-span-2" style={previewFieldStyle}>
+                              Nome completo
+                            </div>
+                            <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                              WhatsApp (00) 00000-0000
+                            </div>
+                            <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                              Cidade e Estado (UF)
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewFormStep(2)}
+                              title="Avançar para a etapa 2"
+                              className="h-9 w-full rounded-lg text-[11px] font-extrabold sm:col-span-2 shadow-md flex items-center justify-center transition-transform active:scale-[0.98] group"
+                              style={{
+                                backgroundColor: resolvedTheme.primaryButtonBackground,
+                                color: resolvedTheme.primaryButtonText,
+                                borderRadius: `${previewRadius.control}px`,
+                              }}
+                            >
+                              <svg
+                                className="h-4 w-7 transition-transform duration-200 group-hover:translate-x-1"
+                                viewBox="0 0 36 20"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 10H31" />
+                                <path d="m23 3 8 7-8 7" />
+                              </svg>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                              Valor médio da conta (R$)
+                            </div>
+                            <div className="rounded-lg border px-2.5 py-2 text-[11px]" style={previewFieldStyle}>
+                              Consumo médio (kWh)
+                            </div>
+                            <div
+                              className="flex items-center gap-2 rounded-lg border border-dashed px-2.5 py-2 text-[10px] sm:col-span-2"
+                              style={{ ...previewFieldStyle, color: resolvedTheme.mutedText }}
+                            >
+                              <UploadCloud className="h-3.5 w-3.5 shrink-0" style={{ color: resolvedTheme.progressActive }} />
+                              Enviar conta de luz (opcional) · PDF, JPG ou PNG
+                            </div>
+                            <div className="sm:col-span-2 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewFormStep(1)}
+                                className="h-9 px-3 rounded-lg border text-[10px] font-bold transition-opacity hover:opacity-80"
+                                style={{
+                                  borderColor: resolvedTheme.inputBorder,
+                                  color: resolvedTheme.bodyText,
+                                  borderRadius: `${previewRadius.control}px`,
+                                }}
+                              >
+                                Voltar
+                              </button>
+                              <button
+                                type="button"
+                                className="h-9 flex-1 rounded-lg text-[11px] font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-[0.98]"
+                                style={{
+                                  backgroundColor: resolvedTheme.primaryButtonBackground,
+                                  color: resolvedTheme.primaryButtonText,
+                                  borderRadius: `${previewRadius.control}px`,
+                                }}
+                              >
+                                <span>{draft.submitLabel || 'fazer orçamento'}</span>
+                                <MoveRight className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+
                         {draft.showPoweredBy && (
                           <p className="text-center text-[9px] sm:col-span-2" style={{ color: resolvedTheme.mutedText }}>
                             Tecnologia Sol Amigo PRO

@@ -218,6 +218,7 @@ export interface Client {
   connectionType?: 'Monofásica' | 'Bifásica' | 'Trifásica';
   consumerUnit?: string;
   tags?: string[];
+  notes?: string;
 }
 
 export interface ConsumerUnit {

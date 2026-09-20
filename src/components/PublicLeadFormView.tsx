@@ -8,6 +8,7 @@ import {
   Loader2,
   LockKeyhole,
   MessageCircle,
+  MoveRight,
   Trash2,
   UploadCloud,
   X,
@@ -91,7 +92,7 @@ const DEFAULT_CONFIG: PublicFormConfig = {
   themeColors: DEFAULT_FORM_THEME_COLORS,
   headline: 'Descubra quanto você pode economizar com energia solar.',
   subheadline: 'Preencha seus dados para receber uma análise inicial sem compromisso.',
-  submitLabel: 'Solicitar análise gratuita',
+  submitLabel: 'fazer orçamento',
   successMessage: 'Recebemos sua solicitação. Em breve, nossa equipe entrará em contato.',
   privacyUrl: null,
   showPoweredBy: true,
@@ -700,8 +701,26 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                   </div>
 
-                  <button type="button" data-primary-action onClick={continueToEnergy} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold shadow-lg">
-                    {config.submitLabel} <ArrowRight className="h-4 w-4" />
+                  <button
+                    type="button"
+                    data-primary-action
+                    onClick={continueToEnergy}
+                    aria-label={config.submitLabel || 'Avançar'}
+                    className="mt-6 flex h-12 w-full items-center justify-center rounded-xl text-sm font-extrabold shadow-lg transition-all duration-200 hover:brightness-105 active:scale-[0.99] group"
+                  >
+                    <svg
+                      className="h-5 w-9 transition-transform duration-200 group-hover:translate-x-1"
+                      viewBox="0 0 36 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 10H31" />
+                      <path d="m23 3 8 7-8 7" />
+                    </svg>
                   </button>
                 </>
               ) : (
@@ -809,7 +828,16 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                   <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
                     <button type="button" data-secondary-action onClick={() => setStep(1)} className="flex h-12 w-full flex-none items-center justify-center gap-2 rounded-xl border px-5 text-sm font-bold sm:w-auto"><ArrowLeft className="h-4 w-4" /> Voltar</button>
                     <button type="submit" data-primary-action disabled={submitting} className="flex h-12 w-full flex-none items-center justify-center gap-2 rounded-xl px-5 text-sm font-extrabold shadow-lg sm:flex-1">
-                      {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <>{config.submitLabel} <ArrowRight className="h-4 w-4" /></>}
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <span>{config.submitLabel || 'fazer orçamento'}</span>
+                          <MoveRight className="h-4 w-4" />
+                        </>
+                      )}
                     </button>
                   </div>
                 </>

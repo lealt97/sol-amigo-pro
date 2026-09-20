@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
   Check,
+  ChevronDown,
   ChevronRight,
   Download,
   ExternalLink,
@@ -36,15 +37,20 @@ import {
   ProposalSystemType,
   updateLeadNotes,
   updateLeadParameters,
+  updateLeadStatus,
 } from '../services/leads';
 import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
+import { LeadNotesManager } from './LeadNotesManager';
+import { parseLeadNotes } from '../utils/leadNotes';
 import { getContrastFg } from '../utils/themeEngine';
-import { getLeadStatusStyle } from '../utils/leadStatus';
+import { getLeadStatusStyle, LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE } from '../utils/leadStatus';
+import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 
 interface LeadParametersModalProps {
   lead: Lead;
   theme: ThemeConfig;
   statusLabels: Record<LeadStage, string>;
+  initialTab?: TabKey;
   onClose: () => void;
   onLeadUpdated: (updatedLead: Lead) => void;
   onShowToast: (message: string) => void;
@@ -56,11 +62,12 @@ export function LeadParametersModal({
   lead,
   theme,
   statusLabels,
+  initialTab = 'parametros',
   onClose,
   onLeadUpdated,
   onShowToast,
 }: LeadParametersModalProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('parametros');
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [loading, setLoading] = useState(true);
 
   // Propostas
@@ -100,11 +107,45 @@ export function LeadParametersModal({
   const [contactTime, setContactTime] = useState(lead.preferredContactTime || '');
   const [responsible, setResponsible] = useState(lead.responsible || '');
 
+  // Status dropdown interativo
+  const [isHeaderStatusMenuOpen, setIsHeaderStatusMenuOpen] = useState(false);
+  const [isSectionStatusMenuOpen, setIsSectionStatusMenuOpen] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const headerStatusRef = useRef<HTMLDivElement | null>(null);
+  const sectionStatusRef = useRef<HTMLDivElement | null>(null);
+
   const [savingParams, setSavingParams] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const isLight = getContrastFg(theme.primary) === '#0F172A';
   const currentStatusStyle = getLeadStatusStyle(status, isLight);
+
+  // Fecha dropdowns de status ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (headerStatusRef.current && !headerStatusRef.current.contains(target)) {
+        setIsHeaderStatusMenuOpen(false);
+      }
+      if (sectionStatusRef.current && !sectionStatusRef.current.contains(target)) {
+        setIsSectionStatusMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sincroniza em tempo real se o status for alterado externamente (no card ou em outra aba)
+  useEffect(() => {
+    const handleStatusEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ leadId: string; status: LeadStage }>;
+      if (customEvent.detail && customEvent.detail.leadId === lead.id) {
+        setStatus(customEvent.detail.status);
+      }
+    };
+    window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+    return () => window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+  }, [lead.id]);
 
   // Carrega dados associados ao lead
   const loadData = async () => {
@@ -120,7 +161,7 @@ export function LeadParametersModal({
       ]);
       setProposals(proposalsData);
       setEnergyBills(billsData);
-      setNotesCount(Math.max(nNotes, lead.notes?.trim() ? 1 : 0));
+      setNotesCount(Math.max(nNotes, parseLeadNotes(lead.notes).length));
     } catch (err) {
       console.error('Erro ao carregar dados do lead:', err);
     } finally {
@@ -140,9 +181,19 @@ export function LeadParametersModal({
     }
   }, [lead.status]);
 
-  // Atualização instantânea do status: reflete no cabeçalho, no card e persiste no banco
+  // Atualização instantânea do status: reflete no cabeçalho, no formulário, no card e persiste no banco/storage
   const handleStatusChange = async (newStatus: LeadStage) => {
+    if (newStatus === status) {
+      setIsHeaderStatusMenuOpen(false);
+      setIsSectionStatusMenuOpen(false);
+      return;
+    }
+
     setStatus(newStatus);
+    setIsHeaderStatusMenuOpen(false);
+    setIsSectionStatusMenuOpen(false);
+    setUpdatingStatus(true);
+
     const updatedLead: Lead = {
       ...lead,
       status: newStatus,
@@ -150,10 +201,13 @@ export function LeadParametersModal({
     onLeadUpdated(updatedLead);
 
     try {
-      await updateLeadParameters(lead.id, { status: newStatus });
-      onShowToast(`Status alterado para "${statusLabels[newStatus] || newStatus}".`);
+      await updateLeadStatus(lead.id, newStatus);
+      const label = statusLabels[newStatus] || LEAD_STAGE_LABELS[newStatus] || newStatus;
+      onShowToast(`Status de ${lead.name} alterado para "${label}".`);
     } catch (err: any) {
       console.error('Erro ao atualizar status do lead:', err);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -317,20 +371,88 @@ export function LeadParametersModal({
                 <h1 className="text-lg font-bold truncate leading-tight" title={lead.name}>
                   {lead.name}
                 </h1>
-                <span
-                  className="rounded-full border px-2.5 py-0.5 text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all"
-                  style={{
-                    backgroundColor: currentStatusStyle.bg,
-                    borderColor: currentStatusStyle.border,
-                    color: currentStatusStyle.color,
-                  }}
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: currentStatusStyle.color }}
-                  />
-                  {currentStatusStyle.label}
-                </span>
+                <div ref={headerStatusRef} className="relative inline-block">
+                  <button
+                    type="button"
+                    aria-label={`Status: ${currentStatusStyle.label}. Clique para alterar.`}
+                    aria-haspopup="listbox"
+                    aria-expanded={isHeaderStatusMenuOpen}
+                    onClick={() => {
+                      setIsSectionStatusMenuOpen(false);
+                      setIsHeaderStatusMenuOpen((prev) => !prev);
+                    }}
+                    disabled={updatingStatus}
+                    className="group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                    style={{
+                      borderColor: currentStatusStyle.border,
+                      backgroundColor: currentStatusStyle.bg,
+                      color: currentStatusStyle.color,
+                    }}
+                    title="Clique para mudar o status diretamente"
+                  >
+                    {updatingStatus ? (
+                      <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: currentStatusStyle.color }}
+                      />
+                    )}
+                    <span>{currentStatusStyle.label}</span>
+                    <ChevronDown
+                      className={`h-3 w-3 opacity-70 transition-transform group-hover/status:opacity-100 ${
+                        isHeaderStatusMenuOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {isHeaderStatusMenuOpen && (
+                    <div
+                      className="absolute left-0 top-full mt-1.5 z-50 w-44 overflow-hidden rounded-xl border py-1.5 shadow-2xl backdrop-blur-md"
+                      style={{
+                        backgroundColor: theme.primary,
+                        borderColor: theme.border,
+                        color: theme.text,
+                        boxShadow: `0 14px 38px ${theme.secondary}38`,
+                      }}
+                    >
+                      <div className="px-3 py-1 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1">
+                        Mudar Status
+                      </div>
+                      {(Object.keys(LEAD_STATUS_PALETTE) as LeadStage[]).map((stageKey) => {
+                        const optionStyle = getLeadStatusStyle(stageKey, isLight);
+                        const isCurrent = status === stageKey;
+                        return (
+                          <button
+                            key={stageKey}
+                            type="button"
+                            onClick={() => void handleStatusChange(stageKey)}
+                            className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full shrink-0"
+                                style={{ backgroundColor: optionStyle.color }}
+                              />
+                              <span
+                                className={`font-medium ${isCurrent ? 'font-bold' : ''}`}
+                                style={{ color: isCurrent ? optionStyle.color : theme.text }}
+                              >
+                                {optionStyle.label}
+                              </span>
+                            </span>
+                            {isCurrent && (
+                              <Check
+                                className="h-3.5 w-3.5 shrink-0"
+                                style={{ color: optionStyle.color }}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 {lead.clientId && (
                   <span
                     className="rounded-full border px-2.5 py-0.5 text-[10px] font-semibold"
@@ -794,19 +916,90 @@ export function LeadParametersModal({
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <div className="mb-1 flex items-center justify-between">
+                    <div className="mb-1.5 flex items-center justify-between">
                       <label className="text-xs font-medium text-[var(--dim)]">Status no funil</label>
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
-                        style={{
-                          backgroundColor: currentStatusStyle.bg,
-                          borderColor: currentStatusStyle.border,
-                          color: currentStatusStyle.color,
-                        }}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: currentStatusStyle.color }} />
-                        {currentStatusStyle.label}
-                      </span>
+                      <div ref={sectionStatusRef} className="relative inline-block">
+                        <button
+                          type="button"
+                          aria-label={`Status: ${currentStatusStyle.label}. Clique para alterar.`}
+                          aria-haspopup="listbox"
+                          aria-expanded={isSectionStatusMenuOpen}
+                          onClick={() => {
+                            setIsHeaderStatusMenuOpen(false);
+                            setIsSectionStatusMenuOpen((prev) => !prev);
+                          }}
+                          disabled={updatingStatus}
+                          className="group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                          style={{
+                            borderColor: currentStatusStyle.border,
+                            backgroundColor: currentStatusStyle.bg,
+                            color: currentStatusStyle.color,
+                          }}
+                          title="Clique para alternar o status do lead"
+                        >
+                          {updatingStatus ? (
+                            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: currentStatusStyle.color }}
+                            />
+                          )}
+                          <span>{currentStatusStyle.label}</span>
+                          <ChevronDown
+                            className={`h-3 w-3 opacity-70 transition-transform group-hover/status:opacity-100 ${
+                              isSectionStatusMenuOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {isSectionStatusMenuOpen && (
+                          <div
+                            className="absolute right-0 top-full mt-1.5 z-50 w-44 overflow-hidden rounded-xl border py-1.5 shadow-2xl backdrop-blur-md"
+                            style={{
+                              backgroundColor: theme.primary,
+                              borderColor: theme.border,
+                              color: theme.text,
+                              boxShadow: `0 14px 38px ${theme.secondary}38`,
+                            }}
+                          >
+                            <div className="px-3 py-1 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1">
+                              Mudar Status
+                            </div>
+                            {(Object.keys(LEAD_STATUS_PALETTE) as LeadStage[]).map((stageKey) => {
+                              const optionStyle = getLeadStatusStyle(stageKey, isLight);
+                              const isCurrent = status === stageKey;
+                              return (
+                                <button
+                                  key={stageKey}
+                                  type="button"
+                                  onClick={() => void handleStatusChange(stageKey)}
+                                  className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="h-2 w-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: optionStyle.color }}
+                                    />
+                                    <span
+                                      className={`font-medium ${isCurrent ? 'font-bold' : ''}`}
+                                      style={{ color: isCurrent ? optionStyle.color : theme.text }}
+                                    >
+                                      {optionStyle.label}
+                                    </span>
+                                  </span>
+                                  {isCurrent && (
+                                    <Check
+                                      className="h-3.5 w-3.5 shrink-0"
+                                      style={{ color: optionStyle.color }}
+                                    />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="relative flex items-center">
                       <span
@@ -816,7 +1009,8 @@ export function LeadParametersModal({
                       <select
                         value={status}
                         onChange={(e) => void handleStatusChange(e.target.value as LeadStage)}
-                        className="w-full h-10 rounded-lg border pl-9 pr-4 text-sm outline-none transition-colors font-medium"
+                        disabled={updatingStatus}
+                        className="w-full h-10 appearance-none rounded-lg border pl-9 pr-9 text-sm outline-none transition-colors font-medium cursor-pointer"
                         style={{
                           backgroundColor: theme.background,
                           borderColor: currentStatusStyle.border,
@@ -829,6 +1023,10 @@ export function LeadParametersModal({
                           </option>
                         ))}
                       </select>
+                      <ChevronDown
+                        className="absolute right-3 h-4 w-4 pointer-events-none opacity-60"
+                        style={{ color: theme.text }}
+                      />
                     </div>
                   </div>
 
@@ -993,9 +1191,10 @@ export function LeadParametersModal({
                             Visualizar
                           </button>
                           <button
+                            data-delete-btn="true"
                             onClick={() => void handleDeleteProposal(item.id, item.code)}
                             disabled={deletingProposalId === item.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-xs font-semibold text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            className="btn-danger-outline flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer"
                             title="Excluir Proposta"
                           >
                             {deletingProposalId === item.id ? (
@@ -1136,49 +1335,22 @@ export function LeadParametersModal({
                     Anotações do Lead ({notesCount})
                   </h3>
                   <p className="text-xs text-[var(--muted)]">
-                    Histórico de observações, registros de telefonemas e alinhamentos com o cliente.
+                    Histórico completo de observações, telefonemas e fotos da instalação.
                   </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dim)] uppercase tracking-wider mb-2">
-                  Histórico de anotações
-                </label>
-                <textarea
-                  rows={7}
-                  value={notesText}
-                  onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="Insira detalhes de conversas, preferências do cliente, observações da visita técnica ou do projeto..."
-                  className="w-full rounded-xl border p-3.5 text-sm outline-none resize-none focus:border-[var(--secondary)] transition-colors"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-                <p className="mt-1.5 text-xs text-[var(--muted)]">
-                  Estas anotações ficam permanentemente vinculadas a este lead para acesso de toda a sua equipe.
-                </p>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => void handleSaveNotes()}
-                  disabled={savingNotes}
-                  className="px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 active:scale-[0.98]"
-                  style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-                >
-                  {savingNotes ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      Salvar Anotação
-                    </>
-                  )}
-                </button>
-              </div>
+              <LeadNotesManager
+                leadId={lead.id}
+                leadName={lead.name}
+                initialNotes={lead.notes}
+                theme={theme}
+                onNotesUpdated={(serializedNotes, count) => {
+                  setNotesCount(count);
+                  onLeadUpdated({ ...lead, notes: serializedNotes });
+                }}
+                onShowToast={onShowToast}
+              />
             </div>
           )}
         </div>
@@ -1260,8 +1432,9 @@ export function LeadParametersModal({
             <div className="pt-2 flex justify-between gap-3 border-t" style={{ borderColor: theme.border }}>
               <button
                 type="button"
+                data-delete-btn="true"
                 onClick={() => void handleDeleteProposal(selectedProposalForView.id, selectedProposalForView.code)}
-                className="px-3.5 py-2 rounded-lg border border-red-500/30 text-xs font-semibold text-red-500 hover:bg-red-500/10 flex items-center gap-1.5"
+                className="btn-danger-outline px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
                 Excluir Proposta
@@ -1327,8 +1500,9 @@ export function LeadParametersModal({
             <div className="pt-3 flex justify-end gap-3 border-t" style={{ borderColor: theme.border }}>
               <button
                 type="button"
+                data-cancel-outline="true"
                 onClick={() => setShowCreateProposalModal(false)}
-                className="px-4 py-2 rounded-lg border text-xs font-semibold hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)]"
+                className="btn-outline-cancel px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
                 style={{ borderColor: theme.border }}
               >
                 Cancelar
