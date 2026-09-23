@@ -88,6 +88,7 @@ export const validateSolarSizingInputs = (inputs: SolarSizingInputs) => {
 
 export interface OnGridMonthlySizingInput {
   monthlyConsumptionKWh: number;
+  connectionType: SolarConnectionType;
   hsp: number;
   performanceRatioPercent: number;
   targetCoveragePercent: number;
@@ -97,12 +98,11 @@ export interface OnGridMonthlySizingInput {
 /**
  * Pré-dimensionamento mensal usado pelo Wizard comercial.
  *
- * Critério padronizado do Sol Amigo PRO:
- * P(kWp) = (consumo mensal x cobertura) / (30 dias x HSP x PR)
- *
- * O custo de disponibilidade NÃO é subtraído da energia-alvo deste
- * pré-dimensionamento. Ele permanece disponível no motor detalhado para
- * análises de compensação/faturamento.
+ * Método da referência adotada:
+ * 1. desconta o custo de disponibilidade (30/50/100 kWh);
+ * 2. converte o consumo compensável para energia diária usando 30 dias;
+ * 3. P(kWp) = Energia diária / (HSP x rendimento);
+ * 4. arredonda a quantidade de módulos para cima.
  */
 export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) => {
   assertFiniteRange('Consumo mensal', input.monthlyConsumptionKWh, 0, 1_000_000);
@@ -112,13 +112,19 @@ export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) =>
   assertFiniteRange('Potência do módulo', input.modulePowerW, 50, 2_000);
 
   const daysInMonth = 30;
+  const availabilityCostKWh = AVAILABILITY_COST_KWH[input.connectionType];
+  const compensableConsumptionKWh = Math.max(
+    input.monthlyConsumptionKWh - availabilityCostKWh,
+    0
+  );
+  const designConsumptionKWh =
+    compensableConsumptionKWh * (input.targetCoveragePercent / 100);
+  const dailyGenerationTargetKWh = designConsumptionKWh / daysInMonth;
   const performanceRatio = input.performanceRatioPercent / 100;
-  const coverage = input.targetCoveragePercent / 100;
-  const designConsumptionKWh = input.monthlyConsumptionKWh * coverage;
   const requiredPowerKWp =
-    designConsumptionKWh === 0
+    dailyGenerationTargetKWh === 0
       ? 0
-      : designConsumptionKWh / (daysInMonth * input.hsp * performanceRatio);
+      : dailyGenerationTargetKWh / (input.hsp * performanceRatio);
   const modulesCount =
     requiredPowerKWp === 0
       ? 0
@@ -129,8 +135,11 @@ export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) =>
 
   return {
     daysInMonth,
-    performanceRatio: round(performanceRatio, 5),
+    availabilityCostKWh,
+    compensableConsumptionKWh: round(compensableConsumptionKWh, 3),
     designConsumptionKWh: round(designConsumptionKWh, 3),
+    dailyGenerationTargetKWh: round(dailyGenerationTargetKWh, 3),
+    performanceRatio: round(performanceRatio, 5),
     requiredPowerKWp: round(requiredPowerKWp, 4),
     modulesCount,
     installedPowerKWp: round(installedPowerKWp, 4),
