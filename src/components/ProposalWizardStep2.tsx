@@ -22,28 +22,10 @@ import {
   Clock,
   Battery,
   Pencil,
-  Settings2,
 } from 'lucide-react';
 import { ThemeConfig, SolarConnectionType } from '../types';
 import { ProposalTargetSelection } from './ProposalWizardModal';
 import { AVAILABILITY_COST_KWH } from '../utils/solarSizing';
-
-export const PRESETS_STORAGE_KEY = 'solarmarket_wizard_preset_loads_v1';
-
-export function getInitialPresets(): Omit<WizardLoadItem, 'id'>[] {
-  try {
-    const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Erro ao carregar presets de cargas:', e);
-  }
-  return PRESET_APPLIANCES;
-}
 
 export interface WizardLoadItem {
   id: string;
@@ -132,11 +114,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
   effectiveAverageKWh,
   onShowToast,
 }) => {
-  // Lista de cargas pré-definidas (editável e persistida)
-  const [presetsList, setPresetsList] = useState<Omit<WizardLoadItem, 'id'>[]>(getInitialPresets);
-  const [editingPresetIndex, setEditingPresetIndex] = useState<number | null>(null);
-  const [isManagingPresets, setIsManagingPresets] = useState(false);
-
   // Estado para adicionar / editar carga na tabela
   const [isAddingCustomLoad, setIsAddingCustomLoad] = useState(false);
   const [editingLoadId, setEditingLoadId] = useState<string | null>(null);
@@ -158,7 +135,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
   const resetLoadForm = () => {
     setIsAddingCustomLoad(false);
     setEditingLoadId(null);
-    setEditingPresetIndex(null);
     setCustomLoadName('');
     setCustomLoadPowerW(500);
     setCustomLoadQty(1);
@@ -170,7 +146,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
   // Iniciar edição de uma carga salva na tabela
   const handleStartEditSavedLoad = (item: WizardLoadItem) => {
     setEditingLoadId(item.id);
-    setEditingPresetIndex(null);
     setCustomLoadName(item.name);
     setCustomLoadPowerW(item.powerW);
     setCustomLoadQty(item.quantity);
@@ -178,35 +153,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     setCustomLoadDays(item.daysPerMonth);
     setCustomLoadPriority(item.isPriorityBackup);
     setIsAddingCustomLoad(true);
-  };
-
-  // Iniciar edição de uma carga pré-definida
-  const handleStartEditPreset = (index: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const preset = presetsList[index];
-    if (!preset) return;
-    setEditingPresetIndex(index);
-    setEditingLoadId(null);
-    setCustomLoadName(preset.name);
-    setCustomLoadPowerW(preset.powerW);
-    setCustomLoadQty(preset.quantity);
-    setCustomLoadHours(preset.hoursPerDay);
-    setCustomLoadDays(preset.daysPerMonth);
-    setCustomLoadPriority(preset.isPriorityBackup);
-    setIsAddingCustomLoad(true);
-  };
-
-  // Restaurar catálogo de pré-definidos para o padrão original
-  const handleResetPresetsToDefault = () => {
-    if (window.confirm('Deseja restaurar as cargas pré-definidas para os valores originais de fábrica?')) {
-      setPresetsList(PRESET_APPLIANCES);
-      try {
-        localStorage.removeItem(PRESETS_STORAGE_KEY);
-      } catch (e) {
-        console.warn(e);
-      }
-      onShowToast?.('Cargas pré-definidas restauradas para o padrão!');
-    }
   };
 
   // Custo de disponibilidade baseado na conexão
@@ -224,19 +170,16 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     let totalPeakPowerKW = 0;
     let priorityKWhDay = 0;
     let priorityPeakPowerKW = 0;
-
     loadItems.forEach((item) => {
       const pKw = (item.powerW * item.quantity) / 1000;
       const kwhMonth = (item.powerW * item.quantity * item.hoursPerDay * item.daysPerMonth) / 1000;
       totalKWhMonth += kwhMonth;
       totalPeakPowerKW += pKw;
-
       if (item.isPriorityBackup) {
         priorityPeakPowerKW += pKw;
         priorityKWhDay += (item.powerW * item.quantity * item.hoursPerDay) / 1000;
       }
     });
-
     return {
       totalKWhMonth: Math.round(totalKWhMonth),
       totalPeakPowerKW: Number(totalPeakPowerKW.toFixed(2)),
@@ -250,7 +193,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     const filled = monthlyValues
       .map((m) => (typeof m.value === 'number' ? m.value : 0))
       .filter((v) => v > 0);
-
     const count = filled.length;
     if (count === 0) {
       return { count: 0, avg: 0, min: 0, max: 0, totalAnnual: 0 };
@@ -260,13 +202,12 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     const min = Math.min(...filled);
     const max = Math.max(...filled);
     const totalAnnual = count === 12 ? sum : avg * 12;
-
     return { count, avg, min, max, totalAnnual };
   }, [monthlyValues]);
 
   // Adicionar carga pré-definida à tabela
   const handleAddPresetLoad = (presetIndex: number) => {
-    const preset = presetsList[presetIndex];
+    const preset = PRESET_APPLIANCES[presetIndex];
     if (!preset) return;
     const newItem: WizardLoadItem = {
       ...preset,
@@ -276,7 +217,7 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     onShowToast?.(`"${preset.name}" adicionada à tabela de cargas!`);
   };
 
-  // Salvar carga (nova, editada da tabela ou editada do catálogo pré-definido)
+  // Salvar carga (nova ou editada da tabela)
   const handleSaveLoad = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customLoadName.trim()) {
@@ -288,31 +229,7 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
     const hours = Number(customLoadHours) || 1;
     const days = Math.min(31, Math.max(1, Number(customLoadDays) || 30));
 
-    // Caso 1: Salvando edição de carga pré-definida
-    if (editingPresetIndex !== null) {
-      setPresetsList((prev) => {
-        const updated = [...prev];
-        updated[editingPresetIndex] = {
-          name: customLoadName.trim(),
-          powerW: power,
-          quantity: qty,
-          hoursPerDay: hours,
-          daysPerMonth: days,
-          isPriorityBackup: customLoadPriority,
-        };
-        try {
-          localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updated));
-        } catch (err) {
-          console.warn('Falha ao salvar presets', err);
-        }
-        return updated;
-      });
-      onShowToast?.(`Carga pré-definida "${customLoadName.trim()}" atualizada no catálogo!`);
-      resetLoadForm();
-      return;
-    }
-
-    // Caso 2: Salvando edição de carga salva na tabela
+    // Editando carga salva na tabela
     if (editingLoadId) {
       setLoadItems((prev) =>
         prev.map((item) =>
@@ -334,7 +251,7 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
       return;
     }
 
-    // Caso 3: Inserindo nova carga
+    // Inserindo nova carga
     const newItem: WizardLoadItem = {
       id: `load-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: customLoadName.trim(),
@@ -1066,18 +983,8 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
                 </p>
               </div>
 
-              {/* Botões para Adicionar e Gerenciar */}
+              {/* Botão para Nova Carga */}
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleResetPresetsToDefault}
-                  className="px-2.5 py-1.5 rounded-xl border text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-all cursor-pointer flex items-center gap-1"
-                  style={{ borderColor: theme.border }}
-                  title="Restaurar valores de fábrica das cargas pré-definidas"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span className="hidden sm:inline">Restaurar Catálogo</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -1093,56 +1000,36 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
               </div>
             </div>
 
-            {/* Adição Rápida por Chips de Cargas Pré-definidas (com botão de editar cada preset) */}
+            {/* Adição Rápida por Chips de Cargas Pré-definidas (Apenas clique para adicionar) */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--dim)] flex items-center gap-1.5">
-                  <span>Cargas Pré-definidas (Clique para adicionar ou edite o padrão):</span>
+                  <span>Cargas Pré-definidas (Clique para adicionar à tabela):</span>
                 </span>
                 <span className="text-[10px] text-[var(--muted)]">
-                  {presetsList.length} aparelhos catalogados
+                  {PRESET_APPLIANCES.length} aparelhos comuns
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap max-h-32 overflow-y-auto pr-1">
-                {presetsList.map((preset, pIdx) => {
-                  const isBeingEdited = editingPresetIndex === pIdx;
-                  return (
-                    <div
-                      key={`${preset.name}-${pIdx}`}
-                      className={`inline-flex items-center rounded-lg border text-[11px] font-semibold transition-all group overflow-hidden ${
-                        isBeingEdited
-                          ? 'ring-2 ring-[var(--secondary)] border-transparent'
-                          : ''
-                      }`}
-                      style={{ backgroundColor: theme.primary, borderColor: theme.border }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleAddPresetLoad(pIdx)}
-                        className="px-2.5 py-1 text-[var(--dim)] hover:text-[var(--text)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-1.5"
-                        title={`Clique para adicionar "${preset.name}" à tabela`}
-                      >
-                        <Plus className="w-3 h-3 text-[var(--secondary)]" />
-                        <span>{preset.name}</span>
-                        <span className="text-[10px] opacity-60">({preset.powerW}W)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleStartEditPreset(pIdx, e)}
-                        className="px-2 py-1 border-l text-[var(--muted)] hover:text-[var(--secondary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                        style={{ borderColor: theme.border }}
-                        title={`Editar dados pré-definidos de "${preset.name}"`}
-                      >
-                        <Pencil className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  );
-                })}
+                {PRESET_APPLIANCES.map((preset, pIdx) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => handleAddPresetLoad(pIdx)}
+                    className="px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold text-[var(--dim)] hover:text-[var(--text)] hover:border-[var(--secondary)] hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
+                    style={{ backgroundColor: theme.primary, borderColor: theme.border }}
+                    title={`Clique para adicionar "${preset.name}" à tabela de cargas`}
+                  >
+                    <Plus className="w-3 h-3 text-[var(--secondary)]" />
+                    <span>{preset.name}</span>
+                    <span className="text-[10px] opacity-60">({preset.powerW}W)</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Formulário de Adicionar / Editar Carga (Salva ou Pré-definida) */}
+            {/* Formulário de Adicionar / Editar Carga */}
             {isAddingCustomLoad && (
               <form
                 onSubmit={handleSaveLoad}
@@ -1154,13 +1041,9 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {editingPresetIndex !== null ? (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                        Editando Catálogo Pré-definido
-                      </span>
-                    ) : editingLoadId ? (
+                    {editingLoadId ? (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
-                        Editando Carga da Tabela
+                        Editando Carga Salva
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
@@ -1168,9 +1051,7 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
                       </span>
                     )}
                     <h6 className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                      {editingPresetIndex !== null
-                        ? `Editar Pré-definido: ${customLoadName || 'Equipamento'}`
-                        : editingLoadId
+                      {editingLoadId
                         ? `Editar Carga: ${customLoadName || 'Equipamento'}`
                         : 'Adicionar Nova Carga Personalizada'}
                     </h6>
@@ -1179,7 +1060,8 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
                   <button
                     type="button"
                     onClick={resetLoadForm}
-                    className="text-xs text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                    className="btn-cancel btn-text text-xs text-[var(--muted)] hover:text-[var(--text)] cursor-pointer !bg-transparent hover:!bg-transparent transition-colors"
+                    data-text-only="true"
                   >
                     Cancelar
                   </button>
@@ -1283,7 +1165,8 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
                     <button
                       type="button"
                       onClick={resetLoadForm}
-                      className="px-3 py-1.5 rounded-lg border text-xs text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                      className="btn-cancel px-3 py-1.5 rounded-lg border text-xs text-[var(--muted)] hover:text-[var(--text)] cursor-pointer !bg-transparent hover:!bg-transparent transition-colors"
+                      data-text-only="true"
                       style={{ borderColor: theme.border }}
                     >
                       Cancelar
