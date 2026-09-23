@@ -31,6 +31,7 @@ test('dimensionamento desconta custo de disponibilidade e aplica perdas como efi
 test('referência On-Grid do wizard: 658 kWh, HSP 5.56, PR 80%, módulo 550 W', () => {
   const result = calculateOnGridMonthlySizing({
     monthlyConsumptionKWh: 658,
+    connectionType: 'Bifásica',
     hsp: 5.56,
     performanceRatioPercent: 80,
     targetCoveragePercent: 100,
@@ -38,9 +39,12 @@ test('referência On-Grid do wizard: 658 kWh, HSP 5.56, PR 80%, módulo 550 W', 
   });
 
   assert.equal(result.daysInMonth, 30);
+  assert.equal(result.availabilityCostKWh, 50);
+  assert.equal(result.compensableConsumptionKWh, 608);
+  assert.equal(result.dailyGenerationTargetKWh, 20.267);
+  assert.equal(result.requiredPowerKWp, 4.5564);
   assert.equal(result.modulesCount, 9);
   assert.equal(result.installedPowerKWp, 4.95);
-  assert.equal(result.requiredPowerKWp, 4.9317);
   assert.equal(result.estimatedMonthlyGenerationKWh, 660.528);
 });
 
