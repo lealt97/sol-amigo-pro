@@ -30,19 +30,22 @@ import {
   Layers,
 } from 'lucide-react';
 import { Lead, Client, ThemeConfig, LeadStage, PageKey } from '../types';
-import { fetchLeads, updateLeadNotes } from '../services/leads';
+import { fetchLeads, updateLeadNotes, isLeadConverted, LEADS_UPDATED_EVENT } from '../services/leads';
 import { fetchClients, updateClientNotes, CLIENTS_UPDATED_EVENT, mergeClientsWithLeads } from '../services/clients';
 import {
   ClientProposal,
   fetchProposalsForClient,
   fetchAllClientProposals,
   createQuickProposalForClient,
+  fetchProposalsForTarget,
+  createQuickProposalForTarget,
   PROPOSALS_UPDATED_EVENT,
 } from '../services/proposals';
 import { LeadNote, parseLeadNotes, serializeLeadNotes, compressImageFile } from '../utils/leadNotes';
 import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
 import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
+import { getLeadClienteBadgeStyle } from '../utils/themeEngine';
 import { LeadParametersModal } from './LeadParametersModal';
 
 export type NoteTargetType = 'lead' | 'client';
@@ -86,6 +89,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Leads ativos no funil comercial (exclui quem já foi convertido em Cliente)
+  const activeLeads = useMemo(() => {
+    return leads.filter((lead) => !isLeadConverted(lead));
+  }, [leads]);
+
   // Propostas cadastradas no sistema
   const [allProposals, setAllProposals] = useState<ClientProposal[]>([]);
 
@@ -107,10 +115,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraggingCreate, setIsDraggingCreate] = useState(false);
 
-  // Propostas vinculadas ao cliente selecionado no modal de criação
-  const [clientProposals, setClientProposals] = useState<ClientProposal[]>([]);
+  // Destino e Propostas vinculadas ao contato (Lead ou Cliente) no modal de criação
+  const [createDestination, setCreateDestination] = useState<'general' | 'proposal'>('general');
+  const [targetProposals, setTargetProposals] = useState<ClientProposal[]>([]);
   const [selectedProposalId, setSelectedProposalId] = useState<string>('');
-  const [loadingClientProposals, setLoadingClientProposals] = useState(false);
+  const [loadingTargetProposals, setLoadingTargetProposals] = useState(false);
 
   // Criação rápida de nova proposta inline
   const [showAddProposalInline, setShowAddProposalInline] = useState(false);
@@ -122,6 +131,10 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   const [editingNote, setEditingNote] = useState<UnifiedNote | null>(null);
   const [editText, setEditText] = useState('');
   const [editImages, setEditImages] = useState<string[]>([]);
+  const [editDestination, setEditDestination] = useState<'general' | 'proposal'>('general');
+  const [editProposalId, setEditProposalId] = useState<string>('');
+  const [editTargetProposals, setEditTargetProposals] = useState<ClientProposal[]>([]);
+  const [loadingEditProposals, setLoadingEditProposals] = useState(false);
   const [processingEditImages, setProcessingEditImages] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -231,25 +244,35 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
       }
     };
 
+    const handleLeadsUpdate = () => {
+      void loadData();
+    };
+
     window.addEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
     window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusUpdate);
     window.addEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+    window.addEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdate);
 
     return () => {
       window.removeEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
       window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusUpdate);
       window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+      window.removeEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdate);
     };
   }, []);
 
-  // Monitora a seleção de cliente no modal de criação e carrega todas as propostas dele
+  // Monitora a seleção de contato (Lead ou Cliente) no modal de criação e carrega todas as propostas
   useEffect(() => {
-    if (createTargetType === 'client' && selectedTargetId) {
-      setLoadingClientProposals(true);
-      const client = clients.find((c) => c.id === selectedTargetId);
-      void fetchProposalsForClient(selectedTargetId, client?.name)
+    if (selectedTargetId) {
+      setLoadingTargetProposals(true);
+      const targetName =
+        createTargetType === 'lead'
+          ? leads.find((l) => l.id === selectedTargetId)?.name
+          : clients.find((c) => c.id === selectedTargetId)?.name;
+
+      void fetchProposalsForTarget(createTargetType, selectedTargetId, targetName)
         .then((props) => {
-          setClientProposals(props);
+          setTargetProposals(props);
           if (props.length > 0) {
             setSelectedProposalId(props[0].id);
           } else {
@@ -257,14 +280,14 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
           }
         })
         .finally(() => {
-          setLoadingClientProposals(false);
+          setLoadingTargetProposals(false);
         });
     } else {
-      setClientProposals([]);
+      setTargetProposals([]);
       setSelectedProposalId('');
       setShowAddProposalInline(false);
     }
-  }, [createTargetType, selectedTargetId, clients]);
+  }, [createTargetType, selectedTargetId, leads, clients]);
 
   // Mapeia todas as anotações existentes de Leads e Clientes
   const allNotes: UnifiedNote[] = useMemo(() => {
@@ -302,19 +325,20 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
 
     // Anotações dos Leads
     leads.forEach((lead) => {
+      const isConverted = isLeadConverted(lead);
       const parsed = parseLeadNotes(lead.notes);
       parsed.forEach((note) => {
         if (seenNoteIds.has(note.id)) return;
         seenNoteIds.add(note.id);
         list.push({
           id: note.id,
-          targetType: 'lead',
-          targetId: lead.id,
+          targetType: isConverted ? 'client' : 'lead',
+          targetId: isConverted ? (lead.clientId || lead.id) : lead.id,
           targetName: lead.name,
           targetPhone: lead.phone,
           targetEmail: lead.email,
           targetLocation: lead.city ? `${lead.city}/${lead.state || 'UF'}` : undefined,
-          targetStatus: LEAD_STAGE_LABELS[lead.status] || lead.status,
+          targetStatus: isConverted ? 'Ativo' : (LEAD_STAGE_LABELS[lead.status] || lead.status),
           text: note.text,
           images: note.images || [],
           createdAt: note.createdAt,
@@ -398,7 +422,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   const targetOptions = useMemo(() => {
     const query = targetSearchQuery.toLowerCase().trim();
     if (createTargetType === 'lead') {
-      return leads
+      return activeLeads
         .filter((l) => {
           if (!query) return true;
           return (
@@ -436,7 +460,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
           notesCount: parseLeadNotes(c.notes).length,
         }));
     }
-  }, [createTargetType, leads, clients, targetSearchQuery]);
+  }, [createTargetType, activeLeads, clients, targetSearchQuery]);
 
   // Contato selecionado no modal
   const selectedTarget = useMemo(() => {
@@ -446,11 +470,26 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
 
   // Prepara criação de nota
   const handleOpenCreateModal = (defaultType?: NoteTargetType, defaultTargetId?: string) => {
-    setCreateTargetType(defaultType || 'lead');
-    setSelectedTargetId(defaultTargetId || '');
+    if (defaultTargetId) {
+      // Se for um lead que já foi convertido em cliente, direciona para cliente
+      const isLead = leads.find((l) => l.id === defaultTargetId);
+      if (isLead && isLeadConverted(isLead)) {
+        const clientMatch = clients.find((c) => c.sourceLeadId === defaultTargetId || c.id === defaultTargetId);
+        setCreateTargetType('client');
+        setSelectedTargetId(clientMatch?.id || defaultTargetId);
+      } else {
+        setCreateTargetType(defaultType || 'lead');
+        setSelectedTargetId(defaultTargetId);
+      }
+    } else {
+      setCreateTargetType(defaultType || 'lead');
+      setSelectedTargetId('');
+    }
     setTargetSearchQuery('');
     setCreateText('');
     setCreateImages([]);
+    setCreateDestination('general');
+    setSelectedProposalId('');
     setShowAddProposalInline(false);
     setShowCreateModal(true);
   };
@@ -459,23 +498,31 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   const handleCreateQuickProposal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTargetId) {
-      onShowToast('Selecione primeiro o cliente antes de criar uma proposta.');
+      onShowToast(`Selecione primeiro o ${createTargetType === 'lead' ? 'interessado' : 'cliente'} antes de criar uma proposta.`);
       return;
     }
-    const client = clients.find((c) => c.id === selectedTargetId);
-    if (!client) return;
+    const targetName =
+      createTargetType === 'lead'
+        ? leads.find((l) => l.id === selectedTargetId)?.name
+        : clients.find((c) => c.id === selectedTargetId)?.name;
+
+    if (!targetName) return;
 
     setIsCreatingProposal(true);
     try {
-      const created = await createQuickProposalForClient({
-        clientId: client.id,
-        clientName: client.name,
-        code: newPropCode.trim() || undefined,
-        status: newPropStatus || 'Em negociação',
-      });
+      const created = await createQuickProposalForTarget(
+        createTargetType,
+        selectedTargetId,
+        targetName,
+        {
+          code: newPropCode.trim() || undefined,
+          status: newPropStatus || 'Em negociação',
+        }
+      );
 
-      setClientProposals((prev) => [created, ...prev]);
+      setTargetProposals((prev) => [created, ...prev]);
       setSelectedProposalId(created.id);
+      setCreateDestination('proposal');
       setShowAddProposalInline(false);
       setNewPropCode('');
       onShowToast(`Nova proposta ${created.code} (${created.status}) vinculada com sucesso!`);
@@ -529,12 +576,12 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
 
     setIsSubmitting(true);
 
-    // Se for cliente, identifica a proposta vinculada selecionada
+    // Se o destino for proposta, identifica a proposta vinculada selecionada
     let linkedProposal: ClientProposal | undefined;
-    if (createTargetType === 'client') {
-      linkedProposal = clientProposals.find((p) => p.id === selectedProposalId);
-      if (!linkedProposal && clientProposals.length > 0) {
-        linkedProposal = clientProposals[0];
+    if (createDestination === 'proposal') {
+      linkedProposal = targetProposals.find((p) => p.id === selectedProposalId);
+      if (!linkedProposal && targetProposals.length > 0) {
+        linkedProposal = targetProposals[0];
       }
     }
 
@@ -562,7 +609,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
         setLeads((prev) =>
           prev.map((l) => (l.id === lead.id ? { ...l, notes: serialized } : l))
         );
-        onShowToast(`Anotação gerada com sucesso para o lead ${lead.name}!`);
+        onShowToast(
+          linkedProposal
+            ? `Anotação vinculada à proposta ${linkedProposal.code} do lead ${lead.name} salva com sucesso!`
+            : `Anotação geral do lead ${lead.name} salva com sucesso!`
+        );
       } else {
         const client = clients.find((c) => c.id === selectedTargetId);
         if (!client) throw new Error('Cliente selecionado não encontrado.');
@@ -580,9 +631,9 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
           );
         }
         onShowToast(
-          `Anotação vinculada ao cliente ${client.name} ${
-            linkedProposal ? `e à proposta ${linkedProposal.code}` : ''
-          } salva com sucesso!`
+          linkedProposal
+            ? `Anotação vinculada à proposta ${linkedProposal.code} do cliente ${client.name} salva com sucesso!`
+            : `Anotação geral do cliente ${client.name} salva com sucesso!`
         );
       }
 
@@ -591,6 +642,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
       setCreateImages([]);
       setSelectedTargetId('');
       setSelectedProposalId('');
+      setCreateDestination('general');
     } catch (err: any) {
       onShowToast(err?.message || 'Falha ao salvar anotação.');
     } finally {
@@ -603,6 +655,31 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
     setEditingNote(note);
     setEditText(note.text);
     setEditImages(note.images || []);
+    if (note.proposalCode || note.proposalId) {
+      setEditDestination('proposal');
+      setEditProposalId(note.proposalId || '');
+    } else {
+      setEditDestination('general');
+      setEditProposalId('');
+    }
+
+    setLoadingEditProposals(true);
+    fetchProposalsForTarget(note.targetType, note.targetId, note.targetName)
+      .then((props) => {
+        setEditTargetProposals(props);
+        if (note.proposalCode) {
+          const match = props.find((p) => p.code === note.proposalCode || p.id === note.proposalId);
+          if (match) {
+            setEditProposalId(match.id);
+          } else if (props.length > 0 && !note.proposalId) {
+            setEditProposalId(props[0].id);
+          }
+        } else if (props.length > 0) {
+          setEditProposalId(props[0].id);
+        }
+      })
+      .catch((err) => console.warn('Erro ao carregar propostas no edit:', err))
+      .finally(() => setLoadingEditProposals(false));
   };
 
   // Salvar anotação editada
@@ -614,6 +691,26 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
     }
 
     setIsSavingEdit(true);
+
+    let linkedProposal: ClientProposal | undefined;
+    if (editDestination === 'proposal') {
+      linkedProposal = editTargetProposals.find((p) => p.id === editProposalId);
+      if (!linkedProposal && editingNote.proposalCode) {
+        linkedProposal = {
+          id: editingNote.proposalId || 'prop-prev',
+          code: editingNote.proposalCode,
+          clientId: editingNote.targetId,
+          clientName: editingNote.targetName,
+          title: editingNote.proposalTitle || `Proposta ${editingNote.proposalCode}`,
+          totalValue: editingNote.proposalValue || 0,
+          systemPowerKWp: 0,
+          systemType: 'On-Grid',
+          status: (editingNote.proposalStatus as any) || 'Pendente',
+          createdAt: new Date().toISOString(),
+        };
+      }
+    }
+
     try {
       if (editingNote.targetType === 'lead') {
         const lead = leads.find((l) => l.id === editingNote.targetId);
@@ -621,7 +718,17 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
         const existingNotes = parseLeadNotes(lead.notes);
         const updatedNotes = existingNotes.map((n) =>
           n.id === editingNote.id
-            ? { ...n, text: editText.trim(), images: editImages, updatedAt: new Date().toISOString() }
+            ? {
+                ...n,
+                text: editText.trim(),
+                images: editImages,
+                updatedAt: new Date().toISOString(),
+                proposalId: linkedProposal?.id,
+                proposalCode: linkedProposal?.code,
+                proposalTitle: linkedProposal?.title,
+                proposalValue: linkedProposal?.totalValue,
+                proposalStatus: linkedProposal?.status,
+              }
             : n
         );
         const serialized = serializeLeadNotes(updatedNotes);
@@ -633,7 +740,6 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
         const client = clients.find((c) => c.id === editingNote.targetId);
         if (!client) throw new Error('Cliente não encontrado.');
 
-        // Mantém a vinculação original da proposta sem alteração, atualizando somente texto, imagens e data
         const existingNotes = parseLeadNotes(client.notes);
         const updatedNotes = existingNotes.map((n) =>
           n.id === editingNote.id
@@ -642,6 +748,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                 text: editText.trim(),
                 images: editImages,
                 updatedAt: new Date().toISOString(),
+                proposalId: linkedProposal?.id,
+                proposalCode: linkedProposal?.code,
+                proposalTitle: linkedProposal?.title,
+                proposalValue: linkedProposal?.totalValue,
+                proposalStatus: linkedProposal?.status,
               }
             : n
         );
@@ -657,7 +768,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
         }
       }
 
-      onShowToast('Anotação atualizada com sucesso!');
+      onShowToast(
+        linkedProposal
+          ? `Anotação atualizada e vinculada à proposta ${linkedProposal.code}!`
+          : `Anotação atualizada!`
+      );
       setEditingNote(null);
     } catch (err: any) {
       onShowToast(err?.message || 'Erro ao atualizar anotação.');
@@ -722,55 +837,40 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   return (
     <section id="anotacoes-page" className="space-y-6 animate-fadeIn pb-12">
       {/* Top Header do Ambiente */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--dim)]">
-              Central de Atendimento & CRM
-            </span>
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-              style={{
-                backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                color: theme.secondary,
-              }}
-            >
-              <Sparkles className="h-3 w-3" />
-              {totalNotesCount} {totalNotesCount === 1 ? 'registro' : 'registros'}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: theme.text }}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
+            Central de Atendimento & CRM
+          </p>
+          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">
             Anotações
           </h1>
-          <p className="text-sm text-[var(--muted)] max-w-2xl">
-            Histórico centralizado de registros, alinhamentos comerciais e observações técnicas vinculadas a{' '}
-            <strong className="text-[var(--text)]">Leads</strong> e{' '}
-            <strong className="text-[var(--text)]">Clientes</strong>.
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Histórico de anotações, alinhamentos comerciais e observações técnicas.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => void loadData()}
-            disabled={loading}
-            className="btn-outline h-10 px-3.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
-            style={{ borderColor: theme.border, color: theme.text, backgroundColor: theme.primary }}
-            title="Atualizar dados"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </button>
-
+        <div className="flex items-center gap-2.5">
           <button
             id="btn-gerar-anotacao"
             type="button"
             onClick={() => handleOpenCreateModal()}
-            className="btn-filled h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm cursor-pointer hover:brightness-110 active:scale-[0.98]"
             style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
           >
             <Plus className="h-4 w-4" />
             <span>Gerar Anotação</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="btn-outline inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-all hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)] cursor-pointer"
+            style={{ borderColor: theme.border, color: theme.text, backgroundColor: theme.primary }}
+            title="Atualizar dados"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
           </button>
         </div>
       </div>
@@ -1062,19 +1162,23 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                 <div className="space-y-3 min-w-0">
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Badge do Tipo (LEAD ou CLIENTE) */}
-                      <span
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap shrink-0"
-                        style={{
-                          backgroundColor: isLead
-                            ? 'color-mix(in srgb, var(--secondary) 18%, transparent)'
-                            : 'color-mix(in srgb, #10b981 18%, transparent)',
-                          color: isLead ? theme.secondary : '#10b981',
-                        }}
-                      >
-                        {isLead ? <User className="h-3 w-3 shrink-0" /> : <Building2 className="h-3 w-3 shrink-0" />}
-                        {isLead ? 'Lead' : 'Cliente'}
-                      </span>
+                      {/* Badge do Tipo (LEAD ou CLIENTE) com contraste dinâmico conforme fundo */}
+                      {(() => {
+                        const badgeStyle = getLeadClienteBadgeStyle(isLead, theme.primary);
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap shrink-0 border"
+                            style={{
+                              backgroundColor: badgeStyle.backgroundColor,
+                              color: badgeStyle.color,
+                              borderColor: badgeStyle.borderColor,
+                            }}
+                          >
+                            {isLead ? <User className="h-3 w-3 shrink-0" /> : <Building2 className="h-3 w-3 shrink-0" />}
+                            {isLead ? 'Lead' : 'Cliente'}
+                          </span>
+                        );
+                      })()}
 
                       {/* Status secundário (nunca quebra linha internamente) */}
                       {note.targetStatus && (
@@ -1387,7 +1491,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs sm:text-sm font-bold">Alguém no Leads</div>
-                      <div className="text-[11px] text-[var(--muted)]">Oportunidades do funil ({leads.length})</div>
+                      <div className="text-[11px] text-[var(--muted)]">Oportunidades do funil ({activeLeads.length})</div>
                     </div>
                   </button>
 
@@ -1474,7 +1578,8 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     required
                   >
                     <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>
-                      -- Escolha um {createTargetType === 'lead' ? 'Lead' : 'Cliente'} ({targetOptions.length} disponíveis) --
+                      -- Escolha um {createTargetType === 'lead' ? 'Lead' : 'Cliente'} ({targetOptions.length}{' '}
+                      {targetOptions.length === 1 ? 'disponível' : 'disponíveis'}) --
                     </option>
                     {targetOptions.map((opt) => (
                       <option
@@ -1518,9 +1623,15 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                 )}
               </div>
 
-              {/* Etapa 3 (Condicional para Cliente): Vincular à Proposta deste Cliente */}
-              {createTargetType === 'client' && selectedTargetId && (
-                <div className="space-y-3 p-4 rounded-xl border" style={{ borderColor: theme.border, backgroundColor: 'color-mix(in srgb, var(--neutral) 96%, transparent)' }}>
+              {/* Etapa 3: Destino da Anotação (Geral do Interessado/Cliente OU Proposta Específica) */}
+              {selectedTargetId && (
+                <div
+                  className="space-y-3 p-4 rounded-xl border"
+                  style={{
+                    borderColor: theme.border,
+                    backgroundColor: 'color-mix(in srgb, var(--neutral) 96%, transparent)',
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div
@@ -1534,177 +1645,270 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                       </div>
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-[var(--dim)]">
-                          3. Vincular à Proposta deste Cliente
+                          3. Destino da Anotação
                         </label>
                         <p className="text-[11px] text-[var(--muted)]">
-                          Como este cliente pode possuir mais de uma proposta comercial, selecione a opção correspondente:
+                          Escolha se esta anotação é geral para o {createTargetType === 'lead' ? 'interessado' : 'cliente'} ou para uma de suas propostas:
                         </p>
                       </div>
                     </div>
 
+                    {createDestination === 'proposal' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddProposalInline(!showAddProposalInline)}
+                        className="btn-text text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        style={{ color: theme.secondary }}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        {showAddProposalInline ? 'Ocultar' : 'Gerar Proposta'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Seletor de Destino: Geral vs Proposta */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
-                      onClick={() => setShowAddProposalInline(!showAddProposalInline)}
-                      className="btn-text text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      style={{ color: theme.secondary }}
+                      onClick={() => {
+                        setCreateDestination('general');
+                        setShowAddProposalInline(false);
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                        createDestination === 'general'
+                          ? 'ring-2 border-transparent'
+                          : 'hover:border-[var(--secondary)]/40 opacity-85 hover:opacity-100'
+                      }`}
+                      style={{
+                        backgroundColor:
+                          createDestination === 'general'
+                            ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                            : theme.background,
+                        borderColor: createDestination === 'general' ? theme.secondary : theme.border,
+                        boxShadow: createDestination === 'general' ? `0 0 0 2px ${theme.secondary}` : 'none',
+                      }}
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      {showAddProposalInline ? 'Ocultar' : 'Nova Proposta'}
+                      <div
+                        className="p-1.5 rounded-lg shrink-0 mt-0.5"
+                        style={{
+                          backgroundColor:
+                            createDestination === 'general'
+                              ? theme.secondary
+                              : 'color-mix(in srgb, var(--dim) 15%, transparent)',
+                          color: createDestination === 'general' ? 'var(--secondary-fg)' : 'var(--text)',
+                        }}
+                      >
+                        {createTargetType === 'lead' ? <User className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="text-xs font-bold flex items-center justify-between">
+                          <span>Para o {createTargetType === 'lead' ? 'Interessado (Geral)' : 'Cliente (Geral)'}</span>
+                          {createDestination === 'general' && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />}
+                        </div>
+                        <p className="text-[11px] text-[var(--muted)] leading-snug">
+                          Anotação sobre reuniões, atendimento, visitas ou perfil geral.
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCreateDestination('proposal')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                        createDestination === 'proposal'
+                          ? 'ring-2 border-transparent'
+                          : 'hover:border-[var(--secondary)]/40 opacity-85 hover:opacity-100'
+                      }`}
+                      style={{
+                        backgroundColor:
+                          createDestination === 'proposal'
+                            ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                            : theme.background,
+                        borderColor: createDestination === 'proposal' ? theme.secondary : theme.border,
+                        boxShadow: createDestination === 'proposal' ? `0 0 0 2px ${theme.secondary}` : 'none',
+                      }}
+                    >
+                      <div
+                        className="p-1.5 rounded-lg shrink-0 mt-0.5"
+                        style={{
+                          backgroundColor:
+                            createDestination === 'proposal'
+                              ? theme.secondary
+                              : 'color-mix(in srgb, var(--dim) 15%, transparent)',
+                          color: createDestination === 'proposal' ? 'var(--secondary-fg)' : 'var(--text)',
+                        }}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="text-xs font-bold flex items-center justify-between">
+                          <span>Para uma Proposta deste {createTargetType === 'lead' ? 'Interessado' : 'Cliente'}</span>
+                          {createDestination === 'proposal' && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />}
+                        </div>
+                        <p className="text-[11px] text-[var(--muted)] leading-snug">
+                          Vincular esta anotação especificamente a uma proposta comercial.
+                        </p>
+                      </div>
                     </button>
                   </div>
 
-                  {/* Formulário Inline de Criação Rápida de Proposta */}
-                  {showAddProposalInline && (
-                    <div
-                      className="p-3.5 rounded-xl border space-y-3 animate-fadeIn"
-                      style={{
-                        backgroundColor: theme.background,
-                        borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: theme.secondary }}>
-                          <Zap className="h-3.5 w-3.5" /> Cadastrar Proposta para {selectedTarget?.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddProposalInline(false)}
-                          className="p-1 text-[var(--dim)] hover:text-[var(--text)] cursor-pointer"
+                  {/* Se Destino for Proposta: lista de propostas e inline create */}
+                  {createDestination === 'proposal' && (
+                    <div className="space-y-2.5 pt-1">
+                      {/* Formulário Inline de Criação Rápida de Proposta */}
+                      {showAddProposalInline && (
+                        <div
+                          className="p-3.5 rounded-xl border space-y-3 animate-fadeIn"
+                          style={{
+                            backgroundColor: theme.background,
+                            borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                          }}
                         >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: theme.secondary }}>
+                              <Zap className="h-3.5 w-3.5" /> Cadastrar Proposta para {selectedTarget?.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddProposalInline(false)}
+                              className="p-1 text-[var(--dim)] hover:text-[var(--text)] cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[10px] uppercase font-bold text-[var(--dim)] mb-1">
-                            Código da Proposta (Opcional)
-                          </label>
-                          <input
-                            type="text"
-                            value={newPropCode}
-                            onChange={(e) => setNewPropCode(e.target.value)}
-                            placeholder="Ex: PROP-2026-095 (ou automático)"
-                            className="w-full h-9 px-3 rounded-lg border text-xs font-medium outline-none"
-                            style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] uppercase font-bold text-[var(--dim)] mb-1">
-                            Status da Proposta
-                          </label>
-                          <select
-                            value={newPropStatus}
-                            onChange={(e) => setNewPropStatus(e.target.value)}
-                            className="w-full h-9 px-2.5 rounded-lg border text-xs font-medium outline-none cursor-pointer"
-                            style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
-                          >
-                            <option value="Em negociação">Em negociação</option>
-                            <option value="Aprovada">Aprovada</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Em análise">Em análise</option>
-                            <option value="Recusada">Recusada</option>
-                          </select>
-                        </div>
-
-                        <div className="sm:col-span-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={(e) => void handleCreateQuickProposal(e)}
-                            disabled={isCreatingProposal}
-                            className="h-9 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm hover:brightness-110 active:scale-98 cursor-pointer"
-                            style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-                          >
-                            {isCreatingProposal ? (
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            )}
-                            Salvar e Selecionar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Feedback de carregamento das propostas */}
-                  {loadingClientProposals ? (
-                    <div className="flex items-center justify-center p-4 gap-2 text-xs text-[var(--dim)] font-medium">
-                      <RefreshCw className="h-4 w-4 animate-spin text-[var(--secondary)]" />
-                      Carregando propostas cadastradas do cliente...
-                    </div>
-                  ) : clientProposals.length === 0 ? (
-                    <div className="text-center p-4 rounded-xl border border-dashed text-xs text-[var(--muted)] space-y-2">
-                      <p>Nenhuma proposta cadastrada ainda para este cliente.</p>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddProposalInline(true)}
-                        className="btn-text text-xs font-bold underline cursor-pointer"
-                        style={{ color: theme.secondary }}
-                      >
-                        Clique aqui para cadastrar a primeira proposta
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                      {clientProposals.map((prop) => {
-                        const isSelected = selectedProposalId === prop.id;
-
-                        return (
-                          <div
-                            key={prop.id}
-                            onClick={() => setSelectedProposalId(prop.id)}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative flex items-center justify-between ${
-                              isSelected
-                                ? 'ring-2 border-transparent'
-                                : 'hover:border-[var(--secondary)]/40 opacity-90 hover:opacity-100'
-                            }`}
-                            style={{
-                              backgroundColor: isSelected
-                                ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
-                                : theme.background,
-                              borderColor: isSelected ? theme.secondary : theme.border,
-                              boxShadow: isSelected ? `0 0 0 2px ${theme.secondary}` : 'none',
-                            }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 shrink-0" style={{ color: theme.secondary }} />
-                              <span className="text-xs font-extrabold tracking-tight" style={{ color: theme.secondary }}>
-                                {prop.code}
-                              </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-[var(--dim)] mb-1">
+                                Código da Proposta (Opcional)
+                              </label>
+                              <input
+                                type="text"
+                                value={newPropCode}
+                                onChange={(e) => setNewPropCode(e.target.value)}
+                                placeholder="Ex: PROP-2026-095 (ou automático)"
+                                className="w-full h-9 px-3 rounded-lg border text-xs font-medium outline-none"
+                                style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
+                              />
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                                style={{
-                                  backgroundColor:
-                                    prop.status === 'Aprovada'
-                                      ? 'color-mix(in srgb, #10b981 18%, transparent)'
-                                      : 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                                  color: prop.status === 'Aprovada' ? '#10b981' : theme.secondary,
-                                  borderColor:
-                                    prop.status === 'Aprovada'
-                                      ? 'color-mix(in srgb, #10b981 30%, transparent)'
-                                      : 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                                }}
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-[var(--dim)] mb-1">
+                                Status da Proposta
+                              </label>
+                              <select
+                                value={newPropStatus}
+                                onChange={(e) => setNewPropStatus(e.target.value)}
+                                className="w-full h-9 px-2.5 rounded-lg border text-xs font-medium outline-none cursor-pointer"
+                                style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
                               >
-                                {prop.status}
-                              </span>
+                                <option value="Em negociação">Em negociação</option>
+                                <option value="Aprovada">Aprovada</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Em análise">Em análise</option>
+                                <option value="Recusada">Recusada</option>
+                              </select>
+                            </div>
 
-                              {isSelected && (
-                                <div
-                                  className="h-4 w-4 rounded-full flex items-center justify-center text-white text-[10px] shadow-sm"
-                                  style={{ backgroundColor: theme.secondary }}
-                                >
-                                  <Check className="h-2.5 w-2.5" />
-                                </div>
-                              )}
+                            <div className="sm:col-span-2 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={(e) => void handleCreateQuickProposal(e)}
+                                disabled={isCreatingProposal}
+                                className="h-9 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm hover:brightness-110 active:scale-98 cursor-pointer"
+                                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+                              >
+                                {isCreatingProposal ? (
+                                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                )}
+                                Salvar e Selecionar
+                              </button>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
+
+                      {/* Feedback de carregamento das propostas */}
+                      {loadingTargetProposals ? (
+                        <div className="flex items-center justify-center p-4 gap-2 text-xs text-[var(--dim)] font-medium">
+                          <RefreshCw className="h-4 w-4 animate-spin text-[var(--secondary)]" />
+                          Carregando propostas de {selectedTarget?.name}...
+                        </div>
+                      ) : targetProposals.length === 0 ? (
+                        <div className="text-center p-4 rounded-xl border border-dashed text-xs text-[var(--muted)] space-y-2">
+                          <p>Nenhuma proposta cadastrada ainda para este {createTargetType === 'lead' ? 'interessado' : 'cliente'}.</p>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddProposalInline(true)}
+                            className="btn-text text-xs font-bold underline cursor-pointer"
+                            style={{ color: theme.secondary }}
+                          >
+                            Clique aqui para cadastrar a primeira proposta
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                          {targetProposals.map((prop) => {
+                            const isSelected = selectedProposalId === prop.id;
+
+                            return (
+                              <div
+                                key={prop.id}
+                                onClick={() => setSelectedProposalId(prop.id)}
+                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative flex items-center justify-between ${
+                                  isSelected
+                                    ? 'ring-2 border-transparent'
+                                    : 'hover:border-[var(--secondary)]/40 opacity-90 hover:opacity-100'
+                                }`}
+                                style={{
+                                  backgroundColor: isSelected
+                                    ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                                    : theme.background,
+                                  borderColor: isSelected ? theme.secondary : theme.border,
+                                  boxShadow: isSelected ? `0 0 0 2px ${theme.secondary}` : 'none',
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 shrink-0" style={{ color: theme.secondary }} />
+                                  <span className="text-xs font-extrabold tracking-tight" style={{ color: theme.secondary }}>
+                                    {prop.code}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                    style={{
+                                      backgroundColor:
+                                        prop.status === 'Aprovada'
+                                          ? 'color-mix(in srgb, #10b981 18%, transparent)'
+                                          : 'color-mix(in srgb, var(--secondary) 15%, transparent)',
+                                      color: prop.status === 'Aprovada' ? '#10b981' : theme.secondary,
+                                      borderColor:
+                                        prop.status === 'Aprovada'
+                                          ? 'color-mix(in srgb, #10b981 30%, transparent)'
+                                          : 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                                    }}
+                                  >
+                                    {prop.status}
+                                  </span>
+
+                                  {isSelected && (
+                                    <div
+                                      className="h-4 w-4 rounded-full flex items-center justify-center text-white text-[10px] shadow-sm"
+                                      style={{ backgroundColor: theme.secondary }}
+                                    >
+                                      <Check className="h-2.5 w-2.5" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1714,7 +1918,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label htmlFor="create-note-text" className="block text-xs font-bold uppercase tracking-wider text-[var(--dim)]">
-                    {createTargetType === 'client' ? '4.' : '3.'} Conteúdo da Anotação
+                    4. Conteúdo da Anotação
                   </label>
                   <span className="text-[11px] text-[var(--dim)]">
                     {createText.length} caracteres
@@ -1876,70 +2080,190 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-              {/* Informações de Vinculação Fixas (Destinatário e Proposta Vinculada) */}
+              {/* Informações de Vinculação e Destino (Geral vs Proposta) */}
               <div
-                className="p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                className="space-y-3 p-3.5 rounded-xl border"
                 style={{
                   backgroundColor: 'color-mix(in srgb, var(--neutral) 96%, transparent)',
                   borderColor: theme.border,
                 }}
               >
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold border shrink-0"
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  {(() => {
+                    const isLeadTarget = editingNote.targetType === 'lead';
+                    const badgeStyle = getLeadClienteBadgeStyle(isLeadTarget, theme.primary);
+                    return (
+                      <span
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold border shrink-0 inline-flex items-center gap-1.5"
+                        style={{
+                          backgroundColor: badgeStyle.backgroundColor,
+                          color: badgeStyle.color,
+                          borderColor: badgeStyle.borderColor,
+                        }}
+                      >
+                        {isLeadTarget ? <User className="h-3.5 w-3.5" /> : <Building2 className="h-3.5 w-3.5" />}
+                        {isLeadTarget ? 'Lead' : 'Cliente'}: {editingNote.targetName}
+                      </span>
+                    );
+                  })()}
+
+                  <span className="text-[11px] font-medium text-[var(--muted)]">
+                    Destino da anotação:
+                  </span>
+                </div>
+
+                {/* Seletor de Destino na Edição: Geral vs Proposta */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDestination('general');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      editDestination === 'general'
+                        ? 'ring-2 border-transparent'
+                        : 'hover:border-[var(--secondary)]/40 opacity-80 hover:opacity-100'
+                    }`}
                     style={{
                       backgroundColor:
-                        editingNote.targetType === 'lead'
-                          ? 'color-mix(in srgb, var(--primary) 20%, transparent)'
-                          : 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                      color: editingNote.targetType === 'lead' ? 'var(--text)' : theme.secondary,
-                      borderColor:
-                        editingNote.targetType === 'lead'
-                          ? theme.border
-                          : 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                        editDestination === 'general'
+                          ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                          : theme.background,
+                      borderColor: editDestination === 'general' ? theme.secondary : theme.border,
+                      boxShadow: editDestination === 'general' ? `0 0 0 2px ${theme.secondary}` : 'none',
                     }}
                   >
-                    {editingNote.targetType === 'lead' ? 'Lead' : 'Cliente'}: {editingNote.targetName}
-                  </span>
-
-                  {editingNote.proposalCode ? (
-                    <div
-                      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0"
-                      style={{
-                        backgroundColor: 'color-mix(in srgb, var(--secondary) 8%, transparent)',
-                        borderColor: 'color-mix(in srgb, var(--secondary) 25%, transparent)',
-                      }}
-                      title="Proposta vinculada a esta anotação (fixa/não editável)"
-                    >
-                      <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />
-                      <span className="font-extrabold tracking-tight whitespace-nowrap shrink-0" style={{ color: theme.secondary }}>
-                        {editingNote.proposalCode}
-                      </span>
-                      {editingNote.proposalStatus && (
-                        <span
-                          className="text-[10px] px-2 py-0.5 rounded-full font-bold border whitespace-nowrap shrink-0"
-                          style={{
-                            backgroundColor:
-                              editingNote.proposalStatus === 'Aprovada'
-                                ? 'color-mix(in srgb, #10b981 18%, transparent)'
-                                : 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                            color: editingNote.proposalStatus === 'Aprovada' ? '#10b981' : theme.secondary,
-                            borderColor:
-                              editingNote.proposalStatus === 'Aprovada'
-                                ? 'color-mix(in srgb, #10b981 30%, transparent)'
-                                : 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                          }}
-                        >
-                          {editingNote.proposalStatus}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="p-1 rounded-md shrink-0"
+                        style={{
+                          backgroundColor:
+                            editDestination === 'general'
+                              ? theme.secondary
+                              : 'color-mix(in srgb, var(--dim) 15%, transparent)',
+                          color: editDestination === 'general' ? 'var(--secondary-fg)' : 'var(--text)',
+                        }}
+                      >
+                        {editingNote.targetType === 'lead' ? <User className="h-3.5 w-3.5" /> : <Building2 className="h-3.5 w-3.5" />}
+                      </div>
+                      <span className="text-xs font-bold truncate">Geral do {editingNote.targetType === 'lead' ? 'Lead' : 'Cliente'}</span>
                     </div>
-                  ) : (
-                    <span className="text-[11px] text-[var(--muted)]">
-                      (Sem proposta específica vinculada)
-                    </span>
-                  )}
+                    {editDestination === 'general' && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDestination('proposal');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      editDestination === 'proposal'
+                        ? 'ring-2 border-transparent'
+                        : 'hover:border-[var(--secondary)]/40 opacity-80 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor:
+                        editDestination === 'proposal'
+                          ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                          : theme.background,
+                      borderColor: editDestination === 'proposal' ? theme.secondary : theme.border,
+                      boxShadow: editDestination === 'proposal' ? `0 0 0 2px ${theme.secondary}` : 'none',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="p-1 rounded-md shrink-0"
+                        style={{
+                          backgroundColor:
+                            editDestination === 'proposal'
+                              ? theme.secondary
+                              : 'color-mix(in srgb, var(--dim) 15%, transparent)',
+                          color: editDestination === 'proposal' ? 'var(--secondary-fg)' : 'var(--text)',
+                        }}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-xs font-bold truncate">Vincular a Proposta</span>
+                    </div>
+                    {editDestination === 'proposal' && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />}
+                  </button>
                 </div>
+
+                {/* Se Destino for Proposta na Edição: Seletor de Propostas Disponíveis */}
+                {editDestination === 'proposal' && (
+                  <div className="space-y-2 pt-1">
+                    {loadingEditProposals ? (
+                      <div className="flex items-center justify-center p-3 gap-2 text-xs text-[var(--dim)] font-medium">
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--secondary)]" />
+                        Carregando propostas...
+                      </div>
+                    ) : editTargetProposals.length === 0 ? (
+                      <div className="text-center p-3 rounded-lg border border-dashed text-xs text-[var(--muted)]">
+                        Nenhuma proposta encontrada para este {editingNote.targetType === 'lead' ? 'lead' : 'cliente'}.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                        {editTargetProposals.map((prop) => {
+                          const isSelected = editProposalId === prop.id;
+
+                          return (
+                            <div
+                              key={prop.id}
+                              onClick={() => setEditProposalId(prop.id)}
+                              className={`p-2 rounded-xl border text-left transition-all cursor-pointer relative flex items-center justify-between ${
+                                isSelected
+                                  ? 'ring-2 border-transparent'
+                                  : 'hover:border-[var(--secondary)]/40 opacity-90 hover:opacity-100'
+                              }`}
+                              style={{
+                                backgroundColor: isSelected
+                                  ? 'color-mix(in srgb, var(--secondary) 10%, transparent)'
+                                  : theme.background,
+                                borderColor: isSelected ? theme.secondary : theme.border,
+                                boxShadow: isSelected ? `0 0 0 2px ${theme.secondary}` : 'none',
+                              }}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: theme.secondary }} />
+                                <span className="text-xs font-extrabold" style={{ color: theme.secondary }}>
+                                  {prop.code}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="text-[10px] font-bold px-1.5 py-0.2 rounded-full border"
+                                  style={{
+                                    backgroundColor:
+                                      prop.status === 'Aprovada'
+                                        ? 'color-mix(in srgb, #10b981 18%, transparent)'
+                                        : 'color-mix(in srgb, var(--secondary) 15%, transparent)',
+                                    color: prop.status === 'Aprovada' ? '#10b981' : theme.secondary,
+                                    borderColor:
+                                      prop.status === 'Aprovada'
+                                        ? 'color-mix(in srgb, #10b981 30%, transparent)'
+                                        : 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                                  }}
+                                >
+                                  {prop.status}
+                                </span>
+
+                                {isSelected && (
+                                  <div
+                                    className="h-3.5 w-3.5 rounded-full flex items-center justify-center text-white text-[9px] shadow-sm"
+                                    style={{ backgroundColor: theme.secondary }}
+                                  >
+                                    <Check className="h-2 w-2" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

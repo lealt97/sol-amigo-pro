@@ -109,8 +109,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const toggleCollapseFn = onToggleCollapsed || onToggleCollapse || (() => {});
 
   const sidebarBg = theme.primary;
-  const sidebarFg = getContrastFg(sidebarBg);
-  const sidebarIsDark = sidebarFg === '#FFFFFF';
+  const sidebarFg = getContrastFg(sidebarBg) === '#FFFFFF' ? '#FFFFFF' : theme.text;
+  const sidebarIsDark = getContrastFg(sidebarBg) === '#FFFFFF';
   const panelBg = mixHex(sidebarBg, sidebarIsDark ? '#000000' : '#FFFFFF', sidebarIsDark ? 0.14 : 0.18);
   const subtleBg = mixHex(sidebarBg, sidebarIsDark ? '#FFFFFF' : '#000000', sidebarIsDark ? 0.08 : 0.05);
   const borderColor = theme.border;

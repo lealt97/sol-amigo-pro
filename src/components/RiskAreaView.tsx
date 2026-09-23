@@ -189,7 +189,7 @@ export const RiskAreaView: React.FC<RiskAreaViewProps> = ({ theme }) => {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={confirmation !== CONFIRMATION_TEXT || !password.trim() || deleting}
-                className="btn-filled inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white"
+                className="btn-danger-solid inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors"
               >
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 {deleting ? 'Verificando e excluindo...' : 'Excluir conta definitivamente'}

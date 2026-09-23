@@ -29,10 +29,13 @@ import {
   ProposalSystemType,
   updateLeadNotes,
   updateLeadStatus,
+  isLeadConverted,
+  LEADS_UPDATED_EVENT,
 } from '../services/leads';
 import { syncLeadAsClient } from '../services/clients';
 import { LeadParametersModal } from './LeadParametersModal';
 import { LeadNotesModal } from './LeadNotesModal';
+import { ProposalWizardModal } from './ProposalWizardModal';
 import { formatPhone } from '../utils/formatters';
 import { getContrastFg } from '../utils/themeEngine';
 import { LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, getLeadStatusStyle } from '../utils/leadStatus';
@@ -114,8 +117,17 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
         );
       }
     };
+
+    const handleLeadsUpdated = () => {
+      void load();
+    };
+
     window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
-    return () => window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+    window.addEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdated);
+    return () => {
+      window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);
+      window.removeEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdated);
+    };
   }, []);
 
   const handleQuickStatusChange = async (lead: Lead, newStatus: LeadStage) => {
@@ -173,6 +185,9 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
       const clientId = await addLeadToClients(lead.id);
       syncLeadAsClient(lead, clientId);
       setLeads((current) => current.filter((item) => item.id !== lead.id));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(LEADS_UPDATED_EVENT, { detail: { convertedLeadId: lead.id, clientId } }));
+      }
       onShowToast(`${lead.name} foi adicionado aos clientes.`);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível adicionar o cliente.');
@@ -186,7 +201,10 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
     setWorkingId(proposalLead.id);
     setModalError('');
     try {
-      const proposal = await createProposalFromLead(proposalLead.id, systemType);
+      const proposal = await createProposalFromLead(proposalLead.id, systemType, {
+        clientId: proposalLead.clientId,
+        clientName: proposalLead.name,
+      });
       onShowToast(`Proposta ${proposal.proposalCode} criada como rascunho.`);
       setProposalLead(null);
       setSystemType('On-Grid');
@@ -246,14 +264,16 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
           <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Leads</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">Interessados enviados pelo formulário do seu site.</p>
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="btn-outline inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-all hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)]"
-          style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="btn-outline inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-all hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)] cursor-pointer"
+            style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border p-3 space-y-2.5" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
@@ -287,8 +307,9 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
               <button
                 key={stKey}
                 type="button"
+                data-status-badge="true"
                 onClick={() => setStatusFilter(isSelected ? 'all' : stKey)}
-                className="rounded-full px-3 py-1 font-semibold transition-all shrink-0 border inline-flex items-center gap-1.5"
+                className="status-filter-chip rounded-full px-3 py-1 font-semibold transition-all shrink-0 border inline-flex items-center gap-1.5"
                 style={{
                   backgroundColor: isSelected ? st.color : st.bg,
                   borderColor: isSelected ? st.color : st.border,
@@ -339,7 +360,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                 style={{
                   backgroundColor: theme.primary,
                   borderColor: theme.border,
-                  color: theme.text,
+                  color: getContrastFg(theme.primary),
                   boxShadow: `0 18px 45px ${theme.secondary}2e`,
                   zIndex: isStatusMenuOpen || isCardMenuOpen ? 30 : 1,
                 }}
@@ -354,6 +375,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                         <button
                           type="button"
                           id={`lead-status-btn-${lead.id}`}
+                          data-status-badge="true"
                           aria-label={`Status: ${statusStyle.label}. Clique para alterar.`}
                           aria-haspopup="listbox"
                           aria-expanded={isStatusMenuOpen}
@@ -362,7 +384,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                             setOpenStatusMenuId((current) => (current === lead.id ? null : lead.id));
                           }}
                           disabled={isUpdatingThisStatus}
-                          className="group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                          className="status-badge group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
                           style={{
                             borderColor: statusStyle.border,
                             backgroundColor: statusStyle.bg,
@@ -448,7 +470,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                     <div className="lead-actions-dropdown absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-lg border py-1 shadow-xl" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
                       <button onClick={() => { setProposalLead(lead); setOpenMenuId(null); setModalError(''); }} className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors">
                         <FileText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
-                        <span className="font-medium group-hover:text-white transition-colors">Gerar proposta</span>
+                        <span className="font-medium group-hover:text-white transition-colors">Gerar Proposta</span>
                       </button>
                       {lead.clientId ? (
                         <button
@@ -507,83 +529,45 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
       )}
 
       {proposalLead && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}
-        >
-          <div
-            className="w-full max-w-md rounded-xl border p-5 shadow-2xl space-y-4"
-            style={{
-              backgroundColor: theme.primary,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2.5">
-                <FileText className="h-5 w-5 text-[var(--secondary)]" />
-                <h3 className="text-base font-bold">Gerar Nova Proposta</h3>
-              </div>
-              <button
-                onClick={() => setProposalLead(null)}
-                className="p-1 text-[var(--dim)] hover:text-[var(--text)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <p className="text-[var(--muted)]">
-                Criar uma nova proposta comercial para <strong>{proposalLead.name}</strong>.
-              </p>
-              <div>
-                <label className="block font-semibold text-[var(--dim)] mb-1">Tipo de Sistema Solar</label>
-                <select
-                  value={systemType}
-                  onChange={(e) => setSystemType(e.target.value as ProposalSystemType)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="On-Grid" style={{ backgroundColor: theme.primary, color: theme.text }}>On-Grid (Conectado à rede)</option>
-                  <option value="Híbrido" style={{ backgroundColor: theme.primary, color: theme.text }}>Híbrido (Rede + Baterias)</option>
-                </select>
-              </div>
-              {modalError && <p className="text-xs text-[var(--danger)]">{modalError}</p>}
-            </div>
-
-            <div className="pt-3 flex justify-end gap-3 border-t" style={{ borderColor: theme.border }}>
-              <button
-                type="button"
-                data-cancel-outline="true"
-                onClick={() => setProposalLead(null)}
-                className="btn-outline-cancel px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                style={{ borderColor: theme.border }}
-              >
-                Cancelar
-              </button>
-              <button
-                id="btn-lead-confirmar-gerar-proposta"
-                type="button"
-                onClick={() => void handleCreateProposal()}
-                disabled={workingId === proposalLead.id}
-                className="btn-filled px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 active:scale-[0.98]"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                {workingId === proposalLead.id ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Gerando proposta...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-3.5 w-3.5" />
-                    Gerar Proposta
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProposalWizardModal
+          isOpen={Boolean(proposalLead)}
+          onClose={() => setProposalLead(null)}
+          theme={theme}
+          initialTarget={{
+            id: proposalLead.id,
+            name: proposalLead.name,
+            clientId: proposalLead.clientId,
+            phone: proposalLead.phone,
+            email: proposalLead.email,
+            city: proposalLead.city,
+            state: proposalLead.state,
+            propertyType: proposalLead.propertyType,
+            concessionaria: proposalLead.distributor,
+            monthlyConsumptionKWh: proposalLead.averageConsumptionKWh,
+          }}
+          onSaveProposal={async (newSolar) => {
+            const { createQuickProposalForClient } = await import('../services/proposals');
+            await createQuickProposalForClient({
+              clientId: proposalLead.clientId || proposalLead.id,
+              clientName: proposalLead.name,
+              systemType: newSolar.systemType || 'On-Grid',
+              systemPowerKWp: newSolar.systemPowerKWp,
+              totalValue: newSolar.totalValue,
+              title: `${newSolar.systemPowerKWp} kWp • ${proposalLead.name}`,
+              modulesCount: newSolar.modulesCount,
+              moduleModel: newSolar.moduleModel,
+              inverterModel: newSolar.inverterModel,
+              estimatedMonthlyGenKWh: newSolar.estimatedMonthlyGenKWh,
+              estimatedMonthlySavings: newSolar.estimatedMonthlySavings,
+            });
+            setProposalLead(null);
+            onShowToast(`Proposta ${newSolar.code} gerada com sucesso.`);
+            if (onNavigate) {
+              onNavigate('propostas', proposalLead.name);
+            }
+          }}
+          onShowToast={onShowToast}
+        />
       )}
 
       {deleteLead && (

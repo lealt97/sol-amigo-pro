@@ -109,6 +109,9 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
 
   const handlePreset = (theme: ThemeConfig) => {
     applyDraft({ ...theme });
+    saveTheme(theme);
+    const presetName = THEME_PRESETS.find((p) => sameTheme(p.theme, theme))?.name || 'Predefinido';
+    onShowToast(`Tema "${presetName}" aplicado e salvo!`);
   };
 
   const handleReset = () => {
@@ -144,10 +147,11 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
       style={{ color: neutralFg }}
     >
       <section
-        className="rounded-xl border p-5"
+        className="rounded-xl border p-5 shadow-sm"
         style={{
-          backgroundColor: draft.background,
+          backgroundColor: draft.primary,
           borderColor: draft.border,
+          color: primaryFg,
         }}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -162,8 +166,10 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
               <Palette className="h-3.5 w-3.5" />
               Motor de Cores
             </div>
-            <h2 className="mt-2 text-2xl font-bold">Personalização do Sistema</h2>
-            <p className="mt-1 max-w-2xl text-sm opacity-70">
+            <h2 className="mt-2 text-2xl font-bold" style={{ color: primaryFg }}>
+              Personalização do Sistema
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm" style={{ color: primaryFg, opacity: 0.85 }}>
               Configure as seis cores estruturais da interface ou aplique um tema predefinido.
             </p>
           </div>
@@ -172,14 +178,14 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
             <button
               onClick={handleReset}
               className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ borderColor: draft.border, color: draft.text }}
+              style={{ borderColor: draft.border, color: primaryFg }}
             >
               <RotateCcw className="h-4 w-4" />
               Restaurar padrão
             </button>
             <button
               onClick={handleSave}
-              className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold transition-opacity hover:opacity-90"
+              className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold transition-opacity hover:opacity-90 shadow-sm"
               style={{ backgroundColor: draft.secondary, color: secondaryFg }}
             >
               <Save className="h-4 w-4" />
@@ -190,16 +196,21 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
       </section>
 
       <section
-        className="rounded-xl border p-5"
+        className="rounded-xl border p-5 shadow-sm"
         style={{
-          backgroundColor: draft.background,
+          backgroundColor: draft.primary,
           borderColor: draft.border,
+          color: primaryFg,
         }}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="font-bold">Cores do sistema</h3>
-            <p className="text-xs opacity-60">6 variáveis ativas</p>
+            <h3 className="font-bold" style={{ color: primaryFg }}>
+              Cores do sistema
+            </h3>
+            <p className="text-xs" style={{ color: primaryFg, opacity: 0.85 }}>
+              6 variáveis ativas
+            </p>
           </div>
           <div className="flex gap-1.5">
             {[draft.primary, draft.secondary, draft.background, draft.accent, draft.border, draft.text].map((color, index) => (
@@ -218,9 +229,9 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
               key={field.key}
               className="rounded-xl border p-4"
               style={{
-                backgroundColor:
-                  field.key === 'background' ? draft.background : `${draft.primary}08`,
+                backgroundColor: draft.background,
                 borderColor: draft.border,
+                color: draft.text,
               }}
             >
               <div className="flex items-start justify-between gap-4">
@@ -266,15 +277,20 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
       </section>
 
       <section
-        className="rounded-xl border p-5"
+        className="rounded-xl border p-5 shadow-sm"
         style={{
-          backgroundColor: draft.background,
+          backgroundColor: draft.primary,
           borderColor: draft.border,
+          color: primaryFg,
         }}
       >
         <div className="mb-4">
-          <h3 className="font-bold">Temas predefinidos</h3>
-          <p className="text-xs opacity-60">Clique em um tema para aplicar imediatamente.</p>
+          <h3 className="font-bold" style={{ color: primaryFg }}>
+            Temas predefinidos
+          </h3>
+          <p className="text-xs" style={{ color: primaryFg, opacity: 0.85 }}>
+            Clique em um tema para aplicar imediatamente.
+          </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -283,8 +299,9 @@ export const PersonalizacaoView: React.FC<PersonalizacaoViewProps> = ({
             return (
               <button
                 key={preset.id}
+                data-theme-preset="true"
                 onClick={() => handlePreset(preset.theme)}
-                className="relative rounded-xl border p-3 text-left transition-transform hover:-translate-y-0.5"
+                className="theme-preset-card relative rounded-xl border p-3 text-left transition-transform hover:-translate-y-0.5"
                 style={{
                   backgroundColor: preset.theme.background,
                   color: preset.theme.text,

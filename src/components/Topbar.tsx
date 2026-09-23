@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, Check, HelpCircle, Menu } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
 import { BrandLogo } from './BrandLogo';
+import { getContrastFg } from '../utils/themeEngine';
 import {
   LeadNotificationItem,
   markAllLeadsAsRead,
@@ -93,16 +94,29 @@ export const Topbar: React.FC<TopbarProps> = ({
     markAllLeadsAsRead();
   };
 
+  const topbarBg = theme?.primary || '#161B22';
+  const topbarFg = getContrastFg(topbarBg) === '#FFFFFF' ? '#FFFFFF' : (theme?.text || '#0F172A');
+  const isDark = getContrastFg(topbarBg) === '#FFFFFF';
+  const borderColor = theme?.border || '#30363D';
+  const controlBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+  const controlBorder = borderColor;
+  const controlFg = topbarFg;
+
   return (
     <header
       id="app-topbar"
-      className="h-14 border-b border-[#30363D] flex items-center justify-between px-4 md:px-6 bg-[#161B22] text-[#C9D1D9] shrink-0 select-none z-30 sticky top-0"
+      className="h-14 border-b flex items-center justify-between px-4 md:px-6 shrink-0 select-none z-30 sticky top-0 transition-colors"
+      style={{
+        backgroundColor: topbarBg,
+        borderColor,
+        color: topbarFg,
+      }}
     >
       <div className="flex items-center space-x-2.5 md:space-x-4 min-w-0">
         <div id="topbar-mobile-logo" className="md:hidden flex items-center shrink-0">
           <BrandLogo
             orientation="vertical"
-            backgroundColor={theme?.primary || '#161B22'}
+            backgroundColor={topbarBg}
             className="w-7 h-7 object-contain"
           />
         </div>
@@ -110,7 +124,8 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           id="topbar-mobile-menu-btn"
           onClick={onOpenMobileMenu}
-          className="md:hidden p-1.5 rounded bg-[#21262D] border border-[#30363D] text-[#8B949E] hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)] transition-colors"
+          className="md:hidden p-1.5 rounded border transition-colors hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)]"
+          style={{ backgroundColor: controlBg, borderColor: controlBorder, color: controlFg }}
           aria-label="Abrir menu"
         >
           <Menu className="w-4 h-4" />
@@ -119,14 +134,15 @@ export const Topbar: React.FC<TopbarProps> = ({
         <button
           id="topbar-sidebar-toggle-btn"
           onClick={handleSidebarToggle}
-          className="hidden md:flex relative left-1 w-8 h-8 items-center justify-center rounded bg-[#21262D] border border-[#30363D] text-[#C9D1D9] hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)] transition-colors"
+          className="hidden md:flex relative left-1 w-8 h-8 items-center justify-center rounded border transition-colors hover:border-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)]"
+          style={{ backgroundColor: controlBg, borderColor: controlBorder, color: controlFg }}
           title="Abrir/fechar menu"
           aria-label="Abrir/fechar menu"
         >
           <Menu className="w-[18px] h-[18px]" />
         </button>
 
-        <span className="text-white font-semibold text-xs md:text-sm truncate">
+        <span className="font-semibold text-xs md:text-sm truncate" style={{ color: topbarFg }}>
           {PAGE_TITLES[activePage] || 'Sol Amigo Pro'}
         </span>
       </div>
@@ -137,7 +153,8 @@ export const Topbar: React.FC<TopbarProps> = ({
             ref={btnRef}
             id="topbar-notifications-btn"
             onClick={() => setNotificationsOpen((current) => !current)}
-            className="relative p-1.5 bg-[#21262D] border border-[#30363D] rounded-md text-[#C9D1D9] hover:text-white hover:bg-[#30363D] transition-colors"
+            className="relative p-1.5 rounded-md border transition-opacity hover:opacity-85"
+            style={{ backgroundColor: controlBg, borderColor: controlBorder, color: controlFg }}
             aria-label={unreadCount > 0 ? `${unreadCount} novas notificações` : 'Ver notificações'}
             title={unreadCount > 0 ? `${unreadCount} novo(s) lead(s)` : 'Notificações'}
           >
@@ -145,7 +162,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             {unreadCount > 0 && (
               <span
                 id="topbar-notifications-badge"
-                className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-md ring-2 ring-[#161B22] animate-in zoom-in-75 duration-200"
+                className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-md ring-2 ring-[var(--primary)] animate-in zoom-in-75 duration-200"
               >
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
@@ -156,13 +173,26 @@ export const Topbar: React.FC<TopbarProps> = ({
             <div
               ref={popoverRef}
               id="notifications-popover"
-              className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-24px)] bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl z-50 text-[#C9D1D9] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-24px)] rounded-xl shadow-2xl z-50 border overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              style={{
+                backgroundColor: topbarBg,
+                borderColor,
+                color: topbarFg,
+              }}
             >
-              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[#30363D] bg-[#21262D]/80">
+              <div
+                className="flex items-center justify-between px-3.5 py-2.5 border-b"
+                style={{
+                  borderColor,
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                }}
+              >
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white">Notificações</span>
+                  <span className="text-xs font-bold" style={{ color: topbarFg }}>
+                    Notificações
+                  </span>
                   {unreadCount > 0 && (
-                    <span className="flex h-4 items-center justify-center rounded-full bg-red-500/20 text-red-400 px-1.5 text-[10px] font-bold border border-red-500/30">
+                    <span className="flex h-4 items-center justify-center rounded-full bg-red-500/20 text-red-500 px-1.5 text-[10px] font-bold border border-red-500/30">
                       {unreadCount} nova{unreadCount > 1 ? 's' : ''}
                     </span>
                   )}
@@ -172,19 +202,24 @@ export const Topbar: React.FC<TopbarProps> = ({
                     type="button"
                     data-sol-amigo-text-hover
                     onClick={handleMarkAllRead}
-                    className="text-[11px] text-[var(--secondary)] hover:underline font-semibold transition-colors bg-transparent border-0"
+                    className="text-[11px] text-[var(--secondary)] hover:underline font-semibold transition-colors bg-transparent border-0 cursor-pointer"
                   >
                     Marcar como lidas
                   </button>
                 )}
               </div>
 
-              <div className="max-h-80 overflow-y-auto divide-y divide-[#30363D]/50">
+              <div
+                className="max-h-80 overflow-y-auto divide-y"
+                style={{ borderColor }}
+              >
                 {notifications.length === 0 ? (
                   <div className="py-8 px-4 text-center">
-                    <Bell className="w-7 h-7 text-[#8B949E] opacity-40 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-white">Nenhuma notificação</p>
-                    <p className="mt-1 text-[11px] text-[#8B949E]">
+                    <Bell className="w-7 h-7 opacity-40 mx-auto mb-2" style={{ color: topbarFg }} />
+                    <p className="text-xs font-semibold" style={{ color: topbarFg }}>
+                      Nenhuma notificação
+                    </p>
+                    <p className="mt-1 text-[11px] opacity-70" style={{ color: topbarFg }}>
                       Quando novos leads forem captados, eles aparecerão aqui.
                     </p>
                   </div>
@@ -193,9 +228,15 @@ export const Topbar: React.FC<TopbarProps> = ({
                     <div
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`p-3 text-xs hover:bg-[#21262D] cursor-pointer transition-colors flex items-start gap-2.5 ${
-                        !notif.read ? 'bg-[#21262D]/40' : ''
-                      }`}
+                      className="p-3 text-xs cursor-pointer transition-colors flex items-start gap-2.5 hover:opacity-90"
+                      style={{
+                        backgroundColor: !notif.read
+                          ? isDark
+                            ? 'rgba(255, 255, 255, 0.06)'
+                            : 'rgba(0, 0, 0, 0.04)'
+                          : 'transparent',
+                        borderBottom: `1px solid ${borderColor}`,
+                      }}
                     >
                       <div
                         className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
@@ -204,13 +245,17 @@ export const Topbar: React.FC<TopbarProps> = ({
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="font-semibold text-white truncate">Novo Lead Recebido</span>
-                          <span className="text-[10px] text-[#8B949E] shrink-0">{notif.timeAgo}</span>
+                          <span className="font-semibold truncate" style={{ color: topbarFg }}>
+                            Novo Lead Recebido
+                          </span>
+                          <span className="text-[10px] opacity-70 shrink-0" style={{ color: topbarFg }}>
+                            {notif.timeAgo}
+                          </span>
                         </div>
                         <p className="text-xs font-medium text-[var(--secondary)] truncate mt-0.5">
                           {notif.leadName}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#8B949E] truncate">
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] opacity-75 truncate" style={{ color: topbarFg }}>
                           {notif.propertyType && <span>{notif.propertyType}</span>}
                           {(notif.city || notif.state) && (
                             <span>
@@ -219,7 +264,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                             </span>
                           )}
                           {notif.phone && (
-                            <span className="ml-auto text-[#6E7681] truncate">{notif.phone}</span>
+                            <span className="ml-auto opacity-70 truncate">{notif.phone}</span>
                           )}
                         </div>
                       </div>
@@ -228,7 +273,13 @@ export const Topbar: React.FC<TopbarProps> = ({
                 )}
               </div>
 
-              <div className="p-2 border-t border-[#30363D] bg-[#161B22] flex items-center justify-between px-3">
+              <div
+                className="p-2 border-t flex items-center justify-between px-3"
+                style={{
+                  borderColor,
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                }}
+              >
                 <button
                   type="button"
                   id="notifications-view-all-leads-btn"
@@ -237,13 +288,14 @@ export const Topbar: React.FC<TopbarProps> = ({
                     setNotificationsOpen(false);
                     onNavigate?.('leads');
                   }}
-                  className="text-xs text-white hover:text-[var(--secondary)] hover:underline font-semibold py-1 flex items-center gap-1 transition-colors bg-transparent border-0"
+                  className="text-xs hover:text-[var(--secondary)] hover:underline font-semibold py-1 flex items-center gap-1 transition-colors bg-transparent border-0 cursor-pointer"
+                  style={{ color: topbarFg }}
                 >
                   <span>Ver todos os leads</span>
                   <span className="text-[10px]">&rarr;</span>
                 </button>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] text-[#8B949E]">
+                  <span className="text-[10px] opacity-70" style={{ color: topbarFg }}>
                     {unreadCount} não {unreadCount > 1 ? 'lidos' : 'lido'}
                   </span>
                 )}
@@ -255,7 +307,8 @@ export const Topbar: React.FC<TopbarProps> = ({
         {onOpenHelp && (
           <button
             onClick={onOpenHelp}
-            className="p-1.5 bg-[#21262D] border border-[#30363D] rounded-md text-[#8B949E] hover:text-white hover:bg-[#30363D] transition-colors"
+            className="p-1.5 rounded-md border transition-opacity hover:opacity-85"
+            style={{ backgroundColor: controlBg, borderColor: controlBorder, color: controlFg }}
             title="Ajuda & Documentação"
           >
             <HelpCircle className="w-4 h-4" />

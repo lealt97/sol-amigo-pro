@@ -41,7 +41,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               Como gerar uma Proposta Solar?
             </h4>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Clique em <b>"Nova Proposta"</b> no topo da página ou no menu rápido. Insira o consumo médio em kWh ou selecione um cliente existente para dimensionar a quantidade de módulos, potência em kWp, inversor e tempo de retorno (payback).
+              Clique em <b>"Gerar Proposta"</b> no topo da página ou no menu rápido. Insira o consumo médio em kWh ou selecione um cliente existente para dimensionar a quantidade de módulos, potência em kWp, inversor e tempo de retorno (payback).
             </p>
           </div>
 

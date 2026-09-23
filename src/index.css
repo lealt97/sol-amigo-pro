@@ -81,12 +81,12 @@ label:has(input[type="file"]:not(:disabled)),
   3) Botões de exclusão/perigo mantêm a cor semântica de perigo (vermelho).
   4) Botões de apenas texto / Cancelar alteram apenas a cor da fonte com a cor secundária.
 */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover,
-input[type="button"]:not(:disabled):not(.btn-cancel):not(.btn-text):hover,
-input[type="submit"]:not(:disabled):hover,
-input[type="reset"]:not(:disabled):not(.btn-cancel):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not([data-color-swatch]):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover,
+input[type="button"]:not(:disabled):not(.btn-cancel):not(.btn-text):not(#area-risco-page *):hover,
+input[type="submit"]:not(:disabled):not(#area-risco-page *):hover,
+input[type="reset"]:not(:disabled):not(.btn-cancel):not(#area-risco-page *):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *):hover {
   background-color: var(--button-outline-hover-bg) !important;
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
@@ -94,10 +94,10 @@ label:has(input[type="file"]:not(:disabled)):hover,
 }
 
 /* Ícones de botões padrão no hover com fundo preenchido ficam brancos */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg *,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover svg,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):hover svg * {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg *,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *):hover svg,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *):hover svg * {
   color: var(--button-outline-hover-fg, #ffffff) !important;
   stroke: var(--button-outline-hover-fg, #ffffff) !important;
 }
@@ -244,19 +244,61 @@ button.btn-danger-solid:not(:disabled):hover {
   stroke: #ffffff !important;
 }
 
+/* Botão de texto perigo / remover / trocar titular sem fundo em bloco (.btn-danger-text) */
+.btn-danger-text,
+button.btn-danger-text,
+button[data-danger-text] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #f87171 !important;
+  filter: none !important;
+  box-shadow: none !important;
+  transition: color 150ms ease, opacity 150ms ease !important;
+}
+
+.btn-danger-text:not(:disabled):hover,
+button.btn-danger-text:not(:disabled):hover,
+button[data-danger-text]:not(:disabled):hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #fca5a5 !important;
+  text-decoration: underline !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+.btn-danger-text:not(:disabled):hover svg,
+button.btn-danger-text:not(:disabled):hover svg,
+button[data-danger-text]:not(:disabled):hover svg {
+  color: #fca5a5 !important;
+  stroke: #fca5a5 !important;
+}
+
 /* Botões com preenchimento via style inline do React ou classes utilitárias: preservam a cor preenchida com brilho e realce */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline)[style*="background-color"]:hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline)[style*="background-color"]:hover,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class^="bg-"]:not([class*="bg-transparent"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn])[class*=" bg-"]:not([class*="bg-transparent"]):hover,
-.btn-filled:not(:disabled):hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not(#area-risco-page *)[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *)[style*="background-color"]:hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not(#area-risco-page *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not(#area-risco-page *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([data-theme-preset]):not(.theme-preset-card):not(#area-risco-page *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+.btn-filled:not(:disabled):not(.btn-danger-solid):not(#area-risco-page *):hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg, #ffffff) !important;
   filter: brightness(1.08) saturate(1.06) !important;
   box-shadow: 0 4px 16px color-mix(in srgb, var(--secondary) 28%, transparent) !important;
+}
+
+/* Proteção explícita de hover para cards de presets e badges de status */
+[data-theme-preset]:hover,
+.theme-preset-card:hover {
+  filter: brightness(1.04) !important;
+}
+
+[data-status-badge]:hover,
+.status-badge:hover,
+[id^="lead-status-btn-"]:hover {
+  filter: brightness(1.06) !important;
 }
 
 #topbar-notifications-badge {

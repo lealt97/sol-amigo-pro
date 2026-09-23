@@ -8,6 +8,7 @@ import { parseLeadNotes } from '../utils/leadNotes';
 interface LeadNotesModalProps {
   lead: Lead;
   theme: ThemeConfig;
+  targetType?: 'lead' | 'client';
   onClose: () => void;
   onNotesUpdated: (serializedNotes: string, notesCount: number) => void;
   onShowToast: (message: string) => void;
@@ -16,6 +17,7 @@ interface LeadNotesModalProps {
 export const LeadNotesModal: React.FC<LeadNotesModalProps> = ({
   lead,
   theme,
+  targetType = 'lead',
   onClose,
   onNotesUpdated,
   onShowToast,
@@ -57,16 +59,9 @@ export const LeadNotesModal: React.FC<LeadNotesModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold">Anotar</h2>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                  style={{
-                    backgroundColor: 'color-mix(in srgb, var(--secondary) 18%, transparent)',
-                    color: theme.secondary,
-                  }}
-                >
-                  {notesCount} {notesCount === 1 ? 'registro' : 'registros'}
-                </span>
+                <h2 className="text-base sm:text-lg font-bold">
+                  {targetType === 'client' ? 'Anotações do Cliente' : 'Anotações do Interessado'}
+                </h2>
               </div>
               <p className="text-xs text-[var(--muted)] truncate max-w-md">
                 <strong>{lead.name}</strong> · {formatPhone(lead.phone)}{' '}
@@ -91,6 +86,7 @@ export const LeadNotesModal: React.FC<LeadNotesModalProps> = ({
             leadName={lead.name}
             initialNotes={lead.notes}
             theme={theme}
+            targetType={targetType}
             onNotesUpdated={(serializedNotes, count) => {
               setNotesCount(count);
               onNotesUpdated(serializedNotes, count);

@@ -45,12 +45,15 @@ import { parseLeadNotes } from '../utils/leadNotes';
 import { getContrastFg } from '../utils/themeEngine';
 import { getLeadStatusStyle, LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
+import { PROPOSALS_UPDATED_EVENT } from '../services/proposals';
+import { ProposalWizardModal } from './ProposalWizardModal';
 
 interface LeadParametersModalProps {
   lead: Lead;
   theme: ThemeConfig;
   statusLabels: Record<LeadStage, string>;
   initialTab?: TabKey;
+  targetType?: 'lead' | 'client';
   onClose: () => void;
   onLeadUpdated: (updatedLead: Lead) => void;
   onShowToast: (message: string) => void;
@@ -63,10 +66,12 @@ export function LeadParametersModal({
   theme,
   statusLabels,
   initialTab = 'parametros',
+  targetType,
   onClose,
   onLeadUpdated,
   onShowToast,
 }: LeadParametersModalProps) {
+  const isClient = targetType === 'client' || Boolean(lead.clientId || lead.source === 'Clientes');
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +90,7 @@ export function LeadParametersModal({
   const [openingBillPath, setOpeningBillPath] = useState<string | null>(null);
 
   // Anotações
-  const [notesCount, setNotesCount] = useState<number>(0);
+  const [notesCount, setNotesCount] = useState<number>(() => parseLeadNotes(lead.notes).length);
   const [notesText, setNotesText] = useState(lead.notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -155,13 +160,16 @@ export function LeadParametersModal({
 
     try {
       const [proposalsData, billsData, nNotes] = await Promise.all([
-        fetchLeadProposals(lead.id),
+        fetchLeadProposals(lead.id, {
+          clientId: lead.clientId,
+          clientName: lead.name,
+        }),
         fetchLeadEnergyBills(lead.id),
         fetchLeadNotesCount(lead.id),
       ]);
       setProposals(proposalsData);
       setEnergyBills(billsData);
-      setNotesCount(Math.max(nNotes, parseLeadNotes(lead.notes).length));
+      setNotesCount(parseLeadNotes(lead.notes).length || nNotes);
     } catch (err) {
       console.error('Erro ao carregar dados do lead:', err);
     } finally {
@@ -173,7 +181,26 @@ export function LeadParametersModal({
 
   useEffect(() => {
     void loadData();
-  }, [lead.id]);
+  }, [lead.id, lead.clientId, lead.name]);
+
+  // Atualização em tempo real quando propostas forem criadas, editadas ou excluídas
+  useEffect(() => {
+    const handleProposalsUpdate = () => {
+      void fetchLeadProposals(lead.id, {
+        clientId: lead.clientId,
+        clientName: lead.name,
+      }).then((data) => {
+        setProposals(data);
+      });
+    };
+    window.addEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+    return () => window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+  }, [lead.id, lead.clientId, lead.name]);
+
+  useEffect(() => {
+    setNotesCount(parseLeadNotes(lead.notes).length);
+    setNotesText(lead.notes || '');
+  }, [lead.notes]);
 
   useEffect(() => {
     if (lead.status) {
@@ -244,7 +271,7 @@ export function LeadParametersModal({
         ...payload,
       };
       onLeadUpdated(updated);
-      onShowToast('Parâmetros do lead atualizados com sucesso.');
+      onShowToast(isClient ? 'Parâmetros do cliente atualizados com sucesso.' : 'Parâmetros do lead atualizados com sucesso.');
     } catch (err: any) {
       setErrorMessage(err?.message || 'Não foi possível salvar os parâmetros.');
     } finally {
@@ -292,11 +319,17 @@ export function LeadParametersModal({
     setCreatingProposal(true);
     setErrorMessage('');
     try {
-      const result = await createProposalFromLead(lead.id, newProposalSystemType);
+      const result = await createProposalFromLead(lead.id, newProposalSystemType, {
+        clientId: lead.clientId,
+        clientName: lead.name,
+      });
       setShowCreateProposalModal(false);
       onShowToast(`Proposta ${result.proposalCode} gerada.`);
       // Recarrega propostas
-      const updatedProposals = await fetchLeadProposals(lead.id);
+      const updatedProposals = await fetchLeadProposals(lead.id, {
+        clientId: lead.clientId,
+        clientName: lead.name,
+      });
       setProposals(updatedProposals);
       setActiveTab('propostas');
     } catch (err: any) {
@@ -467,7 +500,9 @@ export function LeadParametersModal({
                 )}
               </div>
               <p className="text-xs text-[var(--muted)] truncate mt-0.5">
-                Captado em {formattedDate} · Origem: {lead.source || 'Formulário do site'}
+                {isClient
+                  ? `Cadastrado em ${formattedDate} · Origem: ${lead.source || 'Clientes'}`
+                  : `Captado em ${formattedDate} · Origem: ${lead.source || 'Formulário do site'}`}
               </p>
             </div>
           </div>
@@ -495,7 +530,7 @@ export function LeadParametersModal({
           }}
         >
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-max">
-            {/* Aba 1: Dados do Lead */}
+            {/* Aba 1: Dados do Lead / Cliente */}
             <button
               id="lead-modal-tab-parametros"
               type="button"
@@ -519,7 +554,9 @@ export function LeadParametersModal({
                 className="h-4 w-4 shrink-0 transition-colors"
                 style={{ color: activeTab === 'parametros' ? theme.secondary : undefined }}
               />
-              <span className="transition-colors font-medium">Informações do Interessado</span>
+              <span className="transition-colors font-medium">
+                {isClient ? 'Informações do Cliente' : 'Informações do Interessado'}
+              </span>
             </button>
 
             {/* Aba 2: Propostas Geradas */}
@@ -1102,7 +1139,7 @@ export function LeadParametersModal({
                   style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                 >
                   <FileText className="h-4 w-4" />
-                  Gerar Nova Proposta
+                  Gerar Proposta
                 </button>
               </div>
 
@@ -1129,7 +1166,7 @@ export function LeadParametersModal({
                     style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                   >
                     <FileText className="h-4 w-4" />
-                    Criar Proposta Comercial
+                    Gerar Proposta
                   </button>
                 </div>
               ) : (
@@ -1174,7 +1211,17 @@ export function LeadParametersModal({
                             >
                               {item.status}
                             </span>
+                            {item.totalValue !== undefined && item.totalValue > 0 && (
+                              <span className="text-xs font-bold text-[var(--text)]">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.totalValue)}
+                              </span>
+                            )}
                           </div>
+                          {item.title && (
+                            <p className="text-xs font-medium text-[var(--text)] opacity-90 line-clamp-1">
+                              {item.title}
+                            </p>
+                          )}
                           <p className="text-xs text-[var(--muted)]">
                             Criada em {propDate}
                           </p>
@@ -1332,7 +1379,7 @@ export function LeadParametersModal({
                 <div>
                   <h3 className="text-sm font-bold flex items-center gap-2">
                     <NotepadText className="h-4 w-4 text-[var(--secondary)]" />
-                    Anotações do Lead ({notesCount})
+                    {isClient ? 'Anotações do Cliente' : 'Anotações do Lead'} ({notesCount})
                   </h3>
                   <p className="text-xs text-[var(--muted)]">
                     Histórico completo de observações, telefonemas e fotos da instalação.
@@ -1411,6 +1458,20 @@ export function LeadParametersModal({
                 <span className="text-[var(--muted)]">Status Comercial:</span>
                 <span className="font-semibold uppercase text-[var(--text)]">{selectedProposalForView.status}</span>
               </div>
+              {selectedProposalForView.title && (
+                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: theme.border }}>
+                  <span className="text-[var(--muted)]">Título:</span>
+                  <span className="font-semibold text-[var(--text)]">{selectedProposalForView.title}</span>
+                </div>
+              )}
+              {selectedProposalForView.totalValue !== undefined && selectedProposalForView.totalValue > 0 && (
+                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: theme.border }}>
+                  <span className="text-[var(--muted)]">Valor Total:</span>
+                  <span className="font-bold text-sm text-[var(--text)]">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedProposalForView.totalValue)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between py-1.5 border-b" style={{ borderColor: theme.border }}>
                 <span className="text-[var(--muted)]">Data de Geração:</span>
                 <span className="text-[var(--text)]">
@@ -1424,7 +1485,7 @@ export function LeadParametersModal({
                 </span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-[var(--muted)]">Interessado:</span>
+                <span className="text-[var(--muted)]">{isClient ? 'Cliente:' : 'Interessado:'}</span>
                 <span className="font-semibold text-[var(--text)]">{lead.name}</span>
               </div>
             </div>
@@ -1452,84 +1513,50 @@ export function LeadParametersModal({
         </div>
       )}
 
-      {/* MODAL DE CRIAÇÃO RÁPIDA DE PROPOSTA */}
+      {/* WIZARD DE DIMENSIONAMENTO & PROPOSTA */}
       {showCreateProposalModal && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4 backdrop-blur-sm"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 85%, transparent)' }}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl"
-            style={{
-              backgroundColor: theme.primary,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2.5">
-                <FileText className="h-5 w-5 text-[var(--secondary)]" />
-                <h3 className="text-base font-bold">Gerar Nova Proposta</h3>
-              </div>
-              <button
-                onClick={() => setShowCreateProposalModal(false)}
-                className="p-1 text-[var(--dim)] hover:text-[var(--text)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <p className="text-[var(--muted)]">
-                Criar uma nova proposta comercial para <strong>{lead.name}</strong>.
-              </p>
-              <div>
-                <label className="block font-semibold text-[var(--dim)] mb-1">Tipo de Sistema Solar</label>
-                <select
-                  value={newProposalSystemType}
-                  onChange={(e) => setNewProposalSystemType(e.target.value as ProposalSystemType)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                >
-                  <option value="On-Grid" style={{ backgroundColor: theme.primary, color: theme.text }}>On-Grid (Conectado à rede)</option>
-                  <option value="Híbrido" style={{ backgroundColor: theme.primary, color: theme.text }}>Híbrido (Rede + Baterias)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="pt-3 flex justify-end gap-3 border-t" style={{ borderColor: theme.border }}>
-              <button
-                type="button"
-                data-cancel-outline="true"
-                onClick={() => setShowCreateProposalModal(false)}
-                className="btn-outline-cancel px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                style={{ borderColor: theme.border }}
-              >
-                Cancelar
-              </button>
-              <button
-                id="btn-lead-confirmar-gerar-proposta"
-                type="button"
-                onClick={() => void handleCreateProposal()}
-                disabled={creatingProposal}
-                className="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 active:scale-[0.98]"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                {creatingProposal ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Gerando proposta...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-3.5 w-3.5" />
-                    Gerar Proposta
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProposalWizardModal
+          isOpen={showCreateProposalModal}
+          onClose={() => setShowCreateProposalModal(false)}
+          theme={theme}
+          initialTarget={{
+            id: lead.id,
+            name: lead.name,
+            clientId: lead.clientId,
+            phone: lead.phone,
+            email: lead.email,
+            city: lead.city,
+            state: lead.state,
+            propertyType: lead.propertyType,
+            concessionaria: lead.distributor,
+            monthlyConsumptionKWh: lead.averageConsumptionKWh,
+          }}
+          onSaveProposal={async (newSolar) => {
+            const { createQuickProposalForClient } = await import('../services/proposals');
+            await createQuickProposalForClient({
+              clientId: lead.clientId || lead.id,
+              clientName: lead.name,
+              systemType: newSolar.systemType || 'On-Grid',
+              systemPowerKWp: newSolar.systemPowerKWp,
+              totalValue: newSolar.totalValue,
+              title: `${newSolar.systemPowerKWp} kWp • ${lead.name}`,
+              modulesCount: newSolar.modulesCount,
+              moduleModel: newSolar.moduleModel,
+              inverterModel: newSolar.inverterModel,
+              estimatedMonthlyGenKWh: newSolar.estimatedMonthlyGenKWh,
+              estimatedMonthlySavings: newSolar.estimatedMonthlySavings,
+            });
+            setShowCreateProposalModal(false);
+            onShowToast(`Proposta ${newSolar.code} gerada com sucesso.`);
+            const updated = await fetchLeadProposals(lead.id, {
+              clientId: lead.clientId,
+              clientName: lead.name,
+            });
+            setProposals(updated);
+            setActiveTab('propostas');
+          }}
+          onShowToast={onShowToast}
+        />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { PageKey, PdfSettingsConfig, ThemeConfig } from './types';
-import { applyThemeToDOM, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
+import { applyThemeToDOM, getContrastFg, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
 import { supabase } from './lib/supabase';
 
 import { Sidebar } from './components/Sidebar';
@@ -415,14 +415,28 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-[#C9D1D9] flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
+    <div
+      className="min-h-screen flex flex-col font-sans antialiased transition-colors"
+      style={{
+        backgroundColor: currentTheme.background,
+        color: currentTheme.text,
+      }}
+    >
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#161B22] text-[#C9D1D9] px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-[#30363D] animate-in fade-in slide-in-from-bottom-5 font-mono text-xs">
+        <div
+          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-5 font-mono text-xs"
+          style={{
+            backgroundColor: currentTheme.primary,
+            borderColor: currentTheme.border,
+            color: getContrastFg(currentTheme.primary),
+          }}
+        >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium text-white">{toastMessage}</span>
+          <span className="font-medium">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="text-[#8B949E] hover:text-white text-xs ml-2 cursor-pointer"
+            className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100"
+            style={{ color: getContrastFg(currentTheme.primary) }}
           >
             ✕
           </button>
@@ -452,7 +466,13 @@ export default function App() {
           onNavigate={(page) => setActivePage(page)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0D1117]">
+        <main
+          className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors"
+          style={{
+            backgroundColor: currentTheme.background,
+            color: currentTheme.text,
+          }}
+        >
           {renderCurrentView()}
         </main>
       </div>

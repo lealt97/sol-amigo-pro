@@ -22,220 +22,62 @@ export interface ClientProposal {
 export const PROPOSALS_STORAGE_KEY = 'solamigo.proposals.v1';
 export const PROPOSALS_UPDATED_EVENT = 'solamigo:proposals-updated';
 
-export const INITIAL_CLIENT_PROPOSALS: ClientProposal[] = [
-  {
-    id: 'prop-1',
-    code: 'PROP-2026-084',
-    clientId: 'cli-1',
-    clientName: 'Fazenda Santa Rita',
-    title: 'Opção 1: 28.08 kWp • Galpão de Ordenha (On-Grid)',
-    systemPowerKWp: 28.08,
-    systemType: 'On-Grid',
-    totalValue: 98500.0,
-    status: 'Aprovada',
-    modulesCount: 48,
-    moduleModel: 'Jinko Solar Tiger Neo 585W N-Type Bifacial',
-    inverterModel: 'Deye SUN-25K-G04 Trifásico 380V',
-    estimatedMonthlyGenKWh: 3360,
-    estimatedMonthlySavings: 2850.0,
-    createdAt: '2026-08-23T14:30:00.000Z',
-  },
-  {
-    id: 'prop-1-b',
-    code: 'PROP-2026-089',
-    clientId: 'cli-1',
-    clientName: 'Fazenda Santa Rita',
-    title: 'Opção 2: 35.10 kWp • Híbrido c/ Bateria Deye 15kWh',
-    systemPowerKWp: 35.1,
-    systemType: 'Híbrido',
-    totalValue: 145000.0,
-    status: 'Em negociação',
-    modulesCount: 60,
-    moduleModel: 'Jinko Solar Tiger Neo 585W N-Type Bifacial',
-    inverterModel: 'Deye SUN-30K-SG01HP3 Trifásico Híbrido',
-    batteryModel: 'Deye BOS-G LiFePO4 15.36kWh',
-    batteryCount: 1,
-    estimatedMonthlyGenKWh: 4200,
-    estimatedMonthlySavings: 3570.0,
-    createdAt: '2026-09-02T10:15:00.000Z',
-  },
-  {
-    id: 'prop-2',
-    code: 'PROP-2026-083',
-    clientId: 'cli-2',
-    clientName: 'Mercado Bom Preço Ltda',
-    title: 'Proposta Principal: 16.38 kWp • Telhado Loja Matriz',
-    systemPowerKWp: 16.38,
-    systemType: 'On-Grid',
-    totalValue: 58900.0,
-    status: 'Em negociação',
-    modulesCount: 28,
-    moduleModel: 'Longi Solar Hi-MO 6 Explorer 585W',
-    inverterModel: 'Growatt MID 15KTL3-X',
-    estimatedMonthlyGenKWh: 1960,
-    estimatedMonthlySavings: 1820.0,
-    createdAt: '2026-08-22T09:20:00.000Z',
-  },
-  {
-    id: 'prop-2-b',
-    code: 'PROP-2026-095',
-    clientId: 'cli-2',
-    clientName: 'Mercado Bom Preço Ltda',
-    title: 'Proposta Alternativa: 22.50 kWp • Expansão Câmara Fria',
-    systemPowerKWp: 22.5,
-    systemType: 'On-Grid',
-    totalValue: 76500.0,
-    status: 'Rascunho',
-    modulesCount: 38,
-    moduleModel: 'Longi Solar Hi-MO 6 Explorer 585W',
-    inverterModel: 'Growatt MID 20KTL3-X',
-    estimatedMonthlyGenKWh: 2700,
-    estimatedMonthlySavings: 2430.0,
-    createdAt: '2026-09-10T16:45:00.000Z',
-  },
-  {
-    id: 'prop-3',
-    code: 'PROP-2026-082',
-    clientId: 'cli-3',
-    clientName: 'Carlos Eduardo Ferreira',
-    title: 'Proposta Residencial: 5.85 kWp • Monofásico Telhado Cerâmico',
-    systemPowerKWp: 5.85,
-    systemType: 'On-Grid',
-    totalValue: 24300.0,
-    status: 'Aprovada',
-    modulesCount: 10,
-    moduleModel: 'Canadian Solar HiKu6 585W',
-    inverterModel: 'Fronius Primo 5.0-1 Monofásico',
-    estimatedMonthlyGenKWh: 700,
-    estimatedMonthlySavings: 630.0,
-    createdAt: '2026-08-20T11:00:00.000Z',
-  },
-  {
-    id: 'prop-3-b',
-    code: 'PROP-2026-091',
-    clientId: 'cli-3',
-    clientName: 'Carlos Eduardo Ferreira',
-    title: 'Revisão Premium: 7.20 kWp • C/ Carregador Veicular Wallbox',
-    systemPowerKWp: 7.2,
-    systemType: 'On-Grid',
-    totalValue: 33800.0,
-    status: 'Pendente',
-    modulesCount: 12,
-    moduleModel: 'Canadian Solar HiKu6 600W Bifacial',
-    inverterModel: 'Fronius Primo 6.0-1 Monofásico',
-    estimatedMonthlyGenKWh: 864,
-    estimatedMonthlySavings: 780.0,
-    createdAt: '2026-09-05T14:10:00.000Z',
-  },
-  {
-    id: 'prop-4',
-    code: 'PROP-2026-081',
-    clientId: 'cli-4',
-    clientName: 'Auto Posto Alvorada',
-    title: 'Proposta A: 39.78 kWp • Carport Pista de Abastecimento',
-    systemPowerKWp: 39.78,
-    systemType: 'On-Grid',
-    totalValue: 139000.0,
-    status: 'Pendente',
-    modulesCount: 68,
-    moduleModel: 'JA Solar DeepBlue 4.0 Pro 585W',
-    inverterModel: 'Sungrow SG33CX Trifásico',
-    estimatedMonthlyGenKWh: 4600,
-    estimatedMonthlySavings: 4100.0,
-    createdAt: '2026-08-19T13:40:00.000Z',
-  },
-  {
-    id: 'prop-4-b',
-    code: 'PROP-2026-092',
-    clientId: 'cli-4',
-    clientName: 'Auto Posto Alvorada',
-    title: 'Proposta B: 45.00 kWp • Cobertura Estendida e Lavajato',
-    systemPowerKWp: 45.0,
-    systemType: 'On-Grid',
-    totalValue: 158000.0,
-    status: 'Em negociação',
-    modulesCount: 76,
-    moduleModel: 'JA Solar DeepBlue 4.0 Pro 585W',
-    inverterModel: 'Sungrow SG40CX Trifásico',
-    estimatedMonthlyGenKWh: 5200,
-    estimatedMonthlySavings: 4680.0,
-    createdAt: '2026-09-08T15:00:00.000Z',
-  },
-  {
-    id: 'prop-4-c',
-    code: 'PROP-2026-098',
-    clientId: 'cli-4',
-    clientName: 'Auto Posto Alvorada',
-    title: 'Opção Noturna: 25.00 kWp • Sistema Híbrido com Baterias',
-    systemPowerKWp: 25.0,
-    systemType: 'Híbrido',
-    totalValue: 112000.0,
-    status: 'Rascunho',
-    modulesCount: 42,
-    moduleModel: 'JA Solar DeepBlue 4.0 Pro 585W',
-    inverterModel: 'Deye 25kW Trifásico Híbrido',
-    batteryModel: 'Deye BOS-G 20.48kWh',
-    batteryCount: 1,
-    estimatedMonthlyGenKWh: 2950,
-    estimatedMonthlySavings: 2750.0,
-    createdAt: '2026-09-15T09:30:00.000Z',
-  },
-  {
-    id: 'prop-5-ind',
-    code: 'PROP-2026-075',
-    clientId: 'cli-5',
-    clientName: 'Indústria Metalúrgica Progresso',
-    title: 'Proposta Galpão A: 110.00 kWp • Conexão Alta Tensão Média',
-    systemPowerKWp: 110.0,
-    systemType: 'On-Grid',
-    totalValue: 380000.0,
-    status: 'Em negociação',
-    modulesCount: 188,
-    moduleModel: 'Trina Solar Vertex N 585W',
-    inverterModel: 'Sungrow SG110CX Trifásico 380V',
-    estimatedMonthlyGenKWh: 13200,
-    estimatedMonthlySavings: 11800.0,
-    createdAt: '2026-08-15T08:00:00.000Z',
-  },
-  {
-    id: 'prop-5-ind-2',
-    code: 'PROP-2026-088',
-    clientId: 'cli-5',
-    clientName: 'Indústria Metalúrgica Progresso',
-    title: 'Proposta Galpão B: 65.00 kWp • Linha de Usinagem',
-    systemPowerKWp: 65.0,
-    systemType: 'On-Grid',
-    totalValue: 225000.0,
-    status: 'Rascunho',
-    modulesCount: 112,
-    moduleModel: 'Trina Solar Vertex N 585W',
-    inverterModel: 'Sungrow SG60CX Trifásico 380V',
-    estimatedMonthlyGenKWh: 7800,
-    estimatedMonthlySavings: 7020.0,
-    createdAt: '2026-09-01T11:20:00.000Z',
-  },
-];
+export const INITIAL_CLIENT_PROPOSALS: ClientProposal[] = [];
+
+const LEGACY_DEMO_CODES = new Set([
+  'PROP-2026-084',
+  'PROP-2026-089',
+  'PROP-2026-083',
+  'PROP-2026-095',
+  'PROP-2026-082',
+  'PROP-2026-091',
+  'PROP-2026-081',
+  'PROP-2026-092',
+  'PROP-2026-098',
+  'PROP-2026-075',
+  'PROP-2026-088',
+]);
+
+const LEGACY_DEMO_IDS = new Set([
+  'prop-1',
+  'prop-1-b',
+  'prop-2',
+  'prop-2-b',
+  'prop-3',
+  'prop-3-b',
+  'prop-4',
+  'prop-4-b',
+  'prop-4-c',
+  'prop-5-ind',
+  'prop-5-ind-2',
+]);
 
 export function getStoredProposalsLocal(): ClientProposal[] {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return INITIAL_CLIENT_PROPOSALS;
+    return [];
   }
 
   try {
     const raw = localStorage.getItem(PROPOSALS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(INITIAL_CLIENT_PROPOSALS));
-      return INITIAL_CLIENT_PROPOSALS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+    if (Array.isArray(parsed)) {
+      // Remove permanentemente quaisquer propostas legadas de demonstração
+      const cleaned = parsed.filter(
+        (p) => !LEGACY_DEMO_IDS.has(p?.id) && !LEGACY_DEMO_CODES.has(p?.code)
+      );
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(cleaned));
+      }
+      return cleaned;
     }
   } catch (err) {
     console.warn('Erro ao carregar propostas do localStorage:', err);
   }
 
-  return INITIAL_CLIENT_PROPOSALS;
+  return [];
 }
 
 export function saveStoredProposalsLocal(proposals: ClientProposal[]): void {
@@ -248,8 +90,53 @@ export function saveStoredProposalsLocal(proposals: ClientProposal[]): void {
   }
 }
 
+export function deleteClientProposal(proposalId: string): ClientProposal[] {
+  const all = getStoredProposalsLocal();
+  const updated = all.filter((p) => p.id !== proposalId);
+  saveStoredProposalsLocal(updated);
+  return updated;
+}
+
 export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
-  return getStoredProposalsLocal();
+  const local = getStoredProposalsLocal();
+  try {
+    const { supabase } = await import('../lib/supabase');
+    const { data, error } = await supabase
+      .from('proposals')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      const combined = [...local];
+      for (const row of data) {
+        if (
+          !LEGACY_DEMO_CODES.has(row.code) &&
+          !LEGACY_DEMO_IDS.has(row.id) &&
+          !combined.some((p) => p.id === row.id || p.code === row.code)
+        ) {
+          combined.push({
+            id: row.id,
+            code: row.code,
+            clientId: row.client_id || row.lead_id || '',
+            clientName: row.client_name || row.title || 'Cliente',
+            title: row.title || `Proposta ${row.code}`,
+            systemPowerKWp: Number(row.system_power_kwp || row.power_kwp || 0),
+            systemType: row.system_type || 'On-Grid',
+            totalValue: Number(row.total_value || row.value || 0),
+            status: row.status || 'Pendente',
+            modulesCount: row.modules_count,
+            moduleModel: row.module_model,
+            inverterModel: row.inverter_model,
+            createdAt: row.created_at || new Date().toISOString(),
+          });
+        }
+      }
+      return combined;
+    }
+  } catch {
+    // ignore
+  }
+  return local;
 }
 
 export async function fetchProposalsForClient(
@@ -257,41 +144,13 @@ export async function fetchProposalsForClient(
   clientName?: string
 ): Promise<ClientProposal[]> {
   const all = getStoredProposalsLocal();
-  const filtered = all.filter((p) => {
+  return all.filter((p) => {
     if (p.clientId === clientId) return true;
     if (clientName && p.clientName.trim().toLowerCase() === clientName.trim().toLowerCase()) {
       return true;
     }
     return false;
   });
-
-  // Se o cliente não tiver nenhuma proposta ainda (ex: cliente cadastrado agora),
-  // cria automaticamente uma proposta padrão para ele
-  if (filtered.length === 0) {
-    const defaultCode = `PROP-2026-${Math.floor(100 + Math.random() * 899)}`;
-    const autoProposal: ClientProposal = {
-      id: `prop-${Date.now()}`,
-      code: defaultCode,
-      clientId,
-      clientName: clientName || 'Cliente',
-      title: `Proposta 1: 12.00 kWp • Padrão (${clientName || 'Cliente'})`,
-      systemPowerKWp: 12.0,
-      systemType: 'On-Grid',
-      totalValue: 42000,
-      status: 'Pendente',
-      modulesCount: 20,
-      moduleModel: 'Canadian Solar 585W TOPCon Bi-facial',
-      inverterModel: 'Inversor Deye 12kW Trifásico',
-      estimatedMonthlyGenKWh: 1440,
-      estimatedMonthlySavings: 1290,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [autoProposal, ...all];
-    saveStoredProposalsLocal(updated);
-    return [autoProposal];
-  }
-
-  return filtered;
 }
 
 export async function createQuickProposalForClient(
@@ -322,3 +181,89 @@ export async function createQuickProposalForClient(
   saveStoredProposalsLocal(updated);
   return newProposal;
 }
+
+/**
+ * Busca todas as propostas vinculadas a um interessado (lead) ou cliente
+ */
+export async function fetchProposalsForTarget(
+  targetType: 'lead' | 'client',
+  targetId: string,
+  targetName?: string
+): Promise<ClientProposal[]> {
+  const all = getStoredProposalsLocal();
+  const normalizedName = (targetName || '').trim().toLowerCase();
+
+  const matches: ClientProposal[] = all.filter((p) => {
+    if (p.clientId === targetId || (p as any).leadId === targetId) return true;
+    if (normalizedName && p.clientName && p.clientName.trim().toLowerCase() === normalizedName) {
+      return true;
+    }
+    return false;
+  });
+
+  // Se for interessado (lead), verifica se existem propostas no Supabase
+  if (targetType === 'lead') {
+    try {
+      const { fetchLeadProposals } = await import('./leads');
+      const supabaseProposals = await fetchLeadProposals(targetId, { clientName: targetName });
+      for (const sp of supabaseProposals) {
+        if (!matches.some((m) => m.id === sp.id || m.code === sp.code)) {
+          matches.push({
+            id: sp.id,
+            code: sp.code,
+            clientId: targetId,
+            clientName: targetName || 'Interessado',
+            title: sp.title || `Proposta ${sp.code} (${sp.systemType || 'On-Grid'})`,
+            systemPowerKWp: 12.0,
+            systemType: (sp.systemType as any) || 'On-Grid',
+            totalValue: sp.totalValue || 45000,
+            status: (sp.status as any) || 'Pendente',
+            createdAt: sp.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Se for cliente e não tiver nenhuma proposta, aproveita a lógica de fetchProposalsForClient
+  if (targetType === 'client' && matches.length === 0) {
+    return fetchProposalsForClient(targetId, targetName);
+  }
+
+  return matches;
+}
+
+/**
+ * Cadastra uma proposta rápida para um interessado (lead) ou cliente
+ */
+export async function createQuickProposalForTarget(
+  targetType: 'lead' | 'client',
+  targetId: string,
+  targetName: string,
+  data?: Partial<ClientProposal>
+): Promise<ClientProposal> {
+  const all = getStoredProposalsLocal();
+  const codeNum = Math.floor(100 + Math.random() * 899);
+  const newProposal: ClientProposal = {
+    id: `prop-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    code: data?.code || `PROP-2026-${codeNum}`,
+    clientId: targetId,
+    clientName: targetName,
+    title: data?.title || `Proposta Comercial (${data?.systemPowerKWp || 12} kWp)`,
+    systemPowerKWp: Number(data?.systemPowerKWp || 12),
+    systemType: data?.systemType || 'On-Grid',
+    totalValue: Number(data?.totalValue || 42000),
+    status: data?.status || 'Em negociação',
+    modulesCount: data?.modulesCount || 20,
+    moduleModel: data?.moduleModel || 'Canadian Solar 585W TOPCon',
+    inverterModel: data?.inverterModel || 'Inversor Deye 12kW',
+    createdAt: new Date().toISOString(),
+  };
+
+  const updated = [newProposal, ...all];
+  saveStoredProposalsLocal(updated);
+  return newProposal;
+}
+

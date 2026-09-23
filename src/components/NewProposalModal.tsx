@@ -29,8 +29,6 @@ export const NewProposalModal: React.FC<NewProposalModalProps> = ({
   onSaveProposal,
   onShowToast,
 }) => {
-  if (!isOpen) return null;
-
   // Form states
   const [selectedClientName, setSelectedClientName] = useState(
     clients[0]?.name || 'Fazenda Santa Rita'
@@ -103,6 +101,8 @@ export const NewProposalModal: React.FC<NewProposalModalProps> = ({
     onClose();
     onShowToast(`Proposta ${newProposal.code} dimensionada com sucesso!`);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">

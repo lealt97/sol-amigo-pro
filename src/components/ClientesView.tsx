@@ -24,7 +24,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
+import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig, Lead, LeadStage } from '../types';
 import {
   fetchClients,
   fetchClientsLocal,
@@ -44,10 +44,15 @@ import {
   getStoredProposalsLocal,
 } from '../services/proposals';
 import { formatPhone } from '../utils/formatters';
+import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
+import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
 import { getContrastFg } from '../utils/themeEngine';
 import { parseLeadNotes, serializeLeadNotes, LeadNote, compressImageFile } from '../utils/leadNotes';
-import { NewProposalModal } from './NewProposalModal';
+import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
+import { LeadParametersModal } from './LeadParametersModal';
+import { LeadNotesModal } from './LeadNotesModal';
+import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
 
 interface ClientesViewProps {
   theme: ThemeConfig;
@@ -57,6 +62,27 @@ interface ClientesViewProps {
 }
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function convertClientToLead(client: Client): Lead {
+  return {
+    id: client.id,
+    userId: 'current-user',
+    name: client.name,
+    phone: client.phone,
+    email: client.email,
+    city: client.city,
+    state: client.state,
+    street: client.street,
+    propertyType: client.propertyType || 'Residencial',
+    status: 'ganho',
+    source: 'Clientes',
+    consentAt: client.createdAt,
+    lastSubmissionAt: client.updatedAt || client.createdAt,
+    notes: client.notes,
+    createdAt: client.createdAt,
+    updatedAt: client.updatedAt,
+  };
+}
 
 export function ClientesView({
   theme,
@@ -97,6 +123,7 @@ export function ClientesView({
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientCity, setNewClientCity] = useState('Campinas');
   const [newClientState, setNewClientState] = useState('SP');
+  const [configuredStates, setConfiguredStates] = useState<string[]>([]);
   const [newClientStreet, setNewClientStreet] = useState('');
   const [newClientNumber, setNewClientNumber] = useState('');
   const [newClientType, setNewClientType] = useState<'Residencial' | 'Comercial' | 'Rural' | 'Industrial'>('Residencial');
@@ -121,14 +148,23 @@ export function ClientesView({
     setLoading(true);
     setError('');
     try {
-      const [clientsData, leadsData, propsData] = await Promise.all([
+      const [clientsData, leadsData, propsData, formSettings] = await Promise.all([
         fetchClients(),
         fetchLeads().catch(() => []),
         fetchAllClientProposals().catch(() => []),
+        fetchWebsiteFormSettings().catch(() => null),
       ]);
       const merged = mergeClientsWithLeads(clientsData, leadsData);
       setClients(merged);
       setAllProposals(propsData);
+
+      if (formSettings && Array.isArray(formSettings.serviceStates) && formSettings.serviceStates.length > 0) {
+        const validStates = formSettings.serviceStates.filter(Boolean);
+        setConfiguredStates(validStates);
+        if (validStates.length > 0) {
+          setNewClientState((prev) => (prev && validStates.includes(prev) ? prev : validStates[0]));
+        }
+      }
     } catch (err: any) {
       setError(err?.message || 'Erro ao carregar clientes.');
     } finally {
@@ -216,6 +252,66 @@ export function ClientesView({
     setClientNotesList(parseLeadNotes(client.notes));
     setNewNoteText('');
     setNewNoteImages([]);
+  };
+
+  // Conversão do cliente para objeto compatível com LeadParametersModal
+  const paramsLead = useMemo<Lead | null>(() => {
+    if (!paramsModalClient) return null;
+    return {
+      id: paramsModalClient.sourceLeadId || paramsModalClient.id,
+      userId: paramsModalClient.userId || '',
+      clientId: paramsModalClient.id,
+      name: paramsModalClient.name,
+      phone: paramsModalClient.phone || '',
+      email: paramsModalClient.email || '',
+      city: paramsModalClient.city || '',
+      state: paramsModalClient.state || '',
+      street: paramsModalClient.street,
+      addressNumber: paramsModalClient.addressNumber,
+      propertyType: (paramsModalClient.propertyType || paramsModalClient.type || 'Residencial') as any,
+      averageMonthlyBill: paramsModalClient.avgMonthlyBill,
+      averageConsumptionKWh: paramsModalClient.avgConsumptionKWh,
+      distributor: paramsModalClient.concessionaria,
+      status: ((paramsModalClient.crmStatus as any) || 'qualificado') as LeadStage,
+      responsible: paramsModalClient.responsible,
+      source: paramsModalClient.source || 'Clientes',
+      notes: paramsModalClient.notes || '',
+      createdAt: paramsModalClient.createdAt || new Date().toISOString(),
+      updatedAt: paramsModalClient.updatedAt || new Date().toISOString(),
+      consentAt: paramsModalClient.createdAt || new Date().toISOString(),
+      lastSubmissionAt: paramsModalClient.updatedAt || new Date().toISOString(),
+    };
+  }, [paramsModalClient]);
+
+  // Atualização disparada pelo modal de parâmetros gerais
+  const handleClientLeadUpdated = (updatedLead: Lead) => {
+    if (!paramsModalClient) return;
+
+    const updatedClient: Client = {
+      ...paramsModalClient,
+      name: updatedLead.name,
+      phone: updatedLead.phone,
+      email: updatedLead.email || '',
+      city: updatedLead.city,
+      state: updatedLead.state,
+      street: updatedLead.street,
+      addressNumber: updatedLead.addressNumber,
+      type: (updatedLead.propertyType as any) || paramsModalClient.type,
+      propertyType: (updatedLead.propertyType as any) || paramsModalClient.propertyType,
+      concessionaria: updatedLead.distributor || paramsModalClient.concessionaria,
+      avgConsumptionKWh: updatedLead.averageConsumptionKWh,
+      avgMonthlyBill: updatedLead.averageMonthlyBill,
+      crmStatus: (updatedLead.status as any) || paramsModalClient.crmStatus,
+      responsible: updatedLead.responsible || paramsModalClient.responsible,
+      notes: updatedLead.notes || paramsModalClient.notes,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setClients((current) =>
+      current.map((c) => (c.id === paramsModalClient.id ? updatedClient : c))
+    );
+    setParamsModalClient(updatedClient);
+    void updateClient(paramsModalClient.id, updatedClient);
   };
 
   // Upload de imagem para anotação
@@ -337,6 +433,14 @@ export function ClientesView({
       setNewClientStreet('');
       setNewClientNumber('');
       setNewClientConsumption('');
+      setNewClientCity('Campinas');
+      setNewClientConcessionaria('CPFL Paulista');
+      setNewClientType('Residencial');
+      if (configuredStates.length > 0) {
+        setNewClientState(configuredStates[0]);
+      } else {
+        setNewClientState('SP');
+      }
     } catch {
       onShowToast('Erro ao cadastrar cliente.');
     }
@@ -679,7 +783,7 @@ export function ClientesView({
                           >
                             <FileText className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
                             <span className="font-medium group-hover:text-white transition-colors">
-                              Gerar proposta
+                              Gerar Proposta
                             </span>
                           </button>
 
@@ -893,7 +997,7 @@ export function ClientesView({
                     className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
                     style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                   >
-                    <Plus className="h-3.5 w-3.5" /> Criar primeira proposta
+                    <FileText className="h-3.5 w-3.5" /> Gerar Proposta
                   </button>
                 </div>
               ) : (
@@ -965,7 +1069,7 @@ export function ClientesView({
                 className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
-                <Plus className="h-4 w-4" /> Nova proposta para {proposalsModalClient.name}
+                <FileText className="h-4 w-4" /> Gerar Proposta
               </button>
               <button
                 onClick={() => setProposalsModalClient(null)}
@@ -979,223 +1083,34 @@ export function ClientesView({
         </div>
       )}
 
-      {/* MODAL: Anotações do Cliente */}
+      {/* MODAL: Anotações do Cliente (Com suporte a Geral ou Proposta) */}
       {notesModalClient && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-        >
-          <div
-            className="w-full max-w-2xl rounded-2xl border p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col"
-            style={{
-              backgroundColor: theme.primary,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <div className="flex items-center justify-between border-b pb-3 shrink-0" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm"
-                  style={{
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                    color: theme.secondary,
-                  }}
-                >
-                  <NotepadText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--text)]">
-                    Anotações: {notesModalClient.name}
-                  </h2>
-                  <p className="text-xs text-[var(--muted)]">
-                    Registro de conversas, faturas e observações
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setNotesModalClient(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--muted)] hover:text-[var(--text)]"
-                style={{ borderColor: theme.border }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Caixa de nova anotação */}
-            <div className="space-y-2 shrink-0">
-              <textarea
-                value={newNoteText}
-                onChange={(e) => setNewNoteText(e.target.value)}
-                placeholder="Escreva uma anotação sobre este cliente..."
-                rows={3}
-                className="w-full rounded-lg border p-3 text-sm outline-none focus:border-[var(--secondary)]"
-                style={{
-                  backgroundColor: theme.background,
-                  borderColor: theme.border,
-                  color: theme.text,
-                }}
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={processingImages}
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:border-[var(--secondary)]"
-                    style={{ borderColor: theme.border, backgroundColor: theme.background }}
-                  >
-                    Anexar foto
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  {newNoteImages.length > 0 && (
-                    <span className="text-xs text-[var(--secondary)] font-semibold">
-                      {newNoteImages.length} imagem(ns)
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSaveNote}
-                  disabled={savingNotes || (!newNoteText.trim() && newNoteImages.length === 0)}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
-                  style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-                >
-                  <Check className="h-3.5 w-3.5" /> Salvar anotação
-                </button>
-              </div>
-            </div>
-
-            {/* Lista de anotações */}
-            <div className="overflow-y-auto space-y-3 flex-1 pr-1">
-              {clientNotesList.length === 0 ? (
-                <div className="text-center py-8 rounded-xl border border-dashed" style={{ borderColor: theme.border }}>
-                  <NotepadText className="h-7 w-7 mx-auto text-[var(--dim)] opacity-60" />
-                  <p className="mt-2 text-xs text-[var(--muted)]">
-                    Nenhuma anotação registrada ainda.
-                  </p>
-                </div>
-              ) : (
-                clientNotesList.map((note) => (
-                  <div
-                    key={note.id}
-                    className="p-3.5 rounded-xl border space-y-2 relative group"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                    }}
-                  >
-                    <div className="flex items-center justify-between text-[11px] text-[var(--dim)]">
-                      <span>{new Date(note.createdAt).toLocaleString('pt-BR')}</span>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="text-[var(--danger)] hover:underline opacity-80 hover:opacity-100"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                    <p className="text-sm text-[var(--text)] whitespace-pre-wrap">{note.text}</p>
-                    {note.images && note.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {note.images.map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt="Anexo"
-                            className="h-16 w-16 object-cover rounded-lg border"
-                            style={{ borderColor: theme.border }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <LeadNotesModal
+          lead={convertClientToLead(notesModalClient)}
+          theme={theme}
+          targetType="client"
+          onClose={() => setNotesModalClient(null)}
+          onNotesUpdated={(serializedNotes) => {
+            setClients((prev) =>
+              prev.map((c) => (c.id === notesModalClient.id ? { ...c, notes: serializedNotes } : c))
+            );
+            setNotesModalClient((prev) => (prev ? { ...prev, notes: serializedNotes } : null));
+          }}
+          onShowToast={onShowToast}
+        />
       )}
 
-      {/* MODAL: Parâmetros do Cliente */}
-      {paramsModalClient && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-4"
-            style={{
-              backgroundColor: theme.primary,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-5 w-5 text-[var(--secondary)]" />
-                <h2 className="text-lg font-bold">Parâmetros de {paramsModalClient.name}</h2>
-              </div>
-              <button
-                onClick={() => setParamsModalClient(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--muted)] hover:text-[var(--text)]"
-                style={{ borderColor: theme.border }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Tipo de Imóvel</label>
-                  <p className="mt-1 font-semibold">{paramsModalClient.type || 'Residencial'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Concessionária</label>
-                  <p className="mt-1 font-semibold">{paramsModalClient.concessionaria || 'CPFL Paulista'}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[var(--dim)]">Endereço</label>
-                <p className="mt-1 font-semibold">
-                  {paramsModalClient.street
-                    ? `${paramsModalClient.street}, ${paramsModalClient.addressNumber || 'S/N'}`
-                    : 'Não informado'}
-                </p>
-                <p className="text-xs text-[var(--muted)]">
-                  {paramsModalClient.city} - {paramsModalClient.state || 'SP'}
-                </p>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[var(--dim)]">Consumo Médio</label>
-                <p className="mt-1 font-semibold">
-                  {paramsModalClient.avgConsumptionKWh
-                    ? `${paramsModalClient.avgConsumptionKWh} kWh/mês`
-                    : 'Não informado'}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t pt-4 flex justify-end" style={{ borderColor: theme.border }}>
-              <button
-                onClick={() => setParamsModalClient(null)}
-                className="rounded-lg px-4 py-2 text-xs font-semibold"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                Concluir
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* MODAL: Parâmetros Gerais do Cliente (Idêntico ao dos Leads) */}
+      {paramsModalClient && paramsLead && (
+        <LeadParametersModal
+          lead={paramsLead}
+          theme={theme}
+          statusLabels={LEAD_STAGE_LABELS}
+          targetType="client"
+          onClose={() => setParamsModalClient(null)}
+          onLeadUpdated={handleClientLeadUpdated}
+          onShowToast={onShowToast}
+        />
       )}
 
       {/* MODAL: Confirmação de Exclusão de Cliente */}
@@ -1247,11 +1162,11 @@ export function ClientesView({
       {/* MODAL: Novo Cliente Manual */}
       {isNewClientModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden"
           style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-xl rounded-2xl border p-5 sm:p-6 shadow-2xl space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               backgroundColor: theme.primary,
               borderColor: theme.border,
@@ -1259,140 +1174,237 @@ export function ClientesView({
             }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-[var(--secondary)]" />
-                <h2 className="text-lg font-bold">Novo Cliente</h2>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--secondary)_15%,transparent)] text-[var(--secondary)]">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold">Novo Cliente</h2>
+                  <p className="text-[11px] text-[var(--muted)]">Cadastre um cliente diretamente na base comercial</p>
+                </div>
               </div>
               <button
                 onClick={() => setIsNewClientModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--muted)] hover:text-[var(--text)]"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
                 style={{ borderColor: theme.border }}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewClient} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-[var(--dim)]">Nome completo *</label>
-                <input
-                  required
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Ex: João da Silva"
-                  className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                  style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Telefone / WhatsApp</label>
+            <form onSubmit={handleCreateNewClient} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Nome Completo do Titular *
+                  </label>
                   <input
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    placeholder="(19) 99999-9999"
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                    type="text"
+                    required
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Ex: João da Silva / Empresa Comercial Ltda"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
                   />
                 </div>
+
                 <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">E-mail</label>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Telefone / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(formatPhone(e.target.value))}
+                    placeholder="(00) 00000-0000"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    E-mail
+                  </label>
                   <input
                     type="email"
                     value={newClientEmail}
                     onChange={(e) => setNewClientEmail(e.target.value)}
                     placeholder="cliente@exemplo.com"
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs font-semibold text-[var(--dim)]">Rua / Logradouro</label>
-                  <input
-                    value={newClientStreet}
-                    onChange={(e) => setNewClientStreet(e.target.value)}
-                    placeholder="Rua das Palmeiras"
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                  />
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                      Endereço (Rua / Logradouro)
+                    </label>
+                    <input
+                      type="text"
+                      value={newClientStreet}
+                      onChange={(e) => setNewClientStreet(e.target.value)}
+                      placeholder="Ex: Rua das Palmeiras, Av. Brasil"
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                      Número / Compl.
+                    </label>
+                    <input
+                      type="text"
+                      value={newClientNumber}
+                      onChange={(e) => setNewClientNumber(e.target.value)}
+                      placeholder="Ex: 123, Bloco B"
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Número</label>
-                  <input
-                    value={newClientNumber}
-                    onChange={(e) => setNewClientNumber(e.target.value)}
-                    placeholder="123"
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Cidade</label>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Cidade
+                  </label>
                   <input
+                    type="text"
                     value={newClientCity}
                     onChange={(e) => setNewClientCity(e.target.value)}
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                    placeholder="Ex: Campinas"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Estado (UF)</label>
-                  <input
-                    value={newClientState}
-                    onChange={(e) => setNewClientState(e.target.value)}
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Tipo do Imóvel</label>
-                  <select
-                    value={newClientType}
-                    onChange={(e) => setNewClientType(e.target.value as any)}
-                    className="mt-1 h-9 w-full rounded-lg border px-2 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                  >
-                    <option value="Residencial">Residencial</option>
-                    <option value="Comercial">Comercial</option>
-                    <option value="Rural">Rural</option>
-                    <option value="Industrial">Industrial</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[var(--dim)]">
+                      Estado (UF)
+                    </label>
+                    {configuredStates.length > 0 && (
+                      <span className="text-[10px] text-[var(--muted)] font-medium">
+                        Atendimento ({configuredStates.length})
+                      </span>
+                    )}
+                  </div>
+                  {configuredStates.length > 0 ? (
+                    <select
+                      value={newClientState}
+                      onChange={(e) => setNewClientState(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    >
+                      {configuredStates.map((uf) => (
+                        <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
+                          {uf} - {BRAZIL_STATE_NAMES[uf] || uf}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={newClientState}
+                      onChange={(e) => setNewClientState(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    >
+                      {BRAZIL_STATE_GROUPS.map((group) => (
+                        <optgroup key={group.region} label={group.region}>
+                          {group.states.map(([uf, name]) => (
+                            <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
+                              {uf} - {name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  )}
                 </div>
+
                 <div>
-                  <label className="text-xs font-semibold text-[var(--dim)]">Consumo Médio (kWh/mês)</label>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Distribuidora / Concessionária
+                  </label>
+                  <input
+                    type="text"
+                    value={newClientConcessionaria}
+                    onChange={(e) => setNewClientConcessionaria(e.target.value)}
+                    placeholder="Ex: CPFL Paulista, Enel, Cemig, Light..."
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Consumo Médio Estimado (kWh/mês)
+                  </label>
                   <input
                     type="number"
                     value={newClientConsumption}
                     onChange={(e) => setNewClientConsumption(e.target.value ? Number(e.target.value) : '')}
                     placeholder="Ex: 850"
-                    className="mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
-                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
                   />
                 </div>
               </div>
 
-              <div className="border-t pt-4 flex justify-end gap-2" style={{ borderColor: theme.border }}>
+              <div className="border-t pt-4 flex items-center justify-end gap-2.5" style={{ borderColor: theme.border }}>
                 <button
                   type="button"
                   onClick={() => setIsNewClientModalOpen(false)}
-                  className="rounded-lg border px-4 py-2 text-xs font-semibold"
+                  className="rounded-lg border px-4 py-2.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
                   style={{ borderColor: theme.border, backgroundColor: theme.background }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg px-4 py-2 text-xs font-semibold"
+                  className="rounded-lg px-5 py-2.5 text-xs font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
                   style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                 >
                   Salvar Cliente
@@ -1403,20 +1415,31 @@ export function ClientesView({
         </div>
       )}
 
-      {/* MODAL: Criação de Nova Proposta */}
+      {/* MODAL: Wizard de Dimensionamento & Gerar Proposta */}
       {isNewProposalModalOpen && (
-        <NewProposalModal
+        <ProposalWizardModal
           isOpen={isNewProposalModalOpen}
           onClose={() => {
             setIsNewProposalModalOpen(false);
             setProposalClientPreselected(null);
           }}
-          clients={
-            proposalClientPreselected
-              ? [proposalClientPreselected, ...clients.filter((c) => c.id !== proposalClientPreselected.id)]
-              : clients
-          }
           theme={theme}
+          initialTarget={
+            proposalClientPreselected
+              ? {
+                  id: proposalClientPreselected.id,
+                  name: proposalClientPreselected.name,
+                  clientId: proposalClientPreselected.id,
+                  phone: proposalClientPreselected.phone,
+                  email: proposalClientPreselected.email,
+                  city: proposalClientPreselected.city,
+                  state: proposalClientPreselected.state,
+                  propertyType: proposalClientPreselected.propertyType || proposalClientPreselected.type,
+                  concessionaria: proposalClientPreselected.concessionaria,
+                  monthlyConsumptionKWh: proposalClientPreselected.avgConsumptionKWh,
+                }
+              : null
+          }
           onSaveProposal={handleSaveProposalFromModal}
           onShowToast={onShowToast}
         />

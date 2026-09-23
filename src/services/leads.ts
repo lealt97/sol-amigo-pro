@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Lead, LeadStage } from '../types';
+import { parseLeadNotes } from '../utils/leadNotes';
 import {
   getStoredLeadStatus,
   setStoredLeadStatus,
@@ -10,6 +11,17 @@ import {
 type LeadRow = Record<string, any>;
 
 export type ProposalSystemType = 'On-Grid' | 'Híbrido';
+
+export const LEADS_UPDATED_EVENT = 'solamigo:leads-updated';
+
+export const isLeadConverted = (lead?: Lead | Partial<Lead> | null): boolean => {
+  if (!lead) return false;
+  return Boolean(lead.clientId || (lead.status as string) === 'Cliente');
+};
+
+export const isActiveLead = (lead: Lead): boolean => {
+  return !isLeadConverted(lead);
+};
 
 export type ProposalDraftResult = {
   proposalId: string;
@@ -78,16 +90,39 @@ export async function addLeadToClients(leadId: string): Promise<string> {
 
 export async function createProposalFromLead(
   leadId: string,
-  systemType: ProposalSystemType
+  systemType: ProposalSystemType,
+  extra?: { clientId?: string | null; clientName?: string | null }
 ): Promise<ProposalDraftResult> {
-  const { data, error } = await supabase.rpc('create_proposal_from_lead', {
-    p_lead_id: leadId,
-    p_system_type: systemType,
-  });
-  if (error) throw error;
-  const result = Array.isArray(data) ? data[0] : data;
-  if (!result?.proposal_id || !result?.proposal_code) throw new Error('A proposta não foi criada.');
-  return { proposalId: result.proposal_id, proposalCode: result.proposal_code };
+  try {
+    const { data, error } = await supabase.rpc('create_proposal_from_lead', {
+      p_lead_id: leadId,
+      p_system_type: systemType,
+    });
+    if (!error && data) {
+      const result = Array.isArray(data) ? data[0] : data;
+      if (result?.proposal_id && result?.proposal_code) {
+        return { proposalId: result.proposal_id, proposalCode: result.proposal_code };
+      }
+    }
+  } catch (err) {
+    console.warn('RPC create_proposal_from_lead falhou, gerando proposta local:', err);
+  }
+
+  // Fallback seguro caso seja um cliente sem lead no backend Supabase
+  try {
+    const { createQuickProposalForClient } = await import('./proposals');
+    const targetClientId = (extra?.clientId || leadId).trim();
+    const targetClientName = (extra?.clientName || 'Cliente').trim();
+    const quick = await createQuickProposalForClient({
+      clientId: targetClientId,
+      clientName: targetClientName,
+      systemType: systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
+    });
+    return { proposalId: quick.id, proposalCode: quick.code };
+  } catch (err) {
+    console.warn('Erro ao gerar proposta rápida fallback:', err);
+    throw new Error('A proposta não pôde ser criada.');
+  }
 }
 
 export async function deleteOwnedLead(leadId: string): Promise<void> {
@@ -95,27 +130,38 @@ export async function deleteOwnedLead(leadId: string): Promise<void> {
   const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
   if (error) throw error;
   if (!data) throw new Error('Lead não encontrado ou sem permissão para excluir.');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(LEADS_UPDATED_EVENT, { detail: { deletedLeadId: leadId } }));
+  }
 }
 
 export async function updateLeadNotes(leadId: string, notes: string): Promise<void> {
-  const { error } = await supabase
-    .from('leads')
-    .update({ notes, updated_at: new Date().toISOString() })
-    .eq('id', leadId);
-  if (error) throw error;
-
   try {
-    const userResponse = await supabase.auth.getUser();
-    const userId = userResponse.data?.user?.id;
-    if (userId) {
-      await supabase.from('lead_activities').insert({
-        user_id: userId,
-        lead_id: leadId,
-        activity_type: 'nota',
-        title: 'Anotação atualizada',
-        description: notes.slice(0, 300),
-      });
+    const { error } = await supabase
+      .from('leads')
+      .update({ notes, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+    if (!error) {
+      const userResponse = await supabase.auth.getUser();
+      const userId = userResponse.data?.user?.id;
+      if (userId) {
+        await supabase.from('lead_activities').insert({
+          user_id: userId,
+          lead_id: leadId,
+          activity_type: 'nota',
+          title: 'Anotação atualizada',
+          description: notes.slice(0, 300),
+        });
+      }
     }
+  } catch (err) {
+    console.warn('Aviso ao sincronizar notas no Supabase leads:', err);
+  }
+
+  // Sincroniza também no registro do cliente se aplicável
+  try {
+    const { updateClientNotes } = await import('./clients');
+    await updateClientNotes(leadId, notes);
   } catch {
     // Non-blocking
   }
@@ -170,23 +216,48 @@ export async function updateLeadParameters(
   if (params.responsible !== undefined) payload.responsible = params.responsible;
   if (params.notes !== undefined) payload.notes = params.notes;
 
-  const { error } = await supabase
-    .from('leads')
-    .update(payload)
-    .eq('id', leadId);
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .update(payload)
+      .eq('id', leadId);
 
-  if (error) {
-    if (params.status !== undefined && isLegacyStatusTransitionError(error)) {
-      const fallbackPayload = { ...payload };
-      delete fallbackPayload.status;
-      const { error: fallbackError } = await supabase
-        .from('leads')
-        .update(fallbackPayload)
-        .eq('id', leadId);
-      if (fallbackError) throw fallbackError;
-      return;
+    if (error) {
+      if (params.status !== undefined && isLegacyStatusTransitionError(error)) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.status;
+        const { error: fallbackError } = await supabase
+          .from('leads')
+          .update(fallbackPayload)
+          .eq('id', leadId);
+        if (fallbackError) console.warn('Aviso ao atualizar lead fallback:', fallbackError);
+      }
     }
-    throw error;
+  } catch (err) {
+    console.warn('Erro ao atualizar leads no Supabase (pode ser cliente cadastrado diretamente):', err);
+  }
+
+  // Atualiza também nos clientes se o leadId for um cliente ou sourceLeadId
+  try {
+    const { updateClient } = await import('./clients');
+    await updateClient(leadId, {
+      name: params.name,
+      phone: params.phone,
+      email: params.email,
+      street: params.street,
+      addressNumber: params.addressNumber,
+      city: params.city,
+      state: params.state,
+      propertyType: params.propertyType,
+      type: params.propertyType,
+      concessionaria: params.distributor,
+      avgConsumptionKWh: params.averageConsumptionKWh,
+      avgMonthlyBill: params.averageMonthlyBill,
+      responsible: params.responsible,
+      notes: params.notes,
+    });
+  } catch {
+    // Non-blocking
   }
 }
 
@@ -228,34 +299,114 @@ export interface LeadProposalItem {
   status: string;
   createdAt: string;
   clientId?: string | null;
+  title?: string;
+  totalValue?: number;
 }
 
-export async function fetchLeadProposals(leadId: string): Promise<LeadProposalItem[]> {
-  const { data, error } = await supabase
-    .from('proposals')
-    .select('id, code, system_type, status, created_at, client_id')
-    .eq('lead_id', leadId)
-    .order('created_at', { ascending: false });
-  if (error) {
-    console.warn('Erro ao carregar propostas do lead:', error);
-    return [];
+export async function fetchLeadProposals(
+  leadId: string,
+  extra?: { clientId?: string | null; clientName?: string | null }
+): Promise<LeadProposalItem[]> {
+  const items: LeadProposalItem[] = [];
+
+  const cleanLeadId = (leadId || '').trim();
+  const cleanClientId = (extra?.clientId || '').trim();
+  const cleanName = (extra?.clientName || '').trim().toLowerCase();
+
+  try {
+    const orClauses: string[] = [];
+    if (cleanLeadId) {
+      orClauses.push(`lead_id.eq.${cleanLeadId}`, `client_id.eq.${cleanLeadId}`);
+    }
+    if (cleanClientId && cleanClientId !== cleanLeadId) {
+      orClauses.push(`client_id.eq.${cleanClientId}`, `lead_id.eq.${cleanClientId}`);
+    }
+
+    if (orClauses.length > 0) {
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('id, code, system_type, status, created_at, client_id, title, total_value')
+        .or(orClauses.join(','))
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        items.push(
+          ...data.map((row: any) => ({
+            id: row.id,
+            code: row.code,
+            systemType: row.system_type || 'On-Grid',
+            status: row.status,
+            createdAt: row.created_at,
+            clientId: row.client_id,
+            title: row.title,
+            totalValue: row.total_value,
+          }))
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar propostas do Supabase:', err);
   }
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    code: row.code,
-    systemType: row.system_type || 'On-Grid',
-    status: row.status,
-    createdAt: row.created_at,
-    clientId: row.client_id,
-  }));
+
+  // Verifica propostas armazenadas localmente
+  try {
+    const { getStoredProposalsLocal } = await import('./proposals');
+    const localProposals = getStoredProposalsLocal();
+    const matches = localProposals.filter((p) => {
+      if (cleanLeadId && (p.clientId === cleanLeadId || (p as any).leadId === cleanLeadId)) {
+        return true;
+      }
+      if (cleanClientId && (p.clientId === cleanClientId || (p as any).leadId === cleanClientId)) {
+        return true;
+      }
+      if (cleanName && p.clientName && p.clientName.trim().toLowerCase() === cleanName) {
+        return true;
+      }
+      return false;
+    });
+
+    for (const lp of matches) {
+      if (!items.some((i) => i.id === lp.id || i.code === lp.code)) {
+        items.push({
+          id: lp.id,
+          code: lp.code,
+          systemType: lp.systemType || 'On-Grid',
+          status: lp.status,
+          createdAt: lp.createdAt,
+          clientId: lp.clientId,
+          title: lp.title,
+          totalValue: lp.totalValue,
+        });
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
+
+  return items;
 }
 
 export async function deleteLeadProposal(proposalId: string): Promise<void> {
-  const { error } = await supabase
-    .from('proposals')
-    .delete()
-    .eq('id', proposalId);
-  if (error) throw error;
+  try {
+    const { getStoredProposalsLocal, saveStoredProposalsLocal } = await import('./proposals');
+    const local = getStoredProposalsLocal();
+    const filtered = local.filter((p) => p.id !== proposalId);
+    if (filtered.length !== local.length) {
+      saveStoredProposalsLocal(filtered);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const { error } = await supabase
+      .from('proposals')
+      .delete()
+      .eq('id', proposalId);
+    if (error) console.warn('Aviso ao deletar proposta do Supabase:', error);
+  } catch (err) {
+    console.warn('Falha de rede ao excluir proposta:', err);
+  }
 }
 
 export interface LeadDocumentItem {
@@ -309,13 +460,23 @@ export async function getEnergyBillSignedUrl(objectPath: string): Promise<string
 
 export async function fetchLeadNotesCount(leadId: string): Promise<number> {
   try {
-    const { count, error } = await supabase
-      .from('lead_activities')
-      .select('id', { count: 'exact', head: true })
-      .eq('lead_id', leadId)
-      .eq('activity_type', 'nota');
-    if (error) return 0;
-    return count ?? 0;
+    const { data, error } = await supabase
+      .from('leads')
+      .select('notes')
+      .eq('id', leadId)
+      .maybeSingle();
+    if (!error && data) {
+      return parseLeadNotes(data.notes).length;
+    }
+    const { data: clientData, error: clientErr } = await supabase
+      .from('clients')
+      .select('notes')
+      .eq('id', leadId)
+      .maybeSingle();
+    if (!clientErr && clientData) {
+      return parseLeadNotes(clientData.notes).length;
+    }
+    return 0;
   } catch {
     return 0;
   }

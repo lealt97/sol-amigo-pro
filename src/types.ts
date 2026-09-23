@@ -146,6 +146,7 @@ export interface SolarProposal {
   clientPhone?: string;
   clientCity: string;
   clientState: string;
+  propertyType?: string;
   concessionaria: string;
   monthlyConsumptionKWh: number;
   currentMonthlyBill?: number;
