@@ -169,6 +169,10 @@ export interface SolarProposal {
   treesEquivalent?: number;
   co2AvoidedTons?: number;
   treesPlanted?: number;
+  hsp?: number;
+  performanceRatio?: number;
+  selectedKitId?: string;
+  selectedKitName?: string;
   sizing?: OpportunitySizing;
   pricing?: OpportunityKitCosts;
   commercialConditions?: {
@@ -656,7 +660,39 @@ export interface SolarProduct {
 export type CatalogCategory = 'Módulo FV'|'Inversor'|'Microinversor'|'Bateria'|'Estrutura'|'String Box'|'Proteção'|'Cabo'|'Serviço'|'Outros';
 export interface CatalogProduct { id:string; sku?:string; name:string; category:CatalogCategory; brand:string; model:string; description:string; powerW?:number; capacityKWh?:number; warrantyYears:number; unitCost:number; active:boolean; }
 export interface SolarKitItem { id:string; productId:string; quantity:number; product:CatalogProduct; }
-export interface SolarKit { id:string; name:string; sku?:string; systemType:SolarSystemType; minPowerKWp:number; maxPowerKWp:number; installationCost:number; engineeringCost:number; utilityFee:number; freightCost:number; otherCosts:number; taxesPercent:number; commissionPercent:number; targetMarginPercent:number; warrantyTerms:string; notes:string; active:boolean; items:SolarKitItem[]; }
+export interface SolarKit {
+  id: string;
+  name: string;
+  sku?: string;
+  systemType: SolarSystemType;
+  minPowerKWp: number;
+  maxPowerKWp: number;
+  installationCost: number;
+  engineeringCost: number;
+  utilityFee: number;
+  freightCost: number;
+  otherCosts: number;
+  taxesPercent: number;
+  commissionPercent: number;
+  targetMarginPercent: number;
+  warrantyTerms: string;
+  notes: string;
+  active: boolean;
+  items: SolarKitItem[];
+  // Campos de conveniência para catálogo e dimensionamento
+  powerKWp?: number;
+  moduleModel?: string;
+  moduleCount?: number;
+  modulePowerW?: number;
+  inverterModel?: string;
+  inverterPowerKW?: number;
+  batteryModel?: string;
+  batteryCapacityKWh?: number;
+  batteryCount?: number;
+  structureType?: string;
+  equipmentCost?: number;
+  suggestedPrice?: number;
+}
 
 export interface TaskItem {
   id: string;

@@ -19,8 +19,12 @@ import {
   Sparkles,
   CheckCircle2,
   RefreshCw,
+  Sun,
+  Layers,
+  Battery,
+  Package,
 } from 'lucide-react';
-import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType } from '../types';
+import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
@@ -33,6 +37,8 @@ import {
   MONTH_LABELS,
   PRESET_APPLIANCES,
 } from './ProposalWizardStep2';
+import { ProposalWizardStep3 } from './ProposalWizardStep3';
+import { BRAZIL_STATE_HSP } from '../data/initialKits';
 
 export interface ProposalTargetSelection {
   id: string;
@@ -133,7 +139,23 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const [publicLightingTax, setPublicLightingTax] = useState(35.00);
   const [backupAutonomyHours, setBackupAutonomyHours] = useState(4);
 
-  // Sincroniza dados do titular selecionado com a Etapa 2
+  // Estados da Etapa 3: Dimensionamento Técnico & Kits
+  const [hsp, setHsp] = useState<number>(4.95);
+  const [performanceRatio, setPerformanceRatio] = useState<number>(80);
+  const [targetCoveragePercent, setTargetCoveragePercent] = useState<number>(100);
+  const [modulePowerW, setModulePowerW] = useState<number>(550);
+  const [moduleModel, setModuleModel] = useState<string>('Canadian Solar 550W TOPCon Bifacial');
+  const [modulesCount, setModulesCount] = useState<number>(10);
+  const [installedPowerKWp, setInstalledPowerKWp] = useState<number>(5.5);
+  const [inverterModel, setInverterModel] = useState<string>('Deye SUN-5K-G04 Monofásico/Bifásico 220V');
+  const [batteryModel, setBatteryModel] = useState<string>('Bateria Lítio LiFePO4 5.12kWh 48V');
+  const [batteryCount, setBatteryCount] = useState<number>(1);
+  const [batteryCapacityKWh, setBatteryCapacityKWh] = useState<number>(5.12);
+  const [selectedKit, setSelectedKit] = useState<SolarKit | null>(null);
+  const [estimatedMonthlyGenKWh, setEstimatedMonthlyGenKWh] = useState<number>(580);
+  const [totalKitPrice, setTotalKitPrice] = useState<number>(16900);
+
+  // Sincroniza dados do titular selecionado com a Etapa 2 e Etapa 3
   useEffect(() => {
     if (selectedTarget) {
       if (selectedTarget.monthlyConsumptionKWh && selectedTarget.monthlyConsumptionKWh > 0) {
@@ -141,6 +163,12 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       }
       if (selectedTarget.concessionaria) {
         setConcessionaria(selectedTarget.concessionaria);
+      }
+      if (selectedTarget.state) {
+        const uf = selectedTarget.state.toUpperCase().trim();
+        if (BRAZIL_STATE_HSP[uf]) {
+          setHsp(BRAZIL_STATE_HSP[uf]);
+        }
       }
     }
   }, [selectedTarget]);
@@ -459,18 +487,18 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     }
     const propCode = `PROP-${new Date().getFullYear()}-${String(Math.floor(100 + Math.random() * 900))}`;
     const consKWh = effectiveAverageKWh > 0 ? effectiveAverageKWh : (selectedTarget.monthlyConsumptionKWh || 450);
-    const estimatedKWp = Number((consKWh / 115).toFixed(2));
-    const modules = Math.max(4, Math.ceil((estimatedKWp * 1000) / 600));
 
     const isHybrid = systemType === 'Híbrido';
-    const batteryCapacity = 5.12;
-    const neededDailyPriorityKWh = (consKWh / 30) * 0.45;
-    const batteryCount = isHybrid
-      ? Math.max(1, Math.ceil(((neededDailyPriorityKWh / 24) * backupAutonomyHours) / (batteryCapacity * 0.9 * 0.92)))
-      : undefined;
+    const finalKWp = installedPowerKWp > 0 ? Number(installedPowerKWp.toFixed(2)) : Number((consKWh / 115).toFixed(2));
+    const finalModules = modulesCount > 0 ? modulesCount : Math.max(4, Math.ceil((finalKWp * 1000) / modulePowerW));
 
-    const baseVal = Math.round(estimatedKWp * 2900);
-    const hybridVal = isHybrid ? baseVal + (batteryCount || 1) * 9800 + 4000 : baseVal;
+    const finalValue = totalKitPrice > 0
+      ? totalKitPrice
+      : Math.round(finalKWp * 2950) + (isHybrid ? (batteryCount || 1) * 9800 + 3500 : 0);
+
+    const finalMonthlyGen = estimatedMonthlyGenKWh > 0
+      ? estimatedMonthlyGenKWh
+      : Math.round(finalKWp * hsp * 30.416 * (performanceRatio / 100));
 
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,
@@ -483,23 +511,30 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       clientState: selectedTarget.state || 'SP',
       concessionaria: concessionaria || selectedTarget.concessionaria || 'CPFL Paulista',
       monthlyConsumptionKWh: consKWh,
-      systemPowerKWp: estimatedKWp,
-      modulesCount: modules,
-      moduleModel: 'Painel Solar Canadian 600W Bifacial TOPCon',
-      inverterModel: isHybrid
-        ? `Inversor Híbrido Deye ${Math.max(5, Math.ceil(estimatedKWp))}kW com ATS / Backup`
-        : `Inversor Deye ${Math.max(5, Math.ceil(estimatedKWp))}kW Monofásico/Bifásico`,
-      batteryModel: isHybrid ? 'Bateria Lítio LiFePO4 5.12kWh 48V Rack/Parede' : undefined,
-      batteryCount: batteryCount,
-      batteryCapacityKWh: isHybrid ? Number((batteryCapacity * (batteryCount || 1)).toFixed(2)) : undefined,
-      estimatedMonthlyGenKWh: Math.round(consKWh * 1.05),
-      estimatedMonthlySavings: Math.round(consKWh * energyTariff),
-      paybackYears: isHybrid ? 4.4 : 3.1,
-      totalValue: hybridVal,
+      systemPowerKWp: finalKWp,
+      modulesCount: finalModules,
+      moduleModel: moduleModel || `Painel Solar Canadian ${modulePowerW}W Bifacial TOPCon`,
+      inverterModel: inverterModel || (isHybrid
+        ? `Inversor Híbrido Deye ${Math.max(5, Math.ceil(finalKWp))}kW com ATS / Backup`
+        : `Inversor Deye ${Math.max(5, Math.ceil(finalKWp))}kW Monofásico/Bifásico`),
+      batteryModel: isHybrid ? batteryModel : undefined,
+      batteryCount: isHybrid ? batteryCount : undefined,
+      batteryCapacityKWh: isHybrid ? Number((batteryCapacityKWh * (batteryCount || 1)).toFixed(2)) : undefined,
+      estimatedMonthlyGenKWh: finalMonthlyGen,
+      estimatedMonthlySavings: Math.round(Math.min(finalMonthlyGen, consKWh) * energyTariff),
+      paybackYears: isHybrid ? 4.2 : 2.9,
+      totalValue: finalValue,
+      hsp: hsp,
+      performanceRatio: performanceRatio,
+      selectedKitId: selectedKit?.id,
+      selectedKitName: selectedKit?.name,
       commercialConditions: {
         paymentMethods: isHybrid
           ? 'Financiamento Solar em até 84x com 90 dias de carência ou à vista com 6% de desconto'
           : 'À vista com 5% de desconto ou 36x sem juros no solar Santander',
+        notes: selectedKit
+          ? `Kit homologado da aba Kits: ${selectedKit.name} (${selectedKit.sku || 'Catálogo'})`
+          : 'Dimensionamento solar com componentes selecionados avulsos.',
       },
       status: 'Rascunho',
       createdAt: new Date().toISOString(),
@@ -1297,54 +1332,212 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             />
           )}
 
+          {/* ========================================================================= */}
+          {/* ETAPA 3: DIMENSIONAMENTO SOLAR & KITS (HSP, FATOR RENDIMENTO, KITS)     */}
+          {/* ========================================================================= */}
           {currentStep === 'sizing_hardware' && (
-            <div className="space-y-4 text-center py-8">
-              <div
-                className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border shadow-xs"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                  borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                  color: theme.secondary,
-                }}
-              >
-                <Calculator className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-[var(--text)]">
-                Etapa 3: Dimensionamento Técnico & Kits
-              </h3>
-              <p className="text-xs text-[var(--muted)] max-w-md mx-auto">
-                Definição de potência (kWp), módulos, inversores e índices solares (HSP).
-              </p>
-            </div>
+            <ProposalWizardStep3
+              theme={theme}
+              clientState={selectedTarget?.state}
+              clientCity={selectedTarget?.city}
+              effectiveAverageKWh={effectiveAverageKWh}
+              systemType={systemType}
+              connectionType={connectionType}
+              backupAutonomyHours={backupAutonomyHours}
+              hsp={hsp}
+              setHsp={setHsp}
+              performanceRatio={performanceRatio}
+              setPerformanceRatio={setPerformanceRatio}
+              targetCoveragePercent={targetCoveragePercent}
+              setTargetCoveragePercent={setTargetCoveragePercent}
+              modulePowerW={modulePowerW}
+              setModulePowerW={setModulePowerW}
+              moduleModel={moduleModel}
+              setModuleModel={setModuleModel}
+              modulesCount={modulesCount}
+              setModulesCount={setModulesCount}
+              installedPowerKWp={installedPowerKWp}
+              setInstalledPowerKWp={setInstalledPowerKWp}
+              inverterModel={inverterModel}
+              setInverterModel={setInverterModel}
+              batteryModel={batteryModel}
+              setBatteryModel={setBatteryModel}
+              batteryCount={batteryCount}
+              setBatteryCount={setBatteryCount}
+              batteryCapacityKWh={batteryCapacityKWh}
+              setBatteryCapacityKWh={setBatteryCapacityKWh}
+              selectedKit={selectedKit}
+              setSelectedKit={setSelectedKit}
+              estimatedMonthlyGenKWh={estimatedMonthlyGenKWh}
+              setEstimatedMonthlyGenKWh={setEstimatedMonthlyGenKWh}
+              totalKitPrice={totalKitPrice}
+              setTotalKitPrice={setTotalKitPrice}
+              onShowToast={onShowToast}
+            />
           )}
 
+          {/* ========================================================================= */}
+          {/* ETAPA 4: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
+          {/* ========================================================================= */}
           {currentStep === 'review_save' && (
-            <div className="space-y-4 text-center py-8">
-              <div
-                className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border shadow-xs"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                  borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                  color: theme.secondary,
-                }}
-              >
-                <FileText className="w-6 h-6" />
+            <div className="space-y-5 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b" style={{ borderColor: theme.border }}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-xs"
+                      style={{
+                        backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
+                        borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                        color: theme.secondary,
+                      }}
+                    >
+                      Etapa 4 de 4
+                    </span>
+                    <span className="text-xs text-[var(--muted)]">Resumo Técnico & Emissão</span>
+                  </div>
+                  <h4 className="text-base sm:text-lg font-bold text-[var(--text)] mt-0.5 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-[var(--secondary)]" />
+                    <span>Revisão Final da Proposta Comercial</span>
+                  </h4>
+                </div>
               </div>
-              <h3 className="text-base font-bold text-[var(--text)]">
-                Etapa 4: Condições Comerciais & Geração
-              </h3>
-              <p className="text-xs text-[var(--muted)] max-w-md mx-auto">
-                Revisão final, precificação por watt-pico, payback e emissão da proposta para <strong>{selectedTarget?.name}</strong>.
-              </p>
-              <div className="pt-2">
+
+              {/* Grid de Resumo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* CARD 1: TITULAR & LOCAL */}
+                <div
+                  className="p-4 rounded-xl border space-y-2.5 shadow-xs"
+                  style={{ backgroundColor: theme.card, borderColor: theme.border }}
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--text)]">
+                    <User className="w-4 h-4 text-[var(--secondary)]" />
+                    <span>Titular & Demanda</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Cliente</span>
+                      <span className="font-bold text-[var(--text)] text-sm">{selectedTarget?.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Localidade</span>
+                      <span className="text-[var(--dim)]">{selectedTarget?.city || 'Campinas'} - {selectedTarget?.state || 'SP'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Concessionária & Tipo</span>
+                      <span className="text-[var(--dim)]">{concessionaria} • {connectionType}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Consumo Médio da Fatura</span>
+                      <span className="font-bold text-amber-500 text-sm">
+                        {effectiveAverageKWh.toLocaleString('pt-BR')} kWh/mês
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 2: DIMENSIONAMENTO & PARÂMETROS */}
+                <div
+                  className="p-4 rounded-xl border space-y-2.5 shadow-xs"
+                  style={{ backgroundColor: theme.card, borderColor: theme.border }}
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--text)]">
+                    <Sun className="w-4 h-4 text-amber-500" />
+                    <span>Dimensionamento Solar</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">HSP Adotado</span>
+                        <span className="font-extrabold text-[var(--text)]">{hsp} kWh/m²/dia</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Rendimento (PR)</span>
+                        <span className="font-extrabold text-blue-400">{performanceRatio}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Potência Instalada</span>
+                      <span className="font-black text-base text-[var(--secondary)]">
+                        {installedPowerKWp.toFixed(2)} kWp
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Geração Média Estimada</span>
+                      <span className="font-bold text-emerald-500">
+                        {estimatedMonthlyGenKWh.toLocaleString('pt-BR')} kWh/mês
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Equipamentos</span>
+                      <span className="text-[var(--dim)] text-[11px] block">
+                        {modulesCount}x {moduleModel} ({modulePowerW}W)
+                      </span>
+                      <span className="text-[var(--dim)] text-[11px] block truncate" title={inverterModel}>
+                        Inversor: {inverterModel}
+                      </span>
+                      {systemType === 'Híbrido' && (
+                        <span className="text-amber-500 text-[11px] block">
+                          Bateria: {batteryCount}x {batteryModel} ({(batteryCount * batteryCapacityKWh).toFixed(1)} kWh)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 3: KIT VINCULADO & VALOR */}
+                <div
+                  className="p-4 rounded-xl border space-y-2.5 shadow-xs"
+                  style={{ backgroundColor: theme.card, borderColor: theme.border }}
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--text)]">
+                    <Package className="w-4 h-4 text-purple-500" />
+                    <span>Kit Solar & Investimento</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Origem do Kit</span>
+                      <span className="font-bold text-[var(--text)]">
+                        {selectedKit ? selectedKit.name : 'Dimensionamento Customizado'}
+                      </span>
+                      {selectedKit && (
+                        <span className="text-[10px] font-mono text-[var(--secondary)] block">
+                          {selectedKit.sku} • Catálogo Aba Kits
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Valor do Investimento</span>
+                      <span className="font-black text-lg text-[var(--text)]">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalKitPrice)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Economia Mensal Estimada</span>
+                      <span className="font-bold text-emerald-500">
+                        ~ R$ {Math.round(Math.min(estimatedMonthlyGenKWh, effectiveAverageKWh) * energyTariff).toLocaleString('pt-BR')} / mês
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Payback Estimado</span>
+                      <span className="font-semibold text-[var(--dim)]">
+                        {systemType === 'Híbrido' ? '4.2 anos' : '2.9 anos'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão de Conclusão */}
+              <div className="pt-2 flex justify-center">
                 <button
                   type="button"
                   onClick={handleGenerateProposalFinal}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer inline-flex items-center gap-2"
+                  className="px-6 py-3 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer inline-flex items-center gap-2"
                   style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Gerar Proposta</span>
+                  <span>Emitir Proposta Comercial</span>
                 </button>
               </div>
             </div>
@@ -1365,8 +1558,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 onClose();
               }
             }}
-            className="px-4 py-2 rounded-xl border text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer flex items-center gap-1.5"
-            style={{ borderColor: theme.border }}
+            className="btn-cancel btn-text px-4 py-2 rounded-xl text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer flex items-center gap-1.5 !bg-transparent hover:!bg-transparent"
+            data-text-only="true"
           >
             {currentStepIndex > 0 ? (
               <>
@@ -1425,7 +1618,22 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               </button>
             )}
 
-            {currentStep !== 'client_selection' && currentStep !== 'consumption_bills' && currentStepIndex < stepsConfig.length - 1 && (
+            {currentStep === 'sizing_hardware' && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep('review_save')}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                <span>
+                  Avançar para Revisão & Comercial
+                  {installedPowerKWp > 0 ? ` (${installedPowerKWp.toFixed(2)} kWp)` : ''}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {currentStep !== 'client_selection' && currentStep !== 'consumption_bills' && currentStep !== 'sizing_hardware' && currentStepIndex < stepsConfig.length - 1 && (
               <button
                 type="button"
                 onClick={() => setCurrentStep(stepsConfig[currentStepIndex + 1].id)}
@@ -1445,7 +1653,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
                 <FileText className="w-4 h-4" />
-                <span>Gerar Proposta</span>
+                <span>Emitir Proposta Comercial</span>
               </button>
             )}
           </div>
