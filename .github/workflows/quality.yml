@@ -23,6 +23,7 @@ jobs:
           else
             echo "::warning::package-lock.json ausente; usando npm install para manter a validação disponível."
             npm install --no-audit --no-fund
+          fi
       - run: npm run lint
       - run: npm test
       - run: npm run check:crm
