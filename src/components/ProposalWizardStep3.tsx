@@ -149,6 +149,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     const modW = Math.max(100, Number(modulePowerW) || 550);
     const sizing = calculateOnGridMonthlySizing({
       monthlyConsumptionKWh: cons,
+      connectionType,
       hsp: hspVal,
       performanceRatioPercent: prVal * 100,
       targetCoveragePercent: coverage * 100,
