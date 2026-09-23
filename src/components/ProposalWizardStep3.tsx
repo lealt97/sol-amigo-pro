@@ -21,6 +21,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { ThemeConfig, SolarProposal, SolarConnectionType, SolarKit, SolarSystemType } from '../types';
+import { calculateOnGridMonthlySizing } from '../utils/solarSizing';
 import {
   BRAZIL_STATE_HSP,
   getStoredKits,
@@ -143,18 +144,20 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     const prVal = Math.max(10, Math.min(100, Number(performanceRatio) || 80)) / 100;
     const coverage = Math.max(1, Number(targetCoveragePercent) > 0 ? Number(targetCoveragePercent) : 100) / 100;
 
-    // Fórmula técnica clássica de dimensionamento fotovoltaico:
-    // P (kWp) = (Consumo Mensal * Cobertura) / (30.416 dias * HSP * PR)
-    const daysInMonth = 30.416;
-    const requiredPowerKWp = (cons * coverage) / (daysInMonth * hspVal * prVal);
-
-    // Módulos recomendados
+    // Usa a fonte única do pré-dimensionamento mensal On-Grid.
+    // P (kWp) = (Consumo Mensal * Cobertura) / (30 dias * HSP * PR)
     const modW = Math.max(100, Number(modulePowerW) || 550);
-    const calculatedModules = Math.max(1, Math.ceil((requiredPowerKWp * 1000) / modW));
-    const calculatedInstalledKWp = Number(((calculatedModules * modW) / 1000).toFixed(2));
-
-    // Geração mensal estimada com a potência instalada real
-    const calculatedGenKWh = Math.round(calculatedInstalledKWp * hspVal * daysInMonth * prVal);
+    const sizing = calculateOnGridMonthlySizing({
+      monthlyConsumptionKWh: cons,
+      hsp: hspVal,
+      performanceRatioPercent: prVal * 100,
+      targetCoveragePercent: coverage * 100,
+      modulePowerW: modW,
+    });
+    const requiredPowerKWp = sizing.requiredPowerKWp;
+    const calculatedModules = sizing.modulesCount;
+    const calculatedInstalledKWp = sizing.installedPowerKWp;
+    const calculatedGenKWh = Math.round(sizing.estimatedMonthlyGenerationKWh);
 
     // Área estimada de telhado (~2.58 m² por módulo de 550-650W)
     const estimatedAreaM2 = Number((calculatedModules * 2.58).toFixed(1));
@@ -221,9 +224,9 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     const modW = kit.modulePowerW || 550;
     const hspVal = Math.max(0.5, Number(hsp) || 5.0);
     const prVal = Math.max(10, Math.min(100, Number(performanceRatio) || 80)) / 100;
-    const daysInMonth = 30.416;
+    const daysInMonth = 30;
 
-    // Recalcula a geração mensal para a localização exata usando o HSP e PR configurados
+    // Mantém o mesmo critério mensal do dimensionamento (30 dias).
     const genKWh = Math.round(kwp * hspVal * daysInMonth * prVal);
 
     setInstalledPowerKWp(kwp);
