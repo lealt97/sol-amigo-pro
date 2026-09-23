@@ -86,6 +86,62 @@ export const validateSolarSizingInputs = (inputs: SolarSizingInputs) => {
   }
 };
 
+export interface OnGridMonthlySizingInput {
+  monthlyConsumptionKWh: number;
+  hsp: number;
+  performanceRatioPercent: number;
+  targetCoveragePercent: number;
+  modulePowerW: number;
+}
+
+/**
+ * Pré-dimensionamento mensal usado pelo Wizard comercial.
+ *
+ * Critério padronizado do Sol Amigo PRO:
+ * P(kWp) = (consumo mensal x cobertura) / (30 dias x HSP x PR)
+ *
+ * O custo de disponibilidade NÃO é subtraído da energia-alvo deste
+ * pré-dimensionamento. Ele permanece disponível no motor detalhado para
+ * análises de compensação/faturamento.
+ */
+export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) => {
+  assertFiniteRange('Consumo mensal', input.monthlyConsumptionKWh, 0, 1_000_000);
+  assertFiniteRange('HSP', input.hsp, 0.1, 12);
+  assertFiniteRange('Rendimento global (PR)', input.performanceRatioPercent, 1, 100);
+  assertFiniteRange('Cobertura desejada', input.targetCoveragePercent, 1, 150);
+  assertFiniteRange('Potência do módulo', input.modulePowerW, 50, 2_000);
+
+  const daysInMonth = 30;
+  const performanceRatio = input.performanceRatioPercent / 100;
+  const coverage = input.targetCoveragePercent / 100;
+  const designConsumptionKWh = input.monthlyConsumptionKWh * coverage;
+  const requiredPowerKWp =
+    designConsumptionKWh === 0
+      ? 0
+      : designConsumptionKWh / (daysInMonth * input.hsp * performanceRatio);
+  const modulesCount =
+    requiredPowerKWp === 0
+      ? 0
+      : Math.ceil((requiredPowerKWp * 1_000) / input.modulePowerW);
+  const installedPowerKWp = modulesCount * input.modulePowerW / 1_000;
+  const estimatedMonthlyGenerationKWh =
+    installedPowerKWp * input.hsp * daysInMonth * performanceRatio;
+
+  return {
+    daysInMonth,
+    performanceRatio: round(performanceRatio, 5),
+    designConsumptionKWh: round(designConsumptionKWh, 3),
+    requiredPowerKWp: round(requiredPowerKWp, 4),
+    modulesCount,
+    installedPowerKWp: round(installedPowerKWp, 4),
+    estimatedMonthlyGenerationKWh: round(estimatedMonthlyGenerationKWh, 3),
+    estimatedCoveragePercent:
+      designConsumptionKWh === 0
+        ? 0
+        : round((estimatedMonthlyGenerationKWh / designConsumptionKWh) * 100, 2),
+  };
+};
+
 export const calculateSolarSizing = (inputs: SolarSizingInputs): SolarSizingResults => {
   validateSolarSizingInputs(inputs);
 
