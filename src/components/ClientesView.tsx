@@ -20,7 +20,6 @@ import {
   Trash2,
   User,
   UserCheck,
-  UserPlus,
   X,
   Zap,
 } from 'lucide-react';
@@ -29,7 +28,6 @@ import {
   fetchClients,
   fetchClientsLocal,
   deleteClient,
-  addClient,
   updateClient,
   updateClientNotes,
   mergeClientsWithLeads,
@@ -44,8 +42,6 @@ import {
   getStoredProposalsLocal,
 } from '../services/proposals';
 import { formatPhone } from '../utils/formatters';
-import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
-import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
 import { getContrastFg } from '../utils/themeEngine';
 import { parseLeadNotes, serializeLeadNotes, LeadNote, compressImageFile } from '../utils/leadNotes';
 import { ProposalWizardModal } from './ProposalWizardModal';
@@ -104,7 +100,6 @@ export function ClientesView({
   const [notesModalClient, setNotesModalClient] = useState<Client | null>(null);
   const [paramsModalClient, setParamsModalClient] = useState<Client | null>(null);
   const [deleteClientTarget, setDeleteClientTarget] = useState<Client | null>(null);
-  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
   const [proposalClientPreselected, setProposalClientPreselected] = useState<Client | null>(null);
   const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
@@ -116,19 +111,6 @@ export function ClientesView({
   const [processingImages, setProcessingImages] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Estados do formulário de novo cliente
-  const [newClientName, setNewClientName] = useState('');
-  const [newClientPhone, setNewClientPhone] = useState('');
-  const [newClientEmail, setNewClientEmail] = useState('');
-  const [newClientCity, setNewClientCity] = useState('Campinas');
-  const [newClientState, setNewClientState] = useState('SP');
-  const [configuredStates, setConfiguredStates] = useState<string[]>([]);
-  const [newClientStreet, setNewClientStreet] = useState('');
-  const [newClientNumber, setNewClientNumber] = useState('');
-  const [newClientType, setNewClientType] = useState<'Residencial' | 'Comercial' | 'Rural' | 'Industrial'>('Residencial');
-  const [newClientConcessionaria, setNewClientConcessionaria] = useState('CPFL Paulista');
-  const [newClientConsumption, setNewClientConsumption] = useState<number | ''>('');
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -148,23 +130,14 @@ export function ClientesView({
     setLoading(true);
     setError('');
     try {
-      const [clientsData, leadsData, propsData, formSettings] = await Promise.all([
+      const [clientsData, leadsData, propsData] = await Promise.all([
         fetchClients(),
         fetchLeads().catch(() => []),
         fetchAllClientProposals().catch(() => []),
-        fetchWebsiteFormSettings().catch(() => null),
       ]);
       const merged = mergeClientsWithLeads(clientsData, leadsData);
       setClients(merged);
       setAllProposals(propsData);
-
-      if (formSettings && Array.isArray(formSettings.serviceStates) && formSettings.serviceStates.length > 0) {
-        const validStates = formSettings.serviceStates.filter(Boolean);
-        setConfiguredStates(validStates);
-        if (validStates.length > 0) {
-          setNewClientState((prev) => (prev && validStates.includes(prev) ? prev : validStates[0]));
-        }
-      }
     } catch (err: any) {
       setError(err?.message || 'Erro ao carregar clientes.');
     } finally {
@@ -399,53 +372,6 @@ export function ClientesView({
     }
   };
 
-  // Criar novo cliente manual
-  const handleCreateNewClient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClientName.trim()) {
-      onShowToast('Informe o nome do cliente.');
-      return;
-    }
-
-    try {
-      const created = await addClient({
-        name: newClientName.trim(),
-        phone: newClientPhone.trim(),
-        email: newClientEmail.trim(),
-        city: newClientCity.trim(),
-        state: newClientState.trim(),
-        street: newClientStreet.trim(),
-        addressNumber: newClientNumber.trim(),
-        type: newClientType,
-        propertyType: newClientType,
-        concessionaria: newClientConcessionaria.trim(),
-        avgConsumptionKWh: newClientConsumption ? Number(newClientConsumption) : undefined,
-      });
-
-      setClients((prev) => [created, ...prev]);
-      setIsNewClientModalOpen(false);
-      onShowToast(`Cliente ${created.name} cadastrado com sucesso!`);
-
-      // Reset form
-      setNewClientName('');
-      setNewClientPhone('');
-      setNewClientEmail('');
-      setNewClientStreet('');
-      setNewClientNumber('');
-      setNewClientConsumption('');
-      setNewClientCity('Campinas');
-      setNewClientConcessionaria('CPFL Paulista');
-      setNewClientType('Residencial');
-      if (configuredStates.length > 0) {
-        setNewClientState(configuredStates[0]);
-      } else {
-        setNewClientState('SP');
-      }
-    } catch {
-      onShowToast('Erro ao cadastrar cliente.');
-    }
-  };
-
   // Abrir tela de propostas filtrada para o cliente
   const handleOpenPropostas = (client: Client) => {
     setOpenMenuId(null);
@@ -531,16 +457,6 @@ export function ClientesView({
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsNewClientModalOpen(true)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm"
-            style={{
-              backgroundColor: theme.secondary,
-              color: 'var(--secondary-fg)',
-            }}
-          >
-            <UserPlus className="h-4 w-4" /> Novo cliente
-          </button>
           <button
             onClick={() => void loadData()}
             disabled={loading}
@@ -1159,262 +1075,6 @@ export function ClientesView({
         </div>
       )}
 
-      {/* MODAL: Novo Cliente Manual */}
-      {isNewClientModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-        >
-          <div
-            className="w-full max-w-xl rounded-2xl border p-5 sm:p-6 shadow-2xl space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{
-              backgroundColor: theme.primary,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--secondary)_15%,transparent)] text-[var(--secondary)]">
-                  <UserPlus className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold">Novo Cliente</h2>
-                  <p className="text-[11px] text-[var(--muted)]">Cadastre um cliente diretamente na base comercial</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsNewClientModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
-                style={{ borderColor: theme.border }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewClient} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    Nome Completo do Titular *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                    placeholder="Ex: João da Silva / Empresa Comercial Ltda"
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    Telefone / WhatsApp
-                  </label>
-                  <input
-                    type="tel"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(formatPhone(e.target.value))}
-                    placeholder="(00) 00000-0000"
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    value={newClientEmail}
-                    onChange={(e) => setNewClientEmail(e.target.value)}
-                    placeholder="cliente@exemplo.com"
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-
-                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                      Endereço (Rua / Logradouro)
-                    </label>
-                    <input
-                      type="text"
-                      value={newClientStreet}
-                      onChange={(e) => setNewClientStreet(e.target.value)}
-                      placeholder="Ex: Rua das Palmeiras, Av. Brasil"
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                      style={{
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                      Número / Compl.
-                    </label>
-                    <input
-                      type="text"
-                      value={newClientNumber}
-                      onChange={(e) => setNewClientNumber(e.target.value)}
-                      placeholder="Ex: 123, Bloco B"
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                      style={{
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    value={newClientCity}
-                    onChange={(e) => setNewClientCity(e.target.value)}
-                    placeholder="Ex: Campinas"
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-[var(--dim)]">
-                      Estado (UF)
-                    </label>
-                    {configuredStates.length > 0 && (
-                      <span className="text-[10px] text-[var(--muted)] font-medium">
-                        Atendimento ({configuredStates.length})
-                      </span>
-                    )}
-                  </div>
-                  {configuredStates.length > 0 ? (
-                    <select
-                      value={newClientState}
-                      onChange={(e) => setNewClientState(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
-                      style={{
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      }}
-                    >
-                      {configuredStates.map((uf) => (
-                        <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
-                          {uf} - {BRAZIL_STATE_NAMES[uf] || uf}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      value={newClientState}
-                      onChange={(e) => setNewClientState(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
-                      style={{
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      }}
-                    >
-                      {BRAZIL_STATE_GROUPS.map((group) => (
-                        <optgroup key={group.region} label={group.region}>
-                          {group.states.map(([uf, name]) => (
-                            <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
-                              {uf} - {name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    Distribuidora / Concessionária
-                  </label>
-                  <input
-                    type="text"
-                    value={newClientConcessionaria}
-                    onChange={(e) => setNewClientConcessionaria(e.target.value)}
-                    placeholder="Ex: CPFL Paulista, Enel, Cemig, Light..."
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
-                    Consumo Médio Estimado (kWh/mês)
-                  </label>
-                  <input
-                    type="number"
-                    value={newClientConsumption}
-                    onChange={(e) => setNewClientConsumption(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="Ex: 850"
-                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-4 flex items-center justify-end gap-2.5" style={{ borderColor: theme.border }}>
-                <button
-                  type="button"
-                  onClick={() => setIsNewClientModalOpen(false)}
-                  className="rounded-lg border px-4 py-2.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
-                  style={{ borderColor: theme.border, backgroundColor: theme.background }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg px-5 py-2.5 text-xs font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
-                  style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-                >
-                  Salvar Cliente
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* MODAL: Wizard de Dimensionamento & Gerar Proposta */}
       {isNewProposalModalOpen && (
         <ProposalWizardModal
@@ -1429,6 +1089,7 @@ export function ClientesView({
               ? {
                   id: proposalClientPreselected.id,
                   name: proposalClientPreselected.name,
+                  type: 'client',
                   clientId: proposalClientPreselected.id,
                   phone: proposalClientPreselected.phone,
                   email: proposalClientPreselected.email,

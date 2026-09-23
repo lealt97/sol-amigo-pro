@@ -20,13 +20,19 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
-import { ThemeConfig, Client, Lead, SolarProposal } from '../types';
-import { fetchClients, addClient } from '../services/clients';
-import { fetchLeads } from '../services/leads';
+import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType } from '../types';
+import { fetchClients, mergeClientsWithLeads } from '../services/clients';
+import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
 import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
 import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
 import { getLeadClienteBadgeStyle } from '../utils/themeEngine';
+import {
+  ProposalWizardStep2,
+  WizardLoadItem,
+  MONTH_LABELS,
+  PRESET_APPLIANCES,
+} from './ProposalWizardStep2';
 
 export interface ProposalTargetSelection {
   id: string;
@@ -91,21 +97,75 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   // Busca e filtros na Etapa 1
   const [searchQuery, setSearchQuery] = useState('');
   const [contactFilterType, setContactFilterType] = useState<'all' | 'clients' | 'leads'>('all');
-  const [isRegisteringNewClient, setIsRegisteringNewClient] = useState(false);
+  const [isRegisteringNewLead, setIsRegisteringNewLead] = useState(false);
 
-  // Formulário de novo cliente
-  const [newClientName, setNewClientName] = useState('');
-  const [newClientPhone, setNewClientPhone] = useState('');
-  const [newClientEmail, setNewClientEmail] = useState('');
-  const [newClientPropertyType, setNewClientPropertyType] = useState('Residencial');
-  const [newClientCity, setNewClientCity] = useState('Campinas');
-  const [newClientState, setNewClientState] = useState('SP');
+  // Formulário de novo lead
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadEmail, setNewLeadEmail] = useState('');
+  const [newLeadPropertyType, setNewLeadPropertyType] = useState('Residencial');
+  const [newLeadCity, setNewLeadCity] = useState('Campinas');
+  const [newLeadState, setNewLeadState] = useState('SP');
   const [configuredStates, setConfiguredStates] = useState<string[]>([]);
-  const [newClientStreet, setNewClientStreet] = useState('');
-  const [newClientNumber, setNewClientNumber] = useState('');
-  const [newClientConcessionaria, setNewClientConcessionaria] = useState('');
-  const [newClientAvgConsumption, setNewClientAvgConsumption] = useState<number | ''>('');
-  const [savingNewClient, setSavingNewClient] = useState(false);
+  const [newLeadStreet, setNewLeadStreet] = useState('');
+  const [newLeadNumber, setNewLeadNumber] = useState('');
+  const [newLeadConcessionaria, setNewLeadConcessionaria] = useState('');
+  const [newLeadAvgConsumption, setNewLeadAvgConsumption] = useState<number | ''>('');
+  const [savingNewLead, setSavingNewLead] = useState(false);
+
+  // Estados da Etapa 2: Fatura & Consumo
+  const [systemType, setSystemType] = useState<'On-Grid' | 'Híbrido'>('On-Grid');
+  const [consumptionMode, setConsumptionMode] = useState<'direct' | 'monthly' | 'load_table'>('direct');
+  const [directAvgKWh, setDirectAvgKWh] = useState<number | ''>(450);
+  const [monthlyValues, setMonthlyValues] = useState<{ month: string; value: number | '' }[]>(
+    MONTH_LABELS.map((m) => ({ month: m, value: '' }))
+  );
+  const [loadItems, setLoadItems] = useState<WizardLoadItem[]>([
+    { id: 'load-1', name: 'Ar-condicionado 9.000 BTUs Inverter', powerW: 800, quantity: 1, hoursPerDay: 8, daysPerMonth: 30, isPriorityBackup: false },
+    { id: 'load-2', name: 'Geladeira Frost Free Duplex', powerW: 150, quantity: 1, hoursPerDay: 10, daysPerMonth: 30, isPriorityBackup: true },
+    { id: 'load-3', name: 'Chuveiro Elétrico 5500W', powerW: 5500, quantity: 1, hoursPerDay: 0.6, daysPerMonth: 30, isPriorityBackup: false },
+    { id: 'load-4', name: 'Smart TV LED 55"', powerW: 120, quantity: 1, hoursPerDay: 5, daysPerMonth: 30, isPriorityBackup: true },
+    { id: 'load-5', name: 'Iluminação Geral LED (Casa/Comércio)', powerW: 150, quantity: 1, hoursPerDay: 6, daysPerMonth: 30, isPriorityBackup: true },
+  ]);
+  const [concessionaria, setConcessionaria] = useState('CPFL Paulista');
+  const [connectionType, setConnectionType] = useState<SolarConnectionType>('Bifásica');
+  const [energyTariff, setEnergyTariff] = useState(0.92);
+  const [publicLightingTax, setPublicLightingTax] = useState(35.00);
+  const [backupAutonomyHours, setBackupAutonomyHours] = useState(4);
+
+  // Sincroniza dados do titular selecionado com a Etapa 2
+  useEffect(() => {
+    if (selectedTarget) {
+      if (selectedTarget.monthlyConsumptionKWh && selectedTarget.monthlyConsumptionKWh > 0) {
+        setDirectAvgKWh(selectedTarget.monthlyConsumptionKWh);
+      }
+      if (selectedTarget.concessionaria) {
+        setConcessionaria(selectedTarget.concessionaria);
+      }
+    }
+  }, [selectedTarget]);
+
+  // Consumo médio adotado dependendo do modo ativo na Etapa 2
+  const effectiveAverageKWh = useMemo(() => {
+    if (consumptionMode === 'direct') {
+      return Number(directAvgKWh) || 0;
+    }
+    if (consumptionMode === 'monthly') {
+      const filled = monthlyValues
+        .map((m) => (typeof m.value === 'number' ? m.value : 0))
+        .filter((v) => v > 0);
+      if (filled.length === 0) return 0;
+      return Math.round(filled.reduce((a, b) => a + b, 0) / filled.length);
+    }
+    if (consumptionMode === 'load_table') {
+      const sum = loadItems.reduce((acc, item) => {
+        const kwh = (item.powerW * item.quantity * item.hoursPerDay * item.daysPerMonth) / 1000;
+        return acc + kwh;
+      }, 0);
+      return Math.round(sum);
+    }
+    return 0;
+  }, [consumptionMode, directAvgKWh, monthlyValues, loadItems]);
 
   // Carrega clientes e leads
   useEffect(() => {
@@ -120,25 +180,63 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           fetchWebsiteFormSettings().catch(() => null),
         ]);
         if (!isMounted) return;
-        setClientsList(cList);
+        const mergedClients = mergeClientsWithLeads(cList, lList);
+        setClientsList(mergedClients);
         setLeadsList(lList);
 
         if (formSettings && Array.isArray(formSettings.serviceStates) && formSettings.serviceStates.length > 0) {
           const validStates = formSettings.serviceStates.filter(Boolean);
           setConfiguredStates(validStates);
           if (validStates.length > 0) {
-            setNewClientState((prev) => (prev && validStates.includes(prev) ? prev : validStates[0]));
+            setNewLeadState((prev) => (prev && validStates.includes(prev) ? prev : validStates[0]));
           }
         }
 
-        // Se initialTarget foi fornecido (ex: vindo de Parâmetros Gerais ou LeadsView)
+        // Se initialTarget foi fornecido (ex: vindo de Parâmetros Gerais, ClientesView ou LeadsView)
         if (initialTarget && initialTarget.id) {
           const matchLead = lList.find((l) => l.id === initialTarget.id);
-          const matchClient = cList.find(
-            (c) => c.id === initialTarget.id || (initialTarget.clientId && c.id === initialTarget.clientId && !matchLead)
+          const matchClient = mergedClients.find(
+            (c) =>
+              c.id === initialTarget.id ||
+              (initialTarget.clientId && c.id === initialTarget.clientId) ||
+              (matchLead && c.sourceLeadId === matchLead.id)
           );
 
-          if (initialTarget.type === 'lead' || (matchLead && initialTarget.type !== 'client')) {
+          const isConverted = matchLead ? isLeadConverted(matchLead) : false;
+          const isTargetClient =
+            initialTarget.type === 'client' || (matchClient && (!matchLead || isConverted));
+
+          if (isTargetClient) {
+            const targetClient = matchClient || {
+              id: initialTarget.id,
+              name: initialTarget.name,
+              phone: initialTarget.phone,
+              email: initialTarget.email,
+              city: initialTarget.city,
+              state: initialTarget.state,
+              street: (initialTarget as any).street as string | undefined,
+              addressNumber: (initialTarget as any).addressNumber as string | undefined,
+              propertyType: initialTarget.propertyType,
+              concessionaria: initialTarget.concessionaria,
+              avgConsumptionKWh: initialTarget.monthlyConsumptionKWh,
+            };
+            setSelectedTarget({
+              id: targetClient.id,
+              name: targetClient.name,
+              type: 'client',
+              phone: targetClient.phone,
+              email: targetClient.email,
+              city: targetClient.city,
+              state: targetClient.state,
+              street: targetClient.street,
+              addressNumber: targetClient.addressNumber,
+              propertyType: targetClient.propertyType || (targetClient as any).type,
+              concessionaria: targetClient.concessionaria,
+              monthlyConsumptionKWh: targetClient.avgConsumptionKWh || initialTarget.monthlyConsumptionKWh,
+              sourceLeadId: (targetClient as any).sourceLeadId,
+              clientId: targetClient.id,
+            });
+          } else if (matchLead || initialTarget.type === 'lead') {
             const targetLead = matchLead || {
               id: initialTarget.id,
               name: initialTarget.name,
@@ -165,23 +263,6 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               concessionaria: (targetLead as any).distributor || initialTarget.concessionaria,
               monthlyConsumptionKWh: (targetLead as any).averageConsumptionKWh || initialTarget.monthlyConsumptionKWh,
               clientId: targetLead.clientId,
-            });
-          } else if (matchClient) {
-            setSelectedTarget({
-              id: matchClient.id,
-              name: matchClient.name,
-              type: 'client',
-              phone: matchClient.phone,
-              email: matchClient.email,
-              city: matchClient.city,
-              state: matchClient.state,
-              street: matchClient.street,
-              addressNumber: matchClient.addressNumber,
-              propertyType: matchClient.propertyType || matchClient.type,
-              concessionaria: matchClient.concessionaria,
-              monthlyConsumptionKWh: matchClient.avgConsumptionKWh,
-              sourceLeadId: matchClient.sourceLeadId,
-              clientId: matchClient.id,
             });
           } else {
             setSelectedTarget({
@@ -216,7 +297,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const unifiedContacts = useMemo(() => {
     const list: ProposalTargetSelection[] = [];
 
-    // Clientes
+    // Clientes (inclui clientes cadastrados e leads convertidos)
     clientsList.forEach((c) => {
       list.push({
         id: c.id,
@@ -236,16 +317,19 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       });
     });
 
-    // Leads / Interessados (exibe todos os leads ativos; não remove por nome coincidente)
+    // Leads / Interessados (somente leads ativos que NÃO foram convertidos em clientes)
     leadsList.forEach((l) => {
-      // Ignora somente se o lead já tiver status 'Cliente' E o cliente correspondente estiver na lista de clientes
-      const isAlreadyInClientsAsSameEntity =
-        (l.status as string) === 'Cliente' &&
-        list.some(
-          (item) => item.type === 'client' && (item.id === l.clientId || item.sourceLeadId === l.id)
-        );
+      // Se o lead já foi convertido em cliente, ele já foi adicionado acima em Clientes
+      if (isLeadConverted(l)) return;
 
-      if (!isAlreadyInClientsAsSameEntity) {
+      // Garantia contra duplicação de chave de entidade
+      const alreadyInClients = list.some(
+        (item) =>
+          item.type === 'client' &&
+          (item.id === l.clientId || item.sourceLeadId === l.id || item.id === l.id)
+      );
+
+      if (!alreadyInClients) {
         list.push({
           id: l.id,
           name: l.name,
@@ -304,54 +388,67 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     return result;
   }, [unifiedContacts, contactFilterType, searchQuery]);
 
-  // Manipular cadastro de novo cliente
-  const handleSaveNewClient = async (e: React.FormEvent) => {
+  // Manipular cadastro de novo lead
+  const handleSaveNewLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newClientName.trim()) {
-      alert('Por favor, informe o nome do cliente.');
+    if (!newLeadName.trim()) {
+      alert('Por favor, informe o nome do interessado/lead.');
       return;
     }
 
-    setSavingNewClient(true);
+    setSavingNewLead(true);
     try {
-      const created = await addClient({
-        name: newClientName.trim(),
-        phone: newClientPhone.trim(),
-        email: newClientEmail.trim(),
-        city: newClientCity.trim() || 'Campinas',
-        state: newClientState.trim() || 'SP',
-        street: newClientStreet.trim() || undefined,
-        addressNumber: newClientNumber.trim() || undefined,
-        type: newClientPropertyType as any,
-        propertyType: newClientPropertyType as any,
-        concessionaria: newClientConcessionaria.trim() || undefined,
-        avgConsumptionKWh: newClientAvgConsumption ? Number(newClientAvgConsumption) : undefined,
+      const created = await createManualLead({
+        name: newLeadName.trim(),
+        phone: newLeadPhone.trim(),
+        email: newLeadEmail.trim() || undefined,
+        city: newLeadCity.trim() || 'Campinas',
+        state: (newLeadState.trim() || 'SP').toUpperCase().slice(0, 2),
+        street: newLeadStreet.trim() || undefined,
+        addressNumber: newLeadNumber.trim() || undefined,
+        propertyType: newLeadPropertyType as any,
+        distributor: newLeadConcessionaria.trim() || undefined,
+        averageConsumptionKWh: newLeadAvgConsumption ? Number(newLeadAvgConsumption) : undefined,
       });
 
-      // Adiciona na lista local e seleciona
-      setClientsList((prev) => [created, ...prev]);
+      // Adiciona na lista de leads e seleciona
+      setLeadsList((prev) => [created, ...prev.filter((l) => l.id !== created.id)]);
       const newSelection: ProposalTargetSelection = {
         id: created.id,
         name: created.name,
-        type: 'client',
+        type: 'lead',
         phone: created.phone,
         email: created.email,
         city: created.city,
         state: created.state,
         street: created.street,
         addressNumber: created.addressNumber,
-        propertyType: created.propertyType || created.type,
-        concessionaria: created.concessionaria,
-        monthlyConsumptionKWh: created.avgConsumptionKWh,
-        clientId: created.id,
+        propertyType: created.propertyType,
+        concessionaria: created.distributor,
+        monthlyConsumptionKWh: created.averageConsumptionKWh,
       };
       setSelectedTarget(newSelection);
-      setIsRegisteringNewClient(false);
-      onShowToast(`Cliente ${created.name} cadastrado e selecionado!`);
+      setIsRegisteringNewLead(false);
+      onShowToast(`Lead ${created.name} cadastrado e selecionado!`);
+
+      // Limpa os campos do formulário
+      setNewLeadName('');
+      setNewLeadPhone('');
+      setNewLeadEmail('');
+      setNewLeadStreet('');
+      setNewLeadNumber('');
+      setNewLeadConcessionaria('');
+      setNewLeadAvgConsumption('');
+      setNewLeadCity('Campinas');
+      if (configuredStates.length > 0) {
+        setNewLeadState(configuredStates[0]);
+      } else {
+        setNewLeadState('SP');
+      }
     } catch (err: any) {
-      alert(`Erro ao cadastrar cliente: ${err?.message || 'Falha ao salvar'}`);
+      alert(`Erro ao cadastrar lead: ${err?.message || 'Falha ao salvar'}`);
     } finally {
-      setSavingNewClient(false);
+      setSavingNewLead(false);
     }
   };
 
@@ -361,6 +458,20 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       return;
     }
     const propCode = `PROP-${new Date().getFullYear()}-${String(Math.floor(100 + Math.random() * 900))}`;
+    const consKWh = effectiveAverageKWh > 0 ? effectiveAverageKWh : (selectedTarget.monthlyConsumptionKWh || 450);
+    const estimatedKWp = Number((consKWh / 115).toFixed(2));
+    const modules = Math.max(4, Math.ceil((estimatedKWp * 1000) / 600));
+
+    const isHybrid = systemType === 'Híbrido';
+    const batteryCapacity = 5.12;
+    const neededDailyPriorityKWh = (consKWh / 30) * 0.45;
+    const batteryCount = isHybrid
+      ? Math.max(1, Math.ceil(((neededDailyPriorityKWh / 24) * backupAutonomyHours) / (batteryCapacity * 0.9 * 0.92)))
+      : undefined;
+
+    const baseVal = Math.round(estimatedKWp * 2900);
+    const hybridVal = isHybrid ? baseVal + (batteryCount || 1) * 9800 + 4000 : baseVal;
+
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,
       code: propCode,
@@ -368,24 +479,31 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       clientEmail: selectedTarget.email,
       clientPhone: selectedTarget.phone,
       propertyType: selectedTarget.propertyType || 'Residencial',
-      clientCity: selectedTarget.city || 'São Paulo',
+      clientCity: selectedTarget.city || 'Campinas',
       clientState: selectedTarget.state || 'SP',
-      concessionaria: selectedTarget.concessionaria || 'Enel SP',
-      monthlyConsumptionKWh: selectedTarget.monthlyConsumptionKWh || 450,
-      systemPowerKWp: 4.8,
-      modulesCount: 8,
-      moduleModel: 'Painel Solar Canadian 600W Bifacial',
-      inverterModel: 'Inversor Deye 5kW Monofásico',
-      estimatedMonthlyGenKWh: 580,
-      estimatedMonthlySavings: 520,
-      paybackYears: 3.2,
-      totalValue: 14900,
+      concessionaria: concessionaria || selectedTarget.concessionaria || 'CPFL Paulista',
+      monthlyConsumptionKWh: consKWh,
+      systemPowerKWp: estimatedKWp,
+      modulesCount: modules,
+      moduleModel: 'Painel Solar Canadian 600W Bifacial TOPCon',
+      inverterModel: isHybrid
+        ? `Inversor Híbrido Deye ${Math.max(5, Math.ceil(estimatedKWp))}kW com ATS / Backup`
+        : `Inversor Deye ${Math.max(5, Math.ceil(estimatedKWp))}kW Monofásico/Bifásico`,
+      batteryModel: isHybrid ? 'Bateria Lítio LiFePO4 5.12kWh 48V Rack/Parede' : undefined,
+      batteryCount: batteryCount,
+      batteryCapacityKWh: isHybrid ? Number((batteryCapacity * (batteryCount || 1)).toFixed(2)) : undefined,
+      estimatedMonthlyGenKWh: Math.round(consKWh * 1.05),
+      estimatedMonthlySavings: Math.round(consKWh * energyTariff),
+      paybackYears: isHybrid ? 4.4 : 3.1,
+      totalValue: hybridVal,
       commercialConditions: {
-        paymentMethods: 'À vista com 5% de desconto ou 36x sem juros no solar Santander',
+        paymentMethods: isHybrid
+          ? 'Financiamento Solar em até 84x com 90 dias de carência ou à vista com 6% de desconto'
+          : 'À vista com 5% de desconto ou 36x sem juros no solar Santander',
       },
       status: 'Rascunho',
       createdAt: new Date().toISOString(),
-      systemType: 'On-Grid',
+      systemType: systemType,
     };
     onSaveProposal(newProp);
     onClose();
@@ -508,7 +626,12 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 return (
                   <div
                     key={s.id}
+                    onClick={() => {
+                      if (isPassed) setCurrentStep(s.id);
+                    }}
                     className={`flex items-center gap-2 p-1.5 rounded-lg text-left transition-colors ${
+                      isPassed ? 'cursor-pointer hover:bg-[var(--neutral)]/20' : ''
+                    } ${
                       isCurrent
                         ? 'bg-[var(--neutral)]/40 font-semibold'
                         : isPassed
@@ -567,21 +690,21 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                   </p>
                 </div>
 
-                {/* Alternância: Buscar Existente vs Novo Cliente */}
+                {/* Alternância: Buscar Existente vs Novo Lead */}
                 <div
                   className="p-1 rounded-xl border inline-flex items-center gap-1 self-start"
                   style={{ backgroundColor: theme.background, borderColor: theme.border }}
                 >
                   <button
                     type="button"
-                    onClick={() => setIsRegisteringNewClient(false)}
+                    onClick={() => setIsRegisteringNewLead(false)}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                      !isRegisteringNewClient
+                      !isRegisteringNewLead
                         ? 'shadow-xs text-[var(--secondary-fg)]'
                         : 'text-[var(--muted)] hover:text-[var(--text)]'
                     }`}
                     style={
-                      !isRegisteringNewClient
+                      !isRegisteringNewLead
                         ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }
                         : {}
                     }
@@ -591,20 +714,20 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsRegisteringNewClient(true)}
+                    onClick={() => setIsRegisteringNewLead(true)}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                      isRegisteringNewClient
+                      isRegisteringNewLead
                         ? 'shadow-xs text-[var(--secondary-fg)]'
                         : 'text-[var(--muted)] hover:text-[var(--text)]'
                     }`}
                     style={
-                      isRegisteringNewClient
+                      isRegisteringNewLead
                         ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }
                         : {}
                     }
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    Novo Cliente
+                    Novo Lead
                   </button>
                 </div>
               </div>
@@ -689,7 +812,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               )}
 
               {/* MODO 1: BUSCAR E SELECIONAR EXISTENTE */}
-              {!isRegisteringNewClient && (
+              {!isRegisteringNewLead && (
                 <div className="space-y-4">
                   {/* Barra de busca e filtros de categoria */}
                   <div className="flex flex-col sm:flex-row gap-2.5">
@@ -782,18 +905,18 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         onClick={() => {
                           const digits = getOnlyDigits(searchQuery);
                           if (digits.length >= 8 && digits.length <= 11 && !/[a-zA-Z]/.test(searchQuery)) {
-                            setNewClientPhone(formatPhone(searchQuery));
-                            setNewClientName('');
+                            setNewLeadPhone(formatPhone(searchQuery));
+                            setNewLeadName('');
                           } else {
-                            setNewClientName(searchQuery);
+                            setNewLeadName(searchQuery);
                           }
-                          setIsRegisteringNewClient(true);
+                          setIsRegisteringNewLead(true);
                         }}
                         className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold shadow-xs hover:brightness-110 active:scale-[0.98] cursor-pointer"
                         style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                       >
                         <UserPlus className="w-3.5 h-3.5" />
-                        Cadastrar &ldquo;{searchQuery || 'Novo Cliente'}&rdquo;
+                        Cadastrar &ldquo;{searchQuery || 'Novo Lead'}&rdquo;
                       </button>
                     </div>
                   ) : (
@@ -890,10 +1013,10 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 </div>
               )}
 
-              {/* MODO 2: FORMULÁRIO DE CADASTRO DE NOVO CLIENTE */}
-              {isRegisteringNewClient && (
+              {/* MODO 2: FORMULÁRIO DE CADASTRO DE NOVO LEAD */}
+              {isRegisteringNewLead && (
                 <form
-                  onSubmit={handleSaveNewClient}
+                  onSubmit={handleSaveNewLead}
                   className="p-4 sm:p-5 rounded-xl border space-y-4"
                   style={{ backgroundColor: theme.background, borderColor: theme.border }}
                 >
@@ -901,7 +1024,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                     <div className="flex items-center gap-2">
                       <UserPlus className="w-4 h-4 text-[var(--secondary)]" />
                       <h4 className="text-sm font-bold text-[var(--text)]">
-                        Cadastro Rápido de Novo Cliente
+                        Cadastro Rápido de Novo Lead
                       </h4>
                     </div>
                     <span className="text-[11px] text-[var(--muted)]">
@@ -917,8 +1040,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       <input
                         type="text"
                         required
-                        value={newClientName}
-                        onChange={(e) => setNewClientName(e.target.value)}
+                        value={newLeadName}
+                        onChange={(e) => setNewLeadName(e.target.value)}
                         placeholder="Ex: João da Silva / Empresa Comercial Ltda"
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -935,8 +1058,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </label>
                       <input
                         type="tel"
-                        value={newClientPhone}
-                        onChange={(e) => setNewClientPhone(formatPhone(e.target.value))}
+                        value={newLeadPhone}
+                        onChange={(e) => setNewLeadPhone(formatPhone(e.target.value))}
                         placeholder="(00) 00000-0000"
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -953,8 +1076,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </label>
                       <input
                         type="email"
-                        value={newClientEmail}
-                        onChange={(e) => setNewClientEmail(e.target.value)}
+                        value={newLeadEmail}
+                        onChange={(e) => setNewLeadEmail(e.target.value)}
                         placeholder="cliente@exemplo.com"
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -972,8 +1095,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={newClientStreet}
-                          onChange={(e) => setNewClientStreet(e.target.value)}
+                          value={newLeadStreet}
+                          onChange={(e) => setNewLeadStreet(e.target.value)}
                           placeholder="Ex: Rua das Palmeiras, Av. Brasil"
                           className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                           style={{
@@ -989,8 +1112,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={newClientNumber}
-                          onChange={(e) => setNewClientNumber(e.target.value)}
+                          value={newLeadNumber}
+                          onChange={(e) => setNewLeadNumber(e.target.value)}
                           placeholder="Ex: 123, Bloco B"
                           className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                           style={{
@@ -1008,8 +1131,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={newClientCity}
-                        onChange={(e) => setNewClientCity(e.target.value)}
+                        value={newLeadCity}
+                        onChange={(e) => setNewLeadCity(e.target.value)}
                         placeholder="Ex: Campinas"
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -1033,8 +1156,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </div>
                       {configuredStates.length > 0 ? (
                         <select
-                          value={newClientState}
-                          onChange={(e) => setNewClientState(e.target.value)}
+                          value={newLeadState}
+                          onChange={(e) => setNewLeadState(e.target.value)}
                           className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                           style={{
                             backgroundColor: theme.primary,
@@ -1050,8 +1173,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         </select>
                       ) : (
                         <select
-                          value={newClientState}
-                          onChange={(e) => setNewClientState(e.target.value)}
+                          value={newLeadState}
+                          onChange={(e) => setNewLeadState(e.target.value)}
                           className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                           style={{
                             backgroundColor: theme.primary,
@@ -1078,8 +1201,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={newClientConcessionaria}
-                        onChange={(e) => setNewClientConcessionaria(e.target.value)}
+                        value={newLeadConcessionaria}
+                        onChange={(e) => setNewLeadConcessionaria(e.target.value)}
                         placeholder="Ex: Light, Enel, CPFL, Cemig..."
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -1096,8 +1219,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={newClientAvgConsumption}
-                        onChange={(e) => setNewClientAvgConsumption(e.target.value ? Number(e.target.value) : '')}
+                        value={newLeadAvgConsumption}
+                        onChange={(e) => setNewLeadAvgConsumption(e.target.value ? Number(e.target.value) : '')}
                         placeholder="Ex: 850"
                         className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
                         style={{
@@ -1112,7 +1235,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                   <div className="flex items-center justify-end gap-2.5 pt-3 border-t" style={{ borderColor: theme.border }}>
                     <button
                       type="button"
-                      onClick={() => setIsRegisteringNewClient(false)}
+                      onClick={() => setIsRegisteringNewLead(false)}
                       className="px-3.5 py-2 rounded-lg border text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
                       style={{ borderColor: theme.border }}
                     >
@@ -1120,19 +1243,19 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      disabled={savingNewClient || !newClientName.trim()}
+                      disabled={savingNewLead || !newLeadName.trim()}
                       className="px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                       style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                     >
-                      {savingNewClient ? (
+                      {savingNewLead ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Salvando Cliente...
+                          Salvando Lead...
                         </>
                       ) : (
                         <>
                           <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                          Salvar e Selecionar Cliente
+                          Salvar e Selecionar Lead
                         </>
                       )}
                     </button>
@@ -1143,28 +1266,35 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* PRÓXIMAS ETAPAS (PREPARADAS PARA AS PRÓXIMAS INSTRUÇÕES DO USUÁRIO)      */}
+          {/* ETAPA 2: FATURA & CONSUMO ENERGÉTICO (DIRETA, MÊS A MÊS, TABELA DE CARGAS)*/}
           {/* ========================================================================= */}
           {currentStep === 'consumption_bills' && (
-            <div className="space-y-4 text-center py-8">
-              <div
-                className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border shadow-xs"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-                  borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                  color: theme.secondary,
-                }}
-              >
-                <Zap className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-[var(--text)]">
-                Etapa 2: Fatura & Consumo Energético
-              </h3>
-              <p className="text-xs text-[var(--muted)] max-w-md mx-auto">
-                Titular selecionado: <strong>{selectedTarget?.name}</strong>.
-                Aguardando suas próximas instruções de cálculo de consumo e faturas para esta etapa.
-              </p>
-            </div>
+            <ProposalWizardStep2
+              theme={theme}
+              selectedTarget={selectedTarget}
+              systemType={systemType}
+              setSystemType={setSystemType}
+              consumptionMode={consumptionMode}
+              setConsumptionMode={setConsumptionMode}
+              directAvgKWh={directAvgKWh}
+              setDirectAvgKWh={setDirectAvgKWh}
+              monthlyValues={monthlyValues}
+              setMonthlyValues={setMonthlyValues}
+              loadItems={loadItems}
+              setLoadItems={setLoadItems}
+              concessionaria={concessionaria}
+              setConcessionaria={setConcessionaria}
+              connectionType={connectionType}
+              setConnectionType={setConnectionType}
+              energyTariff={energyTariff}
+              setEnergyTariff={setEnergyTariff}
+              publicLightingTax={publicLightingTax}
+              setPublicLightingTax={setPublicLightingTax}
+              backupAutonomyHours={backupAutonomyHours}
+              setBackupAutonomyHours={setBackupAutonomyHours}
+              effectiveAverageKWh={effectiveAverageKWh}
+              onShowToast={onShowToast}
+            />
           )}
 
           {currentStep === 'sizing_hardware' && (
@@ -1262,7 +1392,40 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               </button>
             )}
 
-            {currentStep !== 'client_selection' && currentStepIndex < stepsConfig.length - 1 && (
+            {currentStep === 'consumption_bills' && (
+              <button
+                type="button"
+                disabled={effectiveAverageKWh <= 0}
+                onClick={() => {
+                  if (effectiveAverageKWh <= 0) {
+                    onShowToast?.('Por favor, informe um consumo médio válido maior que zero.');
+                    return;
+                  }
+                  if (selectedTarget) {
+                    setSelectedTarget((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            monthlyConsumptionKWh: effectiveAverageKWh,
+                            concessionaria: concessionaria || prev.concessionaria,
+                          }
+                        : null
+                    );
+                  }
+                  setCurrentStep('sizing_hardware');
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                <span>
+                  Avançar para Dimensionamento
+                  {effectiveAverageKWh > 0 ? ` (${effectiveAverageKWh.toLocaleString('pt-BR')} kWh)` : ''}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {currentStep !== 'client_selection' && currentStep !== 'consumption_bills' && currentStepIndex < stepsConfig.length - 1 && (
               <button
                 type="button"
                 onClick={() => setCurrentStep(stepsConfig[currentStepIndex + 1].id)}

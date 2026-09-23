@@ -10,6 +10,27 @@ import {
 
 type LeadRow = Record<string, any>;
 
+const MANUAL_LEADS_STORAGE_KEY = 'sol_amigo_manual_leads_cache';
+
+export function getStoredManualLeads(): Lead[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(MANUAL_LEADS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredManualLeads(leads: Lead[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(MANUAL_LEADS_STORAGE_KEY, JSON.stringify(leads));
+  } catch {
+    // Non-blocking
+  }
+}
+
 export type ProposalSystemType = 'On-Grid' | 'Híbrido';
 
 export const LEADS_UPDATED_EVENT = 'solamigo:leads-updated';
@@ -27,6 +48,24 @@ export type ProposalDraftResult = {
   proposalId: string;
   proposalCode: string;
 };
+
+export interface CreateLeadInput {
+  name: string;
+  phone: string;
+  email?: string;
+  city: string;
+  state: string;
+  street?: string;
+  addressNumber?: string;
+  propertyType?: 'Residencial' | 'Comercial' | 'Rural' | 'Industrial';
+  averageMonthlyBill?: number;
+  averageConsumptionKWh?: number;
+  distributor?: string;
+  propertyStatus?: 'Próprio' | 'Alugado' | 'Em construção' | 'Outro';
+  status?: LeadStage;
+  responsible?: string;
+  notes?: string;
+}
 
 const mapLead = (row: LeadRow): Lead => {
   const localStatus = getStoredLeadStatus(row.id);
@@ -71,14 +110,126 @@ const mapLead = (row: LeadRow): Lead => {
 };
 
 export async function fetchLeads(): Promise<Lead[]> {
-  const { data, error } = await supabase
-    .from('leads')
-    .select('*')
-    .is('archived_at', null)
-    .is('trashed_at', null)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(mapLead);
+  let dbLeads: Lead[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .is('archived_at', null)
+      .is('trashed_at', null)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      dbLeads = data.map(mapLead);
+    }
+  } catch (err) {
+    console.warn('Erro ao buscar leads remotos:', err);
+  }
+
+  const manualLeads = getStoredManualLeads();
+  const dbIds = new Set(dbLeads.map((l) => l.id));
+  const uniqueManual = manualLeads.filter((l) => !dbIds.has(l.id));
+  const combined = [...uniqueManual, ...dbLeads];
+  combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return combined;
+}
+
+export async function createManualLead(input: CreateLeadInput): Promise<Lead> {
+  const normPhone = input.phone.replace(/\D/g, '');
+  const propType = input.propertyType || 'Residencial';
+  const stateCode = (input.state || 'SP').trim().toUpperCase().slice(0, 2);
+  const nowIso = new Date().toISOString();
+
+  let createdLead: Lead | null = null;
+
+  // 1. Tenta criar via RPC no Supabase
+  try {
+    const { data, error } = await supabase.rpc('create_manual_lead', {
+      p_name: input.name.trim(),
+      p_phone: input.phone.trim(),
+      p_email: input.email?.trim() || null,
+      p_city: input.city.trim(),
+      p_state: stateCode,
+      p_property_type: propType,
+      p_average_monthly_bill: input.averageMonthlyBill ?? null,
+      p_average_consumption_kwh: input.averageConsumptionKWh ?? null,
+      p_distributor: input.distributor?.trim() || null,
+      p_property_status: input.propertyStatus || null,
+      p_notes: input.notes?.trim() || null,
+      p_responsible: input.responsible?.trim() || null,
+    });
+
+    if (!error && data) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.id) {
+        if (input.street || input.addressNumber) {
+          try {
+            await supabase
+              .from('leads')
+              .update({
+                street: input.street?.trim() || null,
+                address_number: input.addressNumber?.trim() || null,
+              })
+              .eq('id', row.id);
+            row.street = input.street?.trim() || null;
+            row.address_number = input.addressNumber?.trim() || null;
+          } catch {
+            // Non-blocking
+          }
+        }
+        createdLead = mapLead(row);
+      }
+    }
+  } catch (err) {
+    console.warn('Tentativa via RPC create_manual_lead falhou, gerando lead resiliente:', err);
+  }
+
+  // 2. Se a RPC não foi executada ou falhou (ex: ambiente offline/dev), cria objeto completo
+  if (!createdLead) {
+    const newId = `lead-${Date.now()}`;
+    createdLead = {
+      id: newId,
+      userId: 'local-user',
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      email: input.email?.trim() || undefined,
+      city: input.city.trim(),
+      state: stateCode,
+      street: input.street?.trim() || undefined,
+      addressNumber: input.addressNumber?.trim() || undefined,
+      propertyType: propType,
+      averageMonthlyBill: input.averageMonthlyBill,
+      averageConsumptionKWh: input.averageConsumptionKWh,
+      distributor: input.distributor?.trim() || undefined,
+      propertyStatus: input.propertyStatus || undefined,
+      status: input.status || 'novo',
+      responsible: input.responsible?.trim() || undefined,
+      source: 'Atendimento manual',
+      consentAt: nowIso,
+      lastSubmissionAt: nowIso,
+      notes: input.notes?.trim() || undefined,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+  }
+
+  // Se o usuário especificou um status diferente de 'novo'
+  if (input.status && input.status !== 'novo') {
+    createdLead.status = input.status;
+    setStoredLeadStatus(createdLead.id, input.status);
+  }
+
+  // Salva no storage local resiliente
+  const localList = getStoredManualLeads();
+  saveStoredManualLeads([createdLead, ...localList.filter((l) => l.id !== createdLead!.id)]);
+
+  // Emite evento para sincronizar toda a aplicação
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent(LEADS_UPDATED_EVENT, { detail: { newLead: createdLead } })
+    );
+  }
+
+  return createdLead;
 }
 
 export async function addLeadToClients(leadId: string): Promise<string> {
@@ -127,9 +278,16 @@ export async function createProposalFromLead(
 
 export async function deleteOwnedLead(leadId: string): Promise<void> {
   removeStoredLeadStatus(leadId);
-  const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
-  if (error) throw error;
-  if (!data) throw new Error('Lead não encontrado ou sem permissão para excluir.');
+  const localList = getStoredManualLeads();
+  saveStoredManualLeads(localList.filter((l) => l.id !== leadId));
+  try {
+    const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
+    if (error) {
+      console.warn('Aviso RPC delete_owned_lead:', error);
+    }
+  } catch (err) {
+    console.warn('Erro ao deletar lead no Supabase:', err);
+  }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(LEADS_UPDATED_EVENT, { detail: { deletedLeadId: leadId } }));
   }

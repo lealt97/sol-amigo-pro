@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   Building2,
   CalendarDays,
@@ -23,6 +23,7 @@ import { supabase, validateCurrentPassword } from '../lib/supabase';
 import { Lead, LeadStage, PageKey, ThemeConfig } from '../types';
 import {
   addLeadToClients,
+  createManualLead,
   createProposalFromLead,
   deleteOwnedLead,
   fetchLeads,
@@ -41,6 +42,8 @@ import { getContrastFg } from '../utils/themeEngine';
 import { LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, getLeadStatusStyle } from '../utils/leadStatus';
 import { fetchAndSyncLeadNotifications, markLeadAsRead } from '../services/leadNotifications';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
+import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
+import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
 
 interface LeadsViewProps {
   theme: ThemeConfig;
@@ -71,6 +74,82 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   const [modalError, setModalError] = useState('');
   const menuRef = useRef<HTMLDivElement | null>(null);
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Estados do modal de Novo Lead
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [savingNewLead, setSavingNewLead] = useState(false);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadEmail, setNewLeadEmail] = useState('');
+  const [newLeadCity, setNewLeadCity] = useState('Campinas');
+  const [newLeadState, setNewLeadState] = useState('SP');
+  const [configuredStates, setConfiguredStates] = useState<string[]>([]);
+  const [newLeadStreet, setNewLeadStreet] = useState('');
+  const [newLeadNumber, setNewLeadNumber] = useState('');
+  const [newLeadConcessionaria, setNewLeadConcessionaria] = useState('');
+  const [newLeadAvgConsumption, setNewLeadAvgConsumption] = useState<number | ''>('');
+
+  // Carrega estados configurados no formulário do site
+  useEffect(() => {
+    fetchWebsiteFormSettings()
+      .then((settings) => {
+        if (settings?.serviceStates && settings.serviceStates.length > 0) {
+          const valid = settings.serviceStates.filter(Boolean);
+          setConfiguredStates(valid);
+          if (valid.length > 0) {
+            setNewLeadState((prev) => (prev && valid.includes(prev) ? prev : valid[0]));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleCreateNewLead = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newLeadName.trim()) {
+      onShowToast('Informe o nome completo do titular.');
+      return;
+    }
+
+    setSavingNewLead(true);
+    try {
+      const created = await createManualLead({
+        name: newLeadName.trim(),
+        phone: newLeadPhone.trim(),
+        email: newLeadEmail.trim() || undefined,
+        city: newLeadCity.trim() || 'Campinas',
+        state: (newLeadState.trim() || 'SP').toUpperCase().slice(0, 2),
+        street: newLeadStreet.trim() || undefined,
+        addressNumber: newLeadNumber.trim() || undefined,
+        propertyType: 'Residencial',
+        distributor: newLeadConcessionaria.trim() || undefined,
+        averageConsumptionKWh: newLeadAvgConsumption ? Number(newLeadAvgConsumption) : undefined,
+      });
+
+      setLeads((prev) => [created, ...prev.filter((l) => l.id !== created.id)]);
+      setIsNewLeadModalOpen(false);
+      onShowToast(`Lead ${created.name} cadastrado com sucesso!`);
+
+      // Reset
+      setNewLeadName('');
+      setNewLeadPhone('');
+      setNewLeadEmail('');
+      setNewLeadStreet('');
+      setNewLeadNumber('');
+      setNewLeadConcessionaria('');
+      setNewLeadAvgConsumption('');
+      setNewLeadCity('Campinas');
+      if (configuredStates.length > 0) {
+        setNewLeadState(configuredStates[0]);
+      } else {
+        setNewLeadState('SP');
+      }
+    } catch (err: any) {
+      onShowToast(err?.message || 'Erro ao cadastrar lead.');
+    } finally {
+      setSavingNewLead(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -262,9 +341,19 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">Captação comercial</p>
           <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Leads</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">Interessados enviados pelo formulário do seu site.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Interessados captados pelo site ou cadastrados manualmente.</p>
         </div>
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsNewLeadModalOpen(true)}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
+            style={{
+              backgroundColor: theme.secondary,
+              color: 'var(--secondary-fg)',
+            }}
+          >
+            <UserPlus className="h-4 w-4" /> Novo lead
+          </button>
           <button
             onClick={() => void load()}
             disabled={loading}
@@ -536,6 +625,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
           initialTarget={{
             id: proposalLead.id,
             name: proposalLead.name,
+            type: 'lead',
             clientId: proposalLead.clientId,
             phone: proposalLead.phone,
             email: proposalLead.email,
@@ -613,6 +703,271 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
           }}
           onShowToast={onShowToast}
         />
+      )}
+
+      {/* MODAL: Novo Lead Manual (Padronizado com o Wizard) */}
+      {isNewLeadModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden"
+          style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border p-5 sm:p-6 shadow-2xl space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{
+              backgroundColor: theme.primary,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[var(--secondary)]" />
+                <h4 className="text-sm sm:text-base font-bold text-[var(--text)]">
+                  Cadastro Rápido de Novo Lead
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewLeadModalOpen(false)}
+                className="p-1.5 rounded-lg text-[var(--dim)] hover:text-[var(--text)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border)]"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewLead} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Nome Completo do Titular *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadName}
+                    onChange={(e) => setNewLeadName(e.target.value)}
+                    placeholder="Ex: João da Silva / Empresa Comercial Ltda"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Telefone / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={newLeadPhone}
+                    onChange={(e) => setNewLeadPhone(formatPhone(e.target.value))}
+                    placeholder="(00) 00000-0000"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    value={newLeadEmail}
+                    onChange={(e) => setNewLeadEmail(e.target.value)}
+                    placeholder="cliente@exemplo.com"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                      Endereço (Rua / Logradouro)
+                    </label>
+                    <input
+                      type="text"
+                      value={newLeadStreet}
+                      onChange={(e) => setNewLeadStreet(e.target.value)}
+                      placeholder="Ex: Rua das Palmeiras, Av. Brasil"
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                      Número / Compl.
+                    </label>
+                    <input
+                      type="text"
+                      value={newLeadNumber}
+                      onChange={(e) => setNewLeadNumber(e.target.value)}
+                      placeholder="Ex: 123, Bloco B"
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={newLeadCity}
+                    onChange={(e) => setNewLeadCity(e.target.value)}
+                    placeholder="Ex: Campinas"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[var(--dim)]">
+                      Estado (UF)
+                    </label>
+                    {configuredStates.length > 0 && (
+                      <span className="text-[10px] text-[var(--muted)] font-medium">
+                        Atendimento configurado ({configuredStates.length})
+                      </span>
+                    )}
+                  </div>
+                  {configuredStates.length > 0 ? (
+                    <select
+                      value={newLeadState}
+                      onChange={(e) => setNewLeadState(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    >
+                      {configuredStates.map((uf) => (
+                        <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
+                          {uf} - {BRAZIL_STATE_NAMES[uf] || uf}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={newLeadState}
+                      onChange={(e) => setNewLeadState(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      style={{
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      }}
+                    >
+                      {BRAZIL_STATE_GROUPS.map((group) => (
+                        <optgroup key={group.region} label={group.region}>
+                          {group.states.map(([uf, name]) => (
+                            <option key={uf} value={uf} style={{ backgroundColor: theme.primary, color: theme.text }}>
+                              {uf} - {name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Distribuidora / Concessionária
+                  </label>
+                  <input
+                    type="text"
+                    value={newLeadConcessionaria}
+                    onChange={(e) => setNewLeadConcessionaria(e.target.value)}
+                    placeholder="Ex: Light, Enel, CPFL, Cemig..."
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--dim)] mb-1">
+                    Consumo Médio Estimado (kWh/mês)
+                  </label>
+                  <input
+                    type="number"
+                    value={newLeadAvgConsumption}
+                    onChange={(e) => setNewLeadAvgConsumption(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="Ex: 850"
+                    className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)]"
+                    style={{
+                      backgroundColor: theme.background,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t" style={{ borderColor: theme.border }}>
+                <button
+                  type="button"
+                  onClick={() => setIsNewLeadModalOpen(false)}
+                  className="px-3.5 py-2 rounded-lg border text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                  style={{ borderColor: theme.border }}
+                >
+                  Cancelar Cadastro
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingNewLead || !newLeadName.trim()}
+                  className="px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+                >
+                  {savingNewLead ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Salvando Lead...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                      Salvar Lead
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </section>
   );

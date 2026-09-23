@@ -1522,6 +1522,7 @@ export function LeadParametersModal({
           initialTarget={{
             id: lead.id,
             name: lead.name,
+            type: Boolean(lead.clientId || (lead.status as string) === 'Cliente') ? 'client' : 'lead',
             clientId: lead.clientId,
             phone: lead.phone,
             email: lead.email,
