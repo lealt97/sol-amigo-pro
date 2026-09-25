@@ -448,17 +448,12 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
             className="p-3.5 rounded-xl border space-y-2.5"
             style={{ backgroundColor: theme.primary, borderColor: theme.border }}
           >
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span>HSP (Horas de Sol Pleno) *</span>
-              </label>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                kWh/m²/dia
-              </span>
-            </div>
+            <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <span>HSP (Horas de Sol Pleno) *</span>
+            </label>
 
-            <div className="flex items-center gap-2">
+            <div>
               <input
                 type="number"
                 step="0.01"
@@ -469,15 +464,6 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                 className="w-full px-3 py-2 rounded-lg border text-sm font-bold text-[var(--text)] focus:outline-hidden focus:ring-1 focus:ring-[var(--secondary)]"
                 style={{ backgroundColor: theme.input, borderColor: theme.border }}
               />
-              <button
-                type="button"
-                onClick={() => setHsp(stateHspSuggestion)}
-                className="px-2.5 py-2 rounded-lg border text-[11px] font-semibold text-[var(--secondary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                style={{ borderColor: theme.border }}
-                title={`Aplicar média sugerida para ${clientState || 'SP'} (${stateHspSuggestion} HSP)`}
-              >
-                Média {clientState || 'SP'} ({stateHspSuggestion})
-              </button>
             </div>
 
             <p className="text-[10px] text-[var(--dim)] leading-tight pt-1">
@@ -490,15 +476,10 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
             className="p-3.5 rounded-xl border space-y-2.5"
             style={{ backgroundColor: theme.primary, borderColor: theme.border }}
           >
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                <Percent className="w-3.5 h-3.5 text-blue-500" />
-                <span>Fator de Rendimento (PR) *</span>
-              </label>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                {performanceRatio}% (Perdas: {100 - performanceRatio}%)
-              </span>
-            </div>
+            <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+              <Percent className="w-3.5 h-3.5 text-blue-500" />
+              <span>Fator de Rendimento (PR) *</span>
+            </label>
 
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -533,15 +514,10 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
             className="p-3.5 rounded-xl border space-y-2.5"
             style={{ backgroundColor: theme.primary, borderColor: theme.border }}
           >
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-500" />
-                <span>Módulos & Meta de Geração</span>
-              </label>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-500 border border-purple-500/20">
-                {targetCoveragePercent || 100}% Meta
-              </span>
-            </div>
+            <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-purple-500" />
+              <span>Módulos & Meta de Geração</span>
+            </label>
 
             <div className="grid grid-cols-2 gap-2">
               <div>

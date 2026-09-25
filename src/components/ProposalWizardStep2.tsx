@@ -13,7 +13,6 @@ import {
   Info,
   ShieldCheck,
   Check,
-  RotateCcw,
   Sparkles,
   Sliders,
   AlertTriangle,
@@ -752,40 +751,6 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--muted)]">
                   kWh / mês
                 </span>
-              </div>
-            </div>
-
-            {/* Atalhos Rápidos de Consumo */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[11px] font-semibold text-[var(--muted)]">
-                Valores frequentes ou ajustes rápidos:
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
-                {[250, 450, 650, 850, 1200, 2000].map((presetVal) => (
-                  <button
-                    key={presetVal}
-                    type="button"
-                    onClick={() => setDirectAvgKWh(presetVal)}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold text-[var(--dim)] hover:text-[var(--text)] hover:border-[var(--secondary)] transition-all cursor-pointer"
-                    style={{ backgroundColor: theme.primary, borderColor: theme.border }}
-                  >
-                    {presetVal} kWh
-                  </button>
-                ))}
-                {selectedTarget?.monthlyConsumptionKWh && selectedTarget.monthlyConsumptionKWh > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setDirectAvgKWh(selectedTarget.monthlyConsumptionKWh || 450)}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-bold text-[var(--secondary)] transition-all cursor-pointer flex items-center gap-1"
-                    style={{
-                      backgroundColor: 'color-mix(in srgb, var(--secondary) 10%, transparent)',
-                      borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                    }}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Valor do Lead ({selectedTarget.monthlyConsumptionKWh} kWh)
-                  </button>
-                )}
               </div>
             </div>
           </div>
