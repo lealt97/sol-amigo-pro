@@ -21,6 +21,7 @@ import { LeadsView } from './components/LeadsView';
 import { ClientesView } from './components/ClientesView';
 import { AnotacoesView } from './components/AnotacoesView';
 import { PropostasView } from './components/PropostasView';
+import { KitsView } from './components/KitsView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -112,13 +113,9 @@ export default function App() {
         if (!needsMfa) setIsAuthenticated(true);
       } catch (err) {
         console.warn('Erro ao restaurar sessão:', err);
-        if (mounted) {
-          setIsAuthenticated(false);
-        }
+        if (mounted) setIsAuthenticated(false);
       } finally {
-        if (mounted) {
-          setAuthLoading(false);
-        }
+        if (mounted) setAuthLoading(false);
       }
     };
 
@@ -138,76 +135,35 @@ export default function App() {
     };
   }, []);
 
-  const handleLogin = async ({
-    email,
-    password,
-    remember,
-  }: {
-    email: string;
-    password: string;
-    remember: boolean;
-  }): Promise<string | null> => {
+  const handleLogin = async ({ email, password, remember }: { email: string; password: string; remember: boolean }): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.message.toLowerCase().includes('invalid login')) {
-        return 'E-mail ou senha incorretos.';
-      }
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        return 'Confirme seu e-mail antes de entrar.';
-      }
+      if (error.message.toLowerCase().includes('invalid login')) return 'E-mail ou senha incorretos.';
+      if (error.message.toLowerCase().includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
       return error.message;
     }
-
     if (remember) localStorage.setItem('solamigo.login.email', email);
     else localStorage.removeItem('solamigo.login.email');
-
     const needsMfa = await resolveMfaRequirement();
     if (!needsMfa) {
       setIsAuthenticated(true);
       setAuthScreen('login');
     }
-
     return null;
   };
 
-  const handleRegister = async ({
-    name,
-    company,
-    email,
-    password,
-  }: {
-    name: string;
-    company: string;
-    email: string;
-    password: string;
-  }): Promise<{ error?: string; message?: string }> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
-          company,
-        },
-      },
-    });
-
+  const handleRegister = async ({ name, company, email, password }: { name: string; company: string; email: string; password: string }): Promise<{ error?: string; message?: string }> => {
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, company } } });
     if (error) {
-      if (error.message.toLowerCase().includes('already registered')) {
-        return { error: 'Já existe uma conta cadastrada com este e-mail.' };
-      }
+      if (error.message.toLowerCase().includes('already registered')) return { error: 'Já existe uma conta cadastrada com este e-mail.' };
       return { error: error.message };
     }
-
     if (data.session) {
       setIsAuthenticated(true);
       setAuthScreen('login');
       return {};
     }
-
-    return {
-      message: 'Conta criada. Verifique sua caixa de e-mail para confirmar o cadastro antes de entrar.',
-    };
+    return { message: 'Conta criada. Verifique sua caixa de e-mail para confirmar o cadastro antes de entrar.' };
   };
 
   const handleForgotPassword = async (email: string): Promise<string> => {
@@ -222,26 +178,18 @@ export default function App() {
       setMfaError('Fator MFA não encontrado. Faça login novamente.');
       return;
     }
-
     if (code.length !== 6) {
       setMfaError('Digite o código de 6 dígitos.');
       return;
     }
-
     setMfaLoading(true);
     setMfaError('');
-
-    const { error } = await supabase.auth.mfa.challengeAndVerify({
-      factorId: mfaFactorId,
-      code,
-    });
-
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code });
     if (error) {
       setMfaError('Código inválido ou expirado. Tente novamente.');
       setMfaLoading(false);
       return;
     }
-
     setMfaFactorId(null);
     setIsAuthenticated(true);
     setAuthScreen('login');
@@ -263,220 +211,56 @@ export default function App() {
     setActivePage('dashboard');
   };
 
-  if (publicLeadFormToken) {
-    return <PublicLeadFormView formToken={publicLeadFormToken} />;
-  }
-
+  if (publicLeadFormToken) return <PublicLeadFormView formToken={publicLeadFormToken} />;
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-          <p className="text-sm font-semibold">Carregando sua conta...</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white"><div className="text-center"><div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" /><p className="text-sm font-semibold">Carregando sua conta...</p></div></div>;
   }
 
   if (!isAuthenticated) {
-    if (authScreen === 'register') {
-      return (
-        <RegisterView
-          onRegister={handleRegister}
-          onBackToLogin={() => setAuthScreen('login')}
-        />
-      );
-    }
-
-    if (authScreen === 'mfa') {
-      return (
-        <MfaChallengeView
-          error={mfaError}
-          loading={mfaLoading}
-          onVerify={handleVerifyMfa}
-          onCancel={handleCancelMfa}
-        />
-      );
-    }
-
-    return (
-      <LoginView
-        onLogin={handleLogin}
-        onForgotPassword={handleForgotPassword}
-        onOpenRegister={() => setAuthScreen('register')}
-      />
-    );
+    if (authScreen === 'register') return <RegisterView onRegister={handleRegister} onBackToLogin={() => setAuthScreen('login')} />;
+    if (authScreen === 'mfa') return <MfaChallengeView error={mfaError} loading={mfaLoading} onVerify={handleVerifyMfa} onCancel={handleCancelMfa} />;
+    return <LoginView onLogin={handleLogin} onForgotPassword={handleForgotPassword} onOpenRegister={() => setAuthScreen('register')} />;
   }
 
   const renderCurrentView = () => {
     switch (activePage) {
-      case 'dashboard':
-        return <div id="dashboard-view" />;
+      case 'dashboard': return <div id="dashboard-view" />;
       case 'leads':
-        return (
-          <LeadsView
-            theme={currentTheme}
-            onShowToast={showToast}
-            onNavigate={(page, filter) => {
-              if (filter) {
-                setProposalFilterCode(filter);
-              } else {
-                setProposalFilterCode('');
-              }
-              setActivePage(page);
-            }}
-          />
-        );
+        return <LeadsView theme={currentTheme} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
       case 'clientes':
-        return (
-          <ClientesView
-            theme={currentTheme}
-            pdfSettings={currentPdfSettings}
-            onShowToast={showToast}
-            onNavigate={(page, filter) => {
-              if (filter) {
-                setProposalFilterCode(filter);
-              } else {
-                setProposalFilterCode('');
-              }
-              setActivePage(page);
-            }}
-          />
-        );
+        return <ClientesView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
       case 'propostas':
-        return (
-          <PropostasView
-            theme={currentTheme}
-            pdfSettings={currentPdfSettings}
-            onShowToast={showToast}
-            initialFilterCode={proposalFilterCode}
-            onNavigate={(page) => setActivePage(page)}
-          />
-        );
+        return <PropostasView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} initialFilterCode={proposalFilterCode} onNavigate={(page) => setActivePage(page)} />;
       case 'kits':
-        return <div id="kits-page" />;
-      case 'pos-venda':
-        return <div id="pos-venda-page" />;
+        return <KitsView theme={currentTheme} onShowToast={showToast} />;
+      case 'pos-venda': return <div id="pos-venda-page" />;
       case 'anotacoes':
-        return (
-          <AnotacoesView
-            theme={currentTheme}
-            onShowToast={showToast}
-            onNavigate={(page, propCode) => {
-              if (propCode) {
-                setProposalFilterCode(propCode);
-              } else {
-                setProposalFilterCode('');
-              }
-              setActivePage(page);
-            }}
-          />
-        );
-      case 'perfil':
-        return <ProfileView theme={currentTheme} onShowToast={showToast} />;
+        return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={(page, propCode) => { setProposalFilterCode(propCode || ''); setActivePage(page); }} />;
+      case 'perfil': return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
-        return (
-          <PersonalizacaoView
-            currentTheme={currentTheme}
-            onApplyTheme={setCurrentTheme}
-            onShowToast={showToast}
-          />
-        );
+        return <PersonalizacaoView currentTheme={currentTheme} onApplyTheme={setCurrentTheme} onShowToast={showToast} />;
       case 'pdf-customizacoes':
-        return (
-          <PdfCustomizacoesView
-            currentPdfSettings={currentPdfSettings}
-            currentTheme={currentTheme}
-            onSavePdfSettings={setCurrentPdfSettings}
-            onShowToast={showToast}
-          />
-        );
-      case 'integracoes':
-        return (
-          <WebsiteFormIntegrationView
-            theme={currentTheme}
-            onShowToast={showToast}
-          />
-        );
-      case 'seguranca':
-        return (
-          <SecurityView
-            theme={currentTheme}
-            onShowToast={showToast}
-            onSignedOut={handleSignedOut}
-          />
-        );
-      case 'area-risco':
-        return <RiskAreaView theme={currentTheme} />;
-      default:
-        return <div id={getBlankPageId(activePage)} />;
+        return <PdfCustomizacoesView currentPdfSettings={currentPdfSettings} currentTheme={currentTheme} onSavePdfSettings={setCurrentPdfSettings} onShowToast={showToast} />;
+      case 'integracoes': return <WebsiteFormIntegrationView theme={currentTheme} onShowToast={showToast} />;
+      case 'seguranca': return <SecurityView theme={currentTheme} onShowToast={showToast} onSignedOut={handleSignedOut} />;
+      case 'area-risco': return <RiskAreaView theme={currentTheme} />;
+      default: return <div id={getBlankPageId(activePage)} />;
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col font-sans antialiased transition-colors"
-      style={{
-        backgroundColor: currentTheme.background,
-        color: currentTheme.text,
-      }}
-    >
+    <div className="min-h-screen flex flex-col font-sans antialiased transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
       {toastMessage && (
-        <div
-          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-5 font-mono text-xs"
-          style={{
-            backgroundColor: currentTheme.primary,
-            borderColor: currentTheme.border,
-            color: getContrastFg(currentTheme.primary),
-          }}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium">{toastMessage}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100"
-            style={{ color: getContrastFg(currentTheme.primary) }}
-          >
-            ✕
-          </button>
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-5 font-mono text-xs" style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border, color: getContrastFg(currentTheme.primary) }}>
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-medium">{toastMessage}</span><button onClick={() => setToastMessage(null)} className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100" style={{ color: getContrastFg(currentTheme.primary) }}>✕</button>
         </div>
       )}
-
-      <Sidebar
-        activePage={activePage}
-        onNavigate={(page) => setActivePage(page)}
-        theme={currentTheme}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        mobileOpen={mobileMenuOpen}
-        onCloseMobile={() => setMobileMenuOpen(false)}
-      />
-
-      <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
-          sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'
-        }`}
-      >
-        <Topbar
-          activePage={activePage}
-          theme={currentTheme}
-          onOpenMobileMenu={() => setMobileMenuOpen(true)}
-          onOpenHelp={() => setIsHelpModalOpen(true)}
-          onNavigate={(page) => setActivePage(page)}
-        />
-
-        <main
-          className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors"
-          style={{
-            backgroundColor: currentTheme.background,
-            color: currentTheme.text,
-          }}
-        >
-          {renderCurrentView()}
-        </main>
+      <Sidebar activePage={activePage} onNavigate={(page) => setActivePage(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
+        <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={(page) => setActivePage(page)} />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>{renderCurrentView()}</main>
       </div>
-
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
