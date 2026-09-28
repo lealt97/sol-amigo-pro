@@ -233,7 +233,15 @@ export default function App() {
       case 'propostas':
         return <PropostasView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} initialFilterCode={proposalFilterCode} onNavigate={(page) => setActivePage(page)} />;
       case 'kits':
-        return <KitsView theme={currentTheme} onShowToast={showToast} />;
+      case 'produtos':
+        return (
+          <KitsView
+            key="kits-catalog-view"
+            theme={currentTheme}
+            onShowToast={showToast}
+            onNavigate={(page) => setActivePage(page)}
+          />
+        );
       case 'pos-venda': return <div id="pos-venda-page" />;
       case 'anotacoes':
         return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={(page, propCode) => { setProposalFilterCode(propCode || ''); setActivePage(page); }} />;
@@ -256,10 +264,12 @@ export default function App() {
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-medium">{toastMessage}</span><button onClick={() => setToastMessage(null)} className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100" style={{ color: getContrastFg(currentTheme.primary) }}>✕</button>
         </div>
       )}
-      <Sidebar activePage={activePage} onNavigate={(page) => setActivePage(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
+      <Sidebar activePage={activePage} onNavigate={(page) => setActivePage(page)} onSelectPage={(page) => setActivePage(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
         <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={(page) => setActivePage(page)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>{renderCurrentView()}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
+          {renderCurrentView()}
+        </main>
       </div>
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>

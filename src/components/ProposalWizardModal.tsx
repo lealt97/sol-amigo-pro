@@ -1193,7 +1193,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         <select
                           value={newLeadState}
                           onChange={(e) => setNewLeadState(e.target.value)}
-                          className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                          className="w-full h-10 pl-3 pr-10 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                           style={{
                             backgroundColor: theme.primary,
                             borderColor: theme.border,
@@ -1210,7 +1210,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         <select
                           value={newLeadState}
                           onChange={(e) => setNewLeadState(e.target.value)}
-                          className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                          className="w-full h-10 pl-3 pr-10 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                           style={{
                             backgroundColor: theme.primary,
                             borderColor: theme.border,

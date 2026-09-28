@@ -33,327 +33,91 @@ export const BRAZIL_STATE_HSP: Record<string, number> = {
   AP: 4.70,
 };
 
-export const INITIAL_SOLAR_KITS: SolarKit[] = [
-  {
-    id: 'kit-1',
-    name: 'Kit On-Grid 3.3 kWp Deye + 6x Canadian 550W TOPCon',
-    sku: 'KIT-OG-3K-CAN',
-    systemType: 'On-Grid',
-    minPowerKWp: 3.0,
-    maxPowerKWp: 3.5,
-    powerKWp: 3.3,
-    moduleModel: 'Canadian Solar 550W TOPCon Bifacial',
-    moduleCount: 6,
-    modulePowerW: 550,
-    inverterModel: 'Deye SUN-3K-G04 Monofásico 220V',
-    inverterPowerKW: 3.0,
-    structureType: 'Telhado Cerâmico / Fibrocimento',
-    equipmentCost: 7800,
-    installationCost: 2000,
-    engineeringCost: 600,
-    utilityFee: 250,
-    freightCost: 350,
-    otherCosts: 200,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 11200,
-    warrantyTerms: 'Módulos 12 anos produto / 25 anos geração | Inversor 10 anos',
-    notes: 'Ideal para residências pequenas com consumo até 350-400 kWh/mês.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-2',
-    name: 'Kit On-Grid 5.5 kWp Deye + 10x Canadian 550W TOPCon',
-    sku: 'KIT-OG-5K-CAN',
-    systemType: 'On-Grid',
-    minPowerKWp: 5.0,
-    maxPowerKWp: 5.8,
-    powerKWp: 5.5,
-    moduleModel: 'Canadian Solar 550W TOPCon Bifacial',
-    moduleCount: 10,
-    modulePowerW: 550,
-    inverterModel: 'Deye SUN-5K-G04 Monofásico/Bifásico 220V',
-    inverterPowerKW: 5.0,
-    structureType: 'Telhado Cerâmico / Fibrocimento',
-    equipmentCost: 11900,
-    installationCost: 2800,
-    engineeringCost: 750,
-    utilityFee: 300,
-    freightCost: 450,
-    otherCosts: 300,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 16900,
-    warrantyTerms: 'Módulos 12 anos produto / 25 anos geração | Inversor 10 anos',
-    notes: 'O kit mais vendido para padrão bifásico residencial (500 a 700 kWh/mês).',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-3',
-    name: 'Kit On-Grid 6.6 kWp Growatt + 11x Jinko 600W Tiger Neo',
-    sku: 'KIT-OG-6K-JIN',
-    systemType: 'On-Grid',
-    minPowerKWp: 6.0,
-    maxPowerKWp: 7.0,
-    powerKWp: 6.6,
-    moduleModel: 'Jinko Solar 600W Tiger Neo N-Type',
-    moduleCount: 11,
-    modulePowerW: 600,
-    inverterModel: 'Growatt MIN 6000TL-X Monofásico/Bifásico',
-    inverterPowerKW: 6.0,
-    structureType: 'Telhado Cerâmico / Metálico',
-    equipmentCost: 14200,
-    installationCost: 3200,
-    engineeringCost: 800,
-    utilityFee: 350,
-    freightCost: 500,
-    otherCosts: 350,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 23.0,
-    suggestedPrice: 20100,
-    warrantyTerms: 'Módulos 15 anos produto / 30 anos linear | Inversor 10 anos',
-    notes: 'Alta densidade de potência e excelente performance em altas temperaturas.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-4',
-    name: 'Kit On-Grid 8.4 kWp Solis + 14x Longi 600W Hi-MO 6',
-    sku: 'KIT-OG-8K-LON',
-    systemType: 'On-Grid',
-    minPowerKWp: 7.8,
-    maxPowerKWp: 9.0,
-    powerKWp: 8.4,
-    moduleModel: 'Longi Solar 600W Hi-MO 6 Explorer',
-    moduleCount: 14,
-    modulePowerW: 600,
-    inverterModel: 'Solis S6-GR1P8K Monofásico/Bifásico',
-    inverterPowerKW: 8.0,
-    structureType: 'Telhado Cerâmico / Fibrocimento',
-    equipmentCost: 17800,
-    installationCost: 3900,
-    engineeringCost: 900,
-    utilityFee: 400,
-    freightCost: 600,
-    otherCosts: 400,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 24800,
-    warrantyTerms: 'Módulos 12 anos produto / 25 anos geração | Inversor 10 anos',
-    notes: 'Perfeito para residências de alto padrão e pequenos comércios (800 a 1.100 kWh/mês).',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-5',
-    name: 'Kit On-Grid 10.8 kWp Deye Trifásico + 18x Canadian 600W',
-    sku: 'KIT-OG-10K-TRI',
-    systemType: 'On-Grid',
-    minPowerKWp: 10.0,
-    maxPowerKWp: 11.5,
-    powerKWp: 10.8,
-    moduleModel: 'Canadian Solar 600W TOPCon Bifacial',
-    moduleCount: 18,
-    modulePowerW: 600,
-    inverterModel: 'Deye SUN-10K-G04 Trifásico 380V / 220V',
-    inverterPowerKW: 10.0,
-    structureType: 'Telhado Metálico / Cerâmico',
-    equipmentCost: 22500,
-    installationCost: 4800,
-    engineeringCost: 1200,
-    utilityFee: 500,
-    freightCost: 800,
-    otherCosts: 500,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 31900,
-    warrantyTerms: 'Módulos 12 anos produto / 25 anos geração | Inversor 10 anos',
-    notes: 'Padrão trifásico com 2 MPPTs independentes e monitoramento Wi-Fi incluso.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-6',
-    name: 'Kit On-Grid 15.0 kWp Growatt Trifásico + 25x Jinko 600W',
-    sku: 'KIT-OG-15K-TRI',
-    systemType: 'On-Grid',
-    minPowerKWp: 14.0,
-    maxPowerKWp: 16.5,
-    powerKWp: 15.0,
-    moduleModel: 'Jinko Solar 600W Tiger Neo N-Type',
-    moduleCount: 25,
-    modulePowerW: 600,
-    inverterModel: 'Growatt MID 15KTL3-X Trifásico 380V',
-    inverterPowerKW: 15.0,
-    structureType: 'Telhado Metálico / Laje Plana',
-    equipmentCost: 31200,
-    installationCost: 6500,
-    engineeringCost: 1500,
-    utilityFee: 650,
-    freightCost: 1100,
-    otherCosts: 600,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 43500,
-    warrantyTerms: 'Módulos 15 anos produto / 30 anos geração | Inversor 10 anos',
-    notes: 'Ideal para padarias, mercados, oficinas e galpões comerciais.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-7',
-    name: 'Kit On-Grid 28.08 kWp Deye Trifásico + 48x Jinko 585W',
-    sku: 'KIT-OG-28K-TRI',
-    systemType: 'On-Grid',
-    minPowerKWp: 26.0,
-    maxPowerKWp: 30.0,
-    powerKWp: 28.08,
-    moduleModel: 'Jinko Solar Tiger Neo 585W N-Type Bifacial',
-    moduleCount: 48,
-    modulePowerW: 585,
-    inverterModel: 'Deye SUN-25K-G04 Trifásico 380V',
-    inverterPowerKW: 25.0,
-    structureType: 'Estrutura Solo / Metálica',
-    equipmentCost: 59800,
-    installationCost: 11000,
-    engineeringCost: 2800,
-    utilityFee: 950,
-    freightCost: 1900,
-    otherCosts: 1100,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 22.0,
-    suggestedPrice: 81500,
-    warrantyTerms: 'Módulos 15 anos produto / 30 anos linear | Inversor 10 anos',
-    notes: 'Usina comercial / rural com alto retorno de investimento e rápido payback.',
-    active: true,
-    items: [],
-  },
-  // KITS HÍBRIDOS (COM BATERIA & BACKUP)
-  {
-    id: 'kit-8',
-    name: 'Kit Híbrido Residencial 5.5 kWp Deye + Bateria Lítio 5.12 kWh',
-    sku: 'KIT-HIB-5K-BAT5',
-    systemType: 'Híbrido',
-    minPowerKWp: 5.0,
-    maxPowerKWp: 6.0,
-    powerKWp: 5.5,
-    moduleModel: 'Canadian Solar 550W TOPCon Bifacial',
-    moduleCount: 10,
-    modulePowerW: 550,
-    inverterModel: 'Inversor Híbrido Deye SUN-5K-SG04LP1 220V',
-    inverterPowerKW: 5.0,
-    batteryModel: 'Bateria Lítio Deye / Dyness LiFePO4 5.12kWh 48V',
-    batteryCapacityKWh: 5.12,
-    batteryCount: 1,
-    structureType: 'Telhado Cerâmico / Fibrocimento',
-    equipmentCost: 21800,
-    installationCost: 3500,
-    engineeringCost: 1000,
-    utilityFee: 350,
-    freightCost: 650,
-    otherCosts: 500,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 24.0,
-    suggestedPrice: 29500,
-    warrantyTerms: 'Módulos 12 anos | Inversor Híbrido 10 anos | Bateria 10 anos (6.000 ciclos)',
-    notes: 'Sistema híbrido completo com backup automático EPS em menos de 10ms contra apagões.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-9',
-    name: 'Kit Híbrido Avançado 8.2 kWp Deye + 2x Baterias Lítio 10.24 kWh',
-    sku: 'KIT-HIB-8K-BAT10',
-    systemType: 'Híbrido',
-    minPowerKWp: 7.5,
-    maxPowerKWp: 9.0,
-    powerKWp: 8.25,
-    moduleModel: 'Canadian Solar 550W TOPCon Bifacial',
-    moduleCount: 15,
-    modulePowerW: 550,
-    inverterModel: 'Inversor Híbrido Deye SUN-8K-SG01LP1 220V',
-    inverterPowerKW: 8.0,
-    batteryModel: '2x Baterias Lítio LiFePO4 5.12kWh (Total 10.24kWh)',
-    batteryCapacityKWh: 10.24,
-    batteryCount: 2,
-    structureType: 'Telhado Cerâmico / Metálico',
-    equipmentCost: 34500,
-    installationCost: 4800,
-    engineeringCost: 1400,
-    utilityFee: 450,
-    freightCost: 950,
-    otherCosts: 700,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 24.0,
-    suggestedPrice: 45900,
-    warrantyTerms: 'Módulos 12 anos | Inversor Híbrido 10 anos | Baterias 10 anos',
-    notes: 'Autonomia robusta para cargas essenciais como ar-condicionado, geladeiras e poços artesianos.',
-    active: true,
-    items: [],
-  },
-  {
-    id: 'kit-10',
-    name: 'Kit Híbrido Comercial 15.0 kWp Growatt + Baterias Alta Tensão 15 kWh',
-    sku: 'KIT-HIB-15K-BAT15',
-    systemType: 'Híbrido',
-    minPowerKWp: 13.5,
-    maxPowerKWp: 16.5,
-    powerKWp: 15.0,
-    moduleModel: 'Jinko Solar 600W Tiger Neo N-Type',
-    moduleCount: 25,
-    modulePowerW: 600,
-    inverterModel: 'Inversor Híbrido Growatt SPH 10000TL3-BH-UP Trifásico',
-    inverterPowerKW: 12.0,
-    batteryModel: 'Bateria Lítio Alta Tensão Growatt ARK 15.3kWh HV',
-    batteryCapacityKWh: 15.3,
-    batteryCount: 1,
-    structureType: 'Telhado Metálico / Laje',
-    equipmentCost: 55000,
-    installationCost: 7500,
-    engineeringCost: 2200,
-    utilityFee: 750,
-    freightCost: 1400,
-    otherCosts: 1000,
-    taxesPercent: 4.5,
-    commissionPercent: 5.0,
-    targetMarginPercent: 23.0,
-    suggestedPrice: 72900,
-    warrantyTerms: 'Módulos 15 anos | Inversor 10 anos | Bateria 10 anos',
-    notes: 'Solução premium para clínicas, comércios e empresas que não podem parar por falta de energia.',
-    active: true,
-    items: [],
-  },
-];
+export const INITIAL_SOLAR_KITS: SolarKit[] = [];
+
+const LEGACY_MOCK_KIT_IDS = new Set([
+  'kit-1',
+  'kit-2',
+  'kit-3',
+  'kit-4',
+  'kit-5',
+  'kit-6',
+  'kit-7',
+  'kit-8',
+  'kit-9',
+  'kit-10',
+  'kit-11',
+  'kit-12',
+]);
 
 export function getStoredKits(): SolarKit[] {
   try {
-    const raw = localStorage.getItem(KITS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+      const raw = window.localStorage.getItem(KITS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const userKits = parsed
+            .filter(
+              (k): k is SolarKit =>
+                Boolean(k && typeof k === 'object' && !LEGACY_MOCK_KIT_IDS.has(k.id))
+            )
+            .map((k, idx) => {
+              const kwp = Number(k.powerKWp) || Number(k.maxPowerKWp) || 5.0;
+              return {
+                id: k.id || `kit-custom-${idx}`,
+                name: k.name || `Kit Solar ${kwp} kWp`,
+                sku: k.sku || `KIT-${idx + 1}`,
+                systemType: (k.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid') as SolarSystemType,
+                minPowerKWp: Number(k.minPowerKWp) || Number((kwp * 0.9).toFixed(2)),
+                maxPowerKWp: Number(k.maxPowerKWp) || Number((kwp * 1.1).toFixed(2)),
+                powerKWp: kwp,
+                moduleModel: k.moduleModel || '',
+                moduleCount: Number(k.moduleCount) || 10,
+                modulePowerW: Number(k.modulePowerW) || 550,
+                inverterModel: k.inverterModel || '',
+                inverterPowerKW: Number(k.inverterPowerKW) || Math.max(3, Math.ceil(kwp)),
+                batteryModel: k.batteryModel,
+                batteryCapacityKWh: k.batteryCapacityKWh,
+                batteryCount: k.batteryCount,
+                structureType: k.structureType || 'Telhado Cerâmico / Fibrocimento',
+                installationCost: Number(k.installationCost) || 0,
+                engineeringCost: Number(k.engineeringCost) || 0,
+                utilityFee: Number(k.utilityFee) || 0,
+                freightCost: Number(k.freightCost) || 0,
+                otherCosts: Number(k.otherCosts) || 0,
+                taxesPercent: Number(k.taxesPercent) || 4.5,
+                commissionPercent: Number(k.commissionPercent) || 5.0,
+                targetMarginPercent: Number(k.targetMarginPercent) || 22.0,
+                warrantyTerms: k.warrantyTerms || '',
+                notes: k.notes || '',
+                suggestedPrice: Number(k.suggestedPrice) || 0,
+                equipmentCost: Number(k.equipmentCost) || 0,
+                active: k.active !== false,
+                items: Array.isArray(k.items) ? k.items : [],
+              };
+            });
+          if (userKits.length !== parsed.length) {
+            window.localStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(userKits));
+          }
+          return userKits;
+        }
       }
     }
   } catch (err) {
     console.warn('Erro ao carregar kits do armazenamento:', err);
   }
-  return INITIAL_SOLAR_KITS;
+  return [];
 }
+
+export const KITS_UPDATED_EVENT = 'solar_kits_updated';
 
 export function saveStoredKits(kits: SolarKit[]): void {
   try {
-    localStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(kits));
+    if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+      window.localStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(kits));
+      window.dispatchEvent(new CustomEvent(KITS_UPDATED_EVENT, { detail: kits }));
+    }
   } catch (err) {
     console.error('Erro ao salvar catálogo de kits:', err);
   }
@@ -403,11 +167,32 @@ export function addCustomKit(newKitData: Partial<SolarKit> & { name: string; sys
   return fullKit;
 }
 
+export function updateCustomKit(updatedKit: SolarKit): SolarKit {
+  const kits = getStoredKits();
+  const index = kits.findIndex((k) => k.id === updatedKit.id);
+  if (index >= 0) {
+    kits[index] = { ...kits[index], ...updatedKit };
+  } else {
+    kits.unshift(updatedKit);
+  }
+  saveStoredKits(kits);
+  return updatedKit;
+}
+
+export function deleteCustomKit(kitId: string): void {
+  const kits = getStoredKits();
+  const filtered = kits.filter((k) => k.id !== kitId);
+  saveStoredKits(filtered);
+}
+
 export function restoreDefaultKits(): SolarKit[] {
   try {
-    localStorage.removeItem(KITS_STORAGE_KEY);
+    if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+      window.localStorage.removeItem(KITS_STORAGE_KEY);
+      window.dispatchEvent(new CustomEvent(KITS_UPDATED_EVENT, { detail: [] }));
+    }
   } catch (err) {
     console.warn(err);
   }
-  return INITIAL_SOLAR_KITS;
+  return [];
 }

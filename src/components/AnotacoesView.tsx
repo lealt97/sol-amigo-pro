@@ -45,6 +45,7 @@ import { LeadNote, parseLeadNotes, serializeLeadNotes, compressImageFile } from 
 import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
 import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
+import { LEAD_NOTES_CHANGED_EVENT } from '../utils/leadNotesPersistence';
 import { getLeadClienteBadgeStyle } from '../utils/themeEngine';
 import { LeadParametersModal } from './LeadParametersModal';
 
@@ -177,8 +178,8 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   }, [leads]);
 
   // Carrega leads, clientes e propostas
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError('');
     try {
       const [leadsData, clientsData, propsData] = await Promise.all([
@@ -203,12 +204,12 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
     } catch (err: any) {
       setError(err?.message || 'Erro ao carregar registros de anotações.');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadData();
+    void loadData(true);
 
     // Sincroniza em tempo real caso clientes ou leads ou propostas sejam atualizados
     const handleClientsUpdate = (e: Event) => {
@@ -245,19 +246,25 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
     };
 
     const handleLeadsUpdate = () => {
-      void loadData();
+      void loadData(false);
+    };
+
+    const handleNotesChanged = () => {
+      void loadData(false);
     };
 
     window.addEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
     window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusUpdate);
     window.addEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
     window.addEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdate);
+    window.addEventListener(LEAD_NOTES_CHANGED_EVENT, handleNotesChanged);
 
     return () => {
       window.removeEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
       window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusUpdate);
       window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
       window.removeEventListener(LEADS_UPDATED_EVENT, handleLeadsUpdate);
+      window.removeEventListener(LEAD_NOTES_CHANGED_EVENT, handleNotesChanged);
     };
   }, []);
 
@@ -919,7 +926,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
             <select
               value={sortBy}
               onChange={(e: any) => setSortBy(e.target.value)}
-              className="h-11 px-3 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
+              className="h-11 pl-3.5 pr-10 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
               style={{
                 backgroundColor: theme.background,
                 borderColor: theme.border,
@@ -1023,7 +1030,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
               <select
                 value={proposalFilter}
                 onChange={(e) => setProposalFilter(e.target.value)}
-                className="h-8 px-2.5 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
+                className="h-8 pl-2.5 pr-8 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
                 style={{
                   backgroundColor: theme.background,
                   borderColor: proposalFilter !== 'all' ? theme.secondary : theme.border,
@@ -1095,20 +1102,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
             color: theme.text,
           }}
         >
-          <div
-            className="flex h-16 w-16 items-center justify-center rounded-2xl border shadow-inner"
-            style={{
-              backgroundColor: theme.background,
-              borderColor: theme.border,
-              color: theme.secondary,
-            }}
-          >
-            <NotepadText className="h-8 w-8" />
-          </div>
+          <NotepadText className="mx-auto h-8 w-8 text-[var(--auxiliary)]" />
 
-          <div className="max-w-md space-y-1.5">
-            <h3 className="text-lg font-bold">Nenhuma anotação encontrada</h3>
-            <p className="text-xs sm:text-sm text-[var(--muted)]">
+          <div className="max-w-md space-y-1.5 text-center mx-auto">
+            <h3 className="mt-3 text-base font-semibold text-[var(--text)]">Nenhuma anotação encontrada</h3>
+            <p className="mt-1 text-sm font-normal text-[var(--muted)] max-w-md mx-auto">
               {searchTerm || typeFilter !== 'all' || onlyWithImages
                 ? 'Nenhum registro corresponde aos filtros selecionados. Tente ajustar a busca ou limpar os filtros.'
                 : 'Você ainda não registrou anotações para seus Leads ou Clientes. Comece agora gerando a primeira!'}
@@ -1134,11 +1132,11 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenCreateModal()}
-              className="btn-filled px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:brightness-110 cursor-pointer"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
               style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
             >
               <Plus className="h-4 w-4" />
-              <span>Gerar Nova Anotação</span>
+              <span>Gerar Anotação</span>
             </button>
           </div>
         </div>
@@ -1436,7 +1434,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                   <NotepadText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold">Gerar Nova Anotação</h2>
+                  <h2 className="text-base sm:text-lg font-bold">Gerar Anotação</h2>
                   <p className="text-xs text-[var(--muted)]">
                     Escolha o destinatário (Lead ou Cliente) e cadastre as observações ou fotos
                   </p>
@@ -1467,7 +1465,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                       setSelectedTargetId('');
                       setTargetSearchQuery('');
                     }}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`group flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                       createTargetType === 'lead'
                         ? 'ring-2 border-transparent'
                         : 'hover:border-[var(--secondary)]/50'
@@ -1481,13 +1479,17 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     }}
                   >
                     <div
-                      className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+                      className={`flex h-9 w-9 items-center justify-center shrink-0 transition-colors ${
+                        createTargetType === 'lead'
+                          ? 'text-[var(--secondary)]'
+                          : 'text-[var(--dim)] group-hover:text-[var(--secondary)]'
+                      }`}
                       style={{
-                        backgroundColor: createTargetType === 'lead' ? theme.secondary : 'transparent',
-                        color: createTargetType === 'lead' ? 'var(--secondary-fg)' : 'var(--dim)',
+                        backgroundColor: 'transparent',
+                        color: createTargetType === 'lead' ? theme.secondary : undefined,
                       }}
                     >
-                      <User className="h-5 w-5" />
+                      <User className="h-5 w-5 transition-transform group-hover:scale-105" />
                     </div>
                     <div>
                       <div className="text-xs sm:text-sm font-bold">Alguém no Leads</div>
@@ -1503,7 +1505,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                       setSelectedTargetId('');
                       setTargetSearchQuery('');
                     }}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`group flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                       createTargetType === 'client'
                         ? 'ring-2 border-transparent'
                         : 'hover:border-[var(--secondary)]/50'
@@ -1517,13 +1519,17 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     }}
                   >
                     <div
-                      className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+                      className={`flex h-9 w-9 items-center justify-center shrink-0 transition-colors ${
+                        createTargetType === 'client'
+                          ? 'text-[var(--secondary)]'
+                          : 'text-[var(--dim)] group-hover:text-[var(--secondary)]'
+                      }`}
                       style={{
-                        backgroundColor: createTargetType === 'client' ? theme.secondary : 'transparent',
-                        color: createTargetType === 'client' ? 'var(--secondary-fg)' : 'var(--dim)',
+                        backgroundColor: 'transparent',
+                        color: createTargetType === 'client' ? theme.secondary : undefined,
                       }}
                     >
-                      <Building2 className="h-5 w-5" />
+                      <Building2 className="h-5 w-5 transition-transform group-hover:scale-105" />
                     </div>
                     <div>
                       <div className="text-xs sm:text-sm font-bold">Cliente Adicionado</div>
@@ -1569,7 +1575,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     id="select-target-contact"
                     value={selectedTargetId}
                     onChange={(e) => setSelectedTargetId(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border text-xs sm:text-sm font-semibold outline-none cursor-pointer"
+                    className="w-full h-11 pl-3.5 pr-10 rounded-xl border text-xs sm:text-sm font-semibold outline-none cursor-pointer"
                     style={{
                       backgroundColor: theme.background,
                       borderColor: selectedTargetId ? theme.secondary : theme.border,
@@ -1799,7 +1805,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                               <select
                                 value={newPropStatus}
                                 onChange={(e) => setNewPropStatus(e.target.value)}
-                                className="w-full h-9 px-2.5 rounded-lg border text-xs font-medium outline-none cursor-pointer"
+                                className="w-full h-9 pl-3 pr-8 rounded-lg border text-xs font-medium outline-none cursor-pointer"
                                 style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}
                               >
                                 <option value="Em negociação">Em negociação</option>

@@ -1352,7 +1352,7 @@ export const ProposalWizardStep2: React.FC<Step2ConsumptionBillsProps> = ({
             <select
               value={connectionType}
               onChange={(e) => setConnectionType(e.target.value as SolarConnectionType)}
-              className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+              className="w-full h-10 pl-3 pr-10 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
               style={{
                 backgroundColor: theme.primary,
                 borderColor: theme.border,

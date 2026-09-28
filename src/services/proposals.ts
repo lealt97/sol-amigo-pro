@@ -36,6 +36,20 @@ const LEGACY_DEMO_CODES = new Set([
   'PROP-2026-098',
   'PROP-2026-075',
   'PROP-2026-088',
+  'PROP-2026-456',
+  'PROP-2026-351',
+]);
+
+const LEGACY_DEMO_NAMES = new Set([
+  'maurício campos da hora',
+  'mauricio campos da hora',
+  'renan leal',
+  'fazenda santa rita',
+  'mercado bom preço ltda',
+  'mercado bom preco ltda',
+  'carlos eduardo ferreira',
+  'residência carlos eduardo',
+  'residencia carlos eduardo',
 ]);
 
 const LEGACY_DEMO_IDS = new Set([
@@ -48,9 +62,22 @@ const LEGACY_DEMO_IDS = new Set([
   'prop-4',
   'prop-4-b',
   'prop-4-c',
+  'prop-5',
   'prop-5-ind',
   'prop-5-ind-2',
+  'prop-6',
+  'prop-7',
+  'prop-8',
 ]);
+
+export function isDemoProposal(p: { id?: string; code?: string; clientName?: string; client_name?: string }): boolean {
+  if (!p) return false;
+  if (p.id && LEGACY_DEMO_IDS.has(p.id)) return true;
+  if (p.code && LEGACY_DEMO_CODES.has(p.code)) return true;
+  const name = (p.clientName || p.client_name || '').trim().toLowerCase();
+  if (name && LEGACY_DEMO_NAMES.has(name)) return true;
+  return false;
+}
 
 export function getStoredProposalsLocal(): ClientProposal[] {
   if (typeof window === 'undefined' || !window.localStorage) {
@@ -65,9 +92,7 @@ export function getStoredProposalsLocal(): ClientProposal[] {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       // Remove permanentemente quaisquer propostas legadas de demonstração
-      const cleaned = parsed.filter(
-        (p) => !LEGACY_DEMO_IDS.has(p?.id) && !LEGACY_DEMO_CODES.has(p?.code)
-      );
+      const cleaned = parsed.filter((p) => !isDemoProposal(p));
       if (cleaned.length !== parsed.length) {
         localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(cleaned));
       }
@@ -83,8 +108,9 @@ export function getStoredProposalsLocal(): ClientProposal[] {
 export function saveStoredProposalsLocal(proposals: ClientProposal[]): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(proposals));
-    window.dispatchEvent(new CustomEvent(PROPOSALS_UPDATED_EVENT, { detail: proposals }));
+    const filtered = proposals.filter((p) => !isDemoProposal(p));
+    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(filtered));
+    window.dispatchEvent(new CustomEvent(PROPOSALS_UPDATED_EVENT, { detail: filtered }));
   } catch (err) {
     console.warn('Erro ao salvar propostas no localStorage:', err);
   }
@@ -94,6 +120,13 @@ export function deleteClientProposal(proposalId: string): ClientProposal[] {
   const all = getStoredProposalsLocal();
   const updated = all.filter((p) => p.id !== proposalId);
   saveStoredProposalsLocal(updated);
+  try {
+    import('../lib/supabase')
+      .then(({ supabase }) => {
+        supabase.from('proposals').delete().eq('id', proposalId).then();
+      })
+      .catch(() => {});
+  } catch {}
   return updated;
 }
 
@@ -110,8 +143,7 @@ export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
       const combined = [...local];
       for (const row of data) {
         if (
-          !LEGACY_DEMO_CODES.has(row.code) &&
-          !LEGACY_DEMO_IDS.has(row.id) &&
+          !isDemoProposal(row) &&
           !combined.some((p) => p.id === row.id || p.code === row.code)
         ) {
           combined.push({
@@ -131,12 +163,13 @@ export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
           });
         }
       }
-      return combined;
+      const finalClean = combined.filter((p) => !isDemoProposal(p));
+      return finalClean;
     }
   } catch {
     // ignore
   }
-  return local;
+  return local.filter((p) => !isDemoProposal(p));
 }
 
 export async function fetchProposalsForClient(

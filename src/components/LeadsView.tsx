@@ -429,10 +429,40 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="h-64 animate-pulse rounded-xl border" style={{ backgroundColor: theme.primary, borderColor: theme.border }} />)}</div>
       ) : filteredLeads.length === 0 ? (
-        <div className="rounded-xl border border-dashed px-6 py-16 text-center" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
+        <div className="rounded-xl border border-dashed px-6 py-16 text-center flex flex-col items-center justify-center gap-2" style={{ backgroundColor: theme.primary, borderColor: theme.border, color: theme.text }}>
           <Zap className="mx-auto h-8 w-8 text-[var(--auxiliary)]" />
-          <h2 className="mt-3 font-semibold text-[var(--text)]">Nenhum lead encontrado</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Novos interessados aparecerão aqui automaticamente.</p>
+          <h3 className="mt-3 text-base font-semibold text-[var(--text)]">Nenhum lead encontrado</h3>
+          <p className="mt-1 text-sm font-normal text-[var(--muted)] max-w-md mx-auto">
+            {search || statusFilter !== 'all'
+              ? 'Nenhum lead corresponde aos filtros pesquisados. Tente ajustar os termos ou redefinir a busca.'
+              : 'Novos interessados aparecerão aqui automaticamente.'}
+          </p>
+          {search || statusFilter !== 'all' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('all');
+              }}
+              className="mt-3 px-4 py-2 rounded-xl text-xs font-bold border transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer inline-flex items-center gap-1.5"
+              style={{ borderColor: theme.border, color: theme.text }}
+            >
+              Limpar busca e filtros
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsNewLeadModalOpen(true)}
+              className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
+              style={{
+                backgroundColor: theme.secondary,
+                color: 'var(--secondary-fg)',
+              }}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Novo lead</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -863,7 +893,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                     <select
                       value={newLeadState}
                       onChange={(e) => setNewLeadState(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      className="w-full h-10 pl-3 pr-10 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                       style={{
                         backgroundColor: theme.background,
                         borderColor: theme.border,
@@ -880,7 +910,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
                     <select
                       value={newLeadState}
                       onChange={(e) => setNewLeadState(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
+                      className="w-full h-10 pl-3 pr-10 rounded-lg border text-xs sm:text-sm font-medium outline-none focus:border-[var(--secondary)] cursor-pointer"
                       style={{
                         backgroundColor: theme.background,
                         borderColor: theme.border,

@@ -579,8 +579,8 @@ export function ClientesView({
           }}
         >
           <UserCheck className="mx-auto h-8 w-8 text-[var(--auxiliary)]" />
-          <h2 className="mt-3 font-semibold text-[var(--text)]">Nenhum cliente encontrado</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
+          <h3 className="mt-3 text-base font-semibold text-[var(--text)]">Nenhum cliente encontrado</h3>
+          <p className="mt-1 text-sm font-normal text-[var(--muted)] max-w-md mx-auto">
             Os cards adicionados como cliente em Leads ou criados manualmente aparecerão aqui.
           </p>
         </div>

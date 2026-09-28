@@ -684,7 +684,7 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">Estado *</span>
-                      <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.state} onChange={(event) => setField('state', event.target.value)} autoComplete="address-level1" className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option>
                         {config.serviceStates.map((state) => (
                           <option key={state} value={state}>{state} — {BRAZIL_STATE_NAMES[state]}</option>
@@ -746,19 +746,19 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">Situação do imóvel</span>
-                      <select value={form.propertyStatus} onChange={(event) => setField('propertyStatus', event.target.value as PublicFormData['propertyStatus'])} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.propertyStatus} onChange={(event) => setField('propertyStatus', event.target.value as PublicFormData['propertyStatus'])} className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Selecione</option><option>Próprio</option><option>Alugado</option><option>Em construção</option><option>Outro</option>
                       </select>
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">Prazo para instalação</span>
-                      <select value={form.installationTimeframe} onChange={(event) => setField('installationTimeframe', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.installationTimeframe} onChange={(event) => setField('installationTimeframe', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Ainda não sei</option><option>Até 30 dias</option><option>1 a 3 meses</option><option>3 a 6 meses</option><option>Mais de 6 meses</option>
                       </select>
                     </label>
                     <label className="">
                       <span className="mb-1.5 block text-xs font-bold">Melhor horário para contato</span>
-                      <select value={form.preferredContactTime} onChange={(event) => setField('preferredContactTime', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
+                      <select value={form.preferredContactTime} onChange={(event) => setField('preferredContactTime', event.target.value)} className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 text-sm outline-none focus:border-[#0076DD] focus:ring-4 focus:ring-[#0076DD]/10">
                         <option value="">Qualquer horário</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
                       </select>
                     </label>

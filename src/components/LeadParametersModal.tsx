@@ -836,7 +836,7 @@ export function LeadParametersModal({
                     <select
                       value={contactTime}
                       onChange={(e) => setContactTime(e.target.value)}
-                      className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                      className="w-full h-10 rounded-lg border pl-3.5 pr-10 text-sm outline-none focus:border-[var(--secondary)]"
                       style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
                     >
                       <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
@@ -901,7 +901,7 @@ export function LeadParametersModal({
                     <select
                       value={propertyType}
                       onChange={(e) => setPropertyType(e.target.value as any)}
-                      className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                      className="w-full h-10 rounded-lg border pl-3.5 pr-10 text-sm outline-none focus:border-[var(--secondary)]"
                       style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
                     >
                       <option value="Residencial" style={{ backgroundColor: theme.primary, color: theme.text }}>Residencial</option>
@@ -916,7 +916,7 @@ export function LeadParametersModal({
                     <select
                       value={propertyStatus}
                       onChange={(e) => setPropertyStatus(e.target.value)}
-                      className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                      className="w-full h-10 rounded-lg border pl-3.5 pr-10 text-sm outline-none focus:border-[var(--secondary)]"
                       style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
                     >
                       <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>
@@ -932,7 +932,7 @@ export function LeadParametersModal({
                     <select
                       value={timeframe}
                       onChange={(e) => setTimeframe(e.target.value)}
-                      className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus:border-[var(--secondary)]"
+                      className="w-full h-10 rounded-lg border pl-3.5 pr-10 text-sm outline-none focus:border-[var(--secondary)]"
                       style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
                     >
                       <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>Não especificado</option>

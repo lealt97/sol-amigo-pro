@@ -188,7 +188,7 @@ export const SolarFinancingSimulator: React.FC<SolarFinancingSimulatorProps> = (
           <select
             value={monthlyInterestRate}
             onChange={(e) => setMonthlyInterestRate(Number(e.target.value))}
-            className="w-full bg-[#0D1117] border border-[#30363D] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-[#0D1117] border border-[#30363D] rounded-lg pl-3 pr-10 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
           >
             <option value={1.19}>1,19% a.m. (Taxa Especial Produtor / PF)</option>
             <option value={1.39}>1,39% a.m. (Média Padrão de Mercado)</option>

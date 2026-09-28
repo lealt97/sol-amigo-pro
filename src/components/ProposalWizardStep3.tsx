@@ -524,23 +524,29 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                 <label className="text-[10px] text-[var(--muted)] font-semibold block mb-1">
                   Potência do Módulo:
                 </label>
-                <select
-                  value={modulePowerW}
-                  onChange={(e) => {
-                    const w = parseInt(e.target.value) || 550;
-                    setModulePowerW(w);
-                    setModuleModel(`Painel Solar Canadian ${w}W Bifacial TOPCon`);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg border text-xs font-bold text-[var(--text)] focus:outline-hidden"
-                  style={{ backgroundColor: theme.input, borderColor: theme.border }}
-                >
-                  <option value={550}>550 Wp</option>
-                  <option value={580}>580 Wp</option>
-                  <option value={585}>585 Wp</option>
-                  <option value={600}>600 Wp</option>
-                  <option value={660}>660 Wp</option>
-                  <option value={700}>700 Wp</option>
-                </select>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="50"
+                    max="2000"
+                    step="5"
+                    placeholder="550"
+                    value={modulePowerW === 0 ? '' : modulePowerW}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                      const safeVal = isNaN(val) ? 0 : val;
+                      setModulePowerW(safeVal);
+                      if (safeVal > 0) {
+                        setModuleModel(`Painel Solar Canadian ${safeVal}W Bifacial TOPCon`);
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 pr-8 rounded-lg border text-xs font-bold text-[var(--text)] focus:outline-hidden focus:ring-1 focus:ring-[var(--secondary)]"
+                    style={{ backgroundColor: theme.input, borderColor: theme.border }}
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--muted)] pointer-events-none">
+                    Wp
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -791,7 +797,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
               style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Adicionar Kit à Aba Kits</span>
+              <span>Adicionar Kit</span>
             </button>
           </div>
         </div>
@@ -1069,7 +1075,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                   <select
                     value={newKitType}
                     onChange={(e) => setNewKitType(e.target.value as SolarSystemType)}
-                    className="w-full px-3 py-2 rounded-lg border font-semibold text-[var(--text)] focus:outline-hidden"
+                    className="w-full pl-3 pr-10 py-2 rounded-lg border font-semibold text-[var(--text)] focus:outline-hidden"
                     style={{ backgroundColor: theme.input, borderColor: theme.border }}
                   >
                     <option value="On-Grid">On-Grid</option>

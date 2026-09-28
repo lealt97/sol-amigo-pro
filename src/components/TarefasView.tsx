@@ -136,7 +136,7 @@ export const TarefasView: React.FC<TarefasViewProps> = ({
                           e.target.value as TaskItem['status']
                         )
                       }
-                      className={`text-xs font-extrabold px-2.5 py-1 rounded-full border outline-none cursor-pointer ${
+                      className={`text-xs font-extrabold pl-3 pr-7 py-1 rounded-full border outline-none cursor-pointer ${
                         task.status === 'Concluída'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : task.status === 'Em andamento'
@@ -209,7 +209,7 @@ export const TarefasView: React.FC<TarefasViewProps> = ({
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as TaskItem['type'])}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white"
+                    className="w-full h-10 pl-3.5 pr-10 border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white"
                   >
                     <option value="Homologação">Homologação</option>
                     <option value="Visita Técnica">Visita Técnica</option>

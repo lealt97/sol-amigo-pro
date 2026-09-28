@@ -7,6 +7,11 @@ import {
   removeStoredLeadStatus,
   isLegacyStatusTransitionError,
 } from '../utils/leadStatusPersistence';
+import {
+  getStoredLeadNotes,
+  setStoredLeadNotes,
+  removeStoredLeadNotes,
+} from '../utils/leadNotesPersistence';
 
 type LeadRow = Record<string, any>;
 
@@ -69,6 +74,7 @@ export interface CreateLeadInput {
 
 const mapLead = (row: LeadRow): Lead => {
   const localStatus = getStoredLeadStatus(row.id);
+  const localNotes = getStoredLeadNotes(row.id);
   return {
     id: row.id,
     userId: row.user_id,
@@ -98,7 +104,7 @@ const mapLead = (row: LeadRow): Lead => {
     consentAt: row.consent_at,
     nextActivityAt: row.next_activity_at ?? undefined,
     lastSubmissionAt: row.last_submission_at,
-    notes: row.notes ?? undefined,
+    notes: localNotes !== undefined ? localNotes : (row.notes ?? undefined),
     qualifiedAt: row.qualified_at ?? undefined,
     lostAt: row.lost_at ?? undefined,
     lostReason: row.lost_reason ?? undefined,
@@ -126,6 +132,10 @@ export async function fetchLeads(): Promise<Lead[]> {
   }
 
   const manualLeads = getStoredManualLeads();
+  manualLeads.forEach((l) => {
+    const localNotes = getStoredLeadNotes(l.id);
+    if (localNotes !== undefined) l.notes = localNotes;
+  });
   const dbIds = new Set(dbLeads.map((l) => l.id));
   const uniqueManual = manualLeads.filter((l) => !dbIds.has(l.id));
   const combined = [...uniqueManual, ...dbLeads];
@@ -278,6 +288,7 @@ export async function createProposalFromLead(
 
 export async function deleteOwnedLead(leadId: string): Promise<void> {
   removeStoredLeadStatus(leadId);
+  removeStoredLeadNotes(leadId);
   const localList = getStoredManualLeads();
   saveStoredManualLeads(localList.filter((l) => l.id !== leadId));
   try {
@@ -293,7 +304,20 @@ export async function deleteOwnedLead(leadId: string): Promise<void> {
   }
 }
 
-export async function updateLeadNotes(leadId: string, notes: string): Promise<void> {
+export async function updateLeadNotes(leadId: string, notes: string, skipClientSync = false): Promise<void> {
+  // 1. Sempre persiste de imediato no armazenamento local resiliente
+  setStoredLeadNotes(leadId, notes);
+
+  // 2. Se for lead manual salvo localmente, atualiza também a lista em cache
+  const localList = getStoredManualLeads();
+  const existingIdx = localList.findIndex((l) => l.id === leadId);
+  if (existingIdx !== -1) {
+    localList[existingIdx].notes = notes;
+    localList[existingIdx].updatedAt = new Date().toISOString();
+    saveStoredManualLeads(localList);
+  }
+
+  // 3. Tenta persistir no Supabase
   try {
     const { error } = await supabase
       .from('leads')
@@ -316,12 +340,19 @@ export async function updateLeadNotes(leadId: string, notes: string): Promise<vo
     console.warn('Aviso ao sincronizar notas no Supabase leads:', err);
   }
 
-  // Sincroniza também no registro do cliente se aplicável
-  try {
-    const { updateClientNotes } = await import('./clients');
-    await updateClientNotes(leadId, notes);
-  } catch {
-    // Non-blocking
+  // 4. Sincroniza também no registro do cliente se aplicável (sem recursão circular)
+  if (!skipClientSync) {
+    try {
+      const { updateClientNotes } = await import('./clients');
+      await updateClientNotes(leadId, notes, leadId, true);
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  // 5. Emite evento para sincronizar toda a aplicação
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(LEADS_UPDATED_EVENT, { detail: { updatedLeadId: leadId, notes } }));
   }
 }
 

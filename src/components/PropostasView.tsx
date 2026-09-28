@@ -29,6 +29,7 @@ import {
   saveStoredProposalsLocal,
   deleteClientProposal,
   PROPOSALS_UPDATED_EVENT,
+  isDemoProposal,
 } from '../services/proposals';
 import { fetchClients } from '../services/clients';
 import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
@@ -70,7 +71,8 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         fetchAllClientProposals(),
         fetchClients().catch(() => [] as Client[]),
       ]);
-      setProposals(propsData);
+      const cleanProps = (propsData || []).filter((p) => !isDemoProposal(p));
+      setProposals(cleanProps);
       setClients(clientsData);
     } catch (err: any) {
       console.warn('Erro ao carregar propostas:', err);
@@ -85,9 +87,11 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     const handleProposalsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<ClientProposal[]>;
       if (customEvent.detail) {
-        setProposals(customEvent.detail);
+        setProposals((customEvent.detail || []).filter((p) => !isDemoProposal(p)));
       } else {
-        void fetchAllClientProposals().then(setProposals);
+        void fetchAllClientProposals().then((list) => {
+          setProposals((list || []).filter((p) => !isDemoProposal(p)));
+        });
       }
     };
 
@@ -364,7 +368,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
             <select
               value={sortBy}
               onChange={(e: any) => setSortBy(e.target.value)}
-              className="h-11 px-3 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
+              className="h-11 pl-3.5 pr-10 rounded-xl border text-xs font-semibold outline-none cursor-pointer"
               style={{
                 backgroundColor: theme.background,
                 borderColor: theme.border,
@@ -457,26 +461,18 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         </div>
       ) : filteredProposals.length === 0 ? (
         <div
-          className="rounded-2xl border p-12 text-center flex flex-col items-center justify-center gap-3 shadow-sm"
+          className="rounded-2xl border p-12 text-center flex flex-col items-center justify-center gap-2 shadow-sm"
           style={{ backgroundColor: theme.primary, borderColor: theme.border }}
         >
-          <div
-            className="h-14 w-14 rounded-2xl flex items-center justify-center"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
-              color: theme.secondary,
-            }}
-          >
-            <FileText className="h-7 w-7" />
-          </div>
-          <h3 className="text-base font-bold text-[var(--text)]">
+          <FileText className="mx-auto h-8 w-8 text-[var(--auxiliary)]" />
+          <h3 className="mt-3 text-base font-semibold text-[var(--text)]">
             {searchQuery
               ? `Nenhuma proposta encontrada para "${searchQuery}"`
               : statusFilter !== 'todos'
               ? `Nenhuma proposta com status "${statusFilter}"`
               : 'Nenhuma proposta comercial encontrada'}
           </h3>
-          <p className="text-xs text-[var(--muted)] max-w-md">
+          <p className="mt-1 text-sm font-normal text-[var(--muted)] max-w-md mx-auto">
             {searchQuery || statusFilter !== 'todos'
               ? 'Tente ajustar os termos da busca ou clique em limpar filtros para visualizar todos os registros disponíveis.'
               : 'Você ainda não possui propostas salvas. Crie uma nova proposta comercial para seus clientes ou interessados.'}
@@ -498,11 +494,11 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
             <button
               type="button"
               onClick={() => setIsNewProposalModalOpen(true)}
-              className="mt-2 px-4 py-2 rounded-xl text-xs font-bold transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+              className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
               style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
             >
               <FileText className="h-4 w-4" />
-              Gerar Proposta
+              <span>Gerar Proposta</span>
             </button>
           )}
         </div>
