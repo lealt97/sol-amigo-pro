@@ -979,16 +979,19 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                           <div
                             key={`${contact.type}-${contact.id}`}
                             onClick={() => setSelectedTarget(contact)}
-                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
                               isSelected
-                                ? 'ring-2 shadow-md'
-                                : 'hover:border-[var(--secondary)] opacity-90 hover:opacity-100'
+                                ? 'shadow-md'
+                                : 'hover:border-[var(--secondary)]/60 opacity-90 hover:opacity-100'
                             }`}
                             style={{
                               backgroundColor: isSelected
                                 ? 'color-mix(in srgb, var(--secondary) 10%, var(--primary))'
                                 : theme.background,
                               borderColor: isSelected ? theme.secondary : theme.border,
+                              boxShadow: isSelected
+                                ? `0 0 0 1px ${theme.secondary}25, 0 8px 20px -4px color-mix(in srgb, var(--secondary) 25%, transparent)`
+                                : 'none',
                             }}
                           >
                             <div className="flex items-start justify-between gap-2">

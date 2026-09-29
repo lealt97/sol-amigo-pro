@@ -426,54 +426,46 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   }, [allNotes, typeFilter, onlyWithImages, proposalFilter, searchTerm, sortBy]);
 
   // Opções para a escolha no modal de criação
+  const allTargetList = useMemo(() => {
+    if (createTargetType === 'lead') {
+      return activeLeads.map((l) => ({
+        id: l.id,
+        name: l.name,
+        phone: l.phone,
+        city: l.city,
+        state: l.state,
+        badge: LEAD_STAGE_LABELS[l.status] || l.status,
+        notesCount: parseLeadNotes(l.notes).length,
+      }));
+    } else {
+      return clients.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        city: c.city,
+        state: c.state,
+        badge: c.activeStatus || c.type || 'Cliente',
+        notesCount: parseLeadNotes(c.notes).length,
+      }));
+    }
+  }, [createTargetType, activeLeads, clients]);
+
   const targetOptions = useMemo(() => {
     const query = targetSearchQuery.toLowerCase().trim();
-    if (createTargetType === 'lead') {
-      return activeLeads
-        .filter((l) => {
-          if (!query) return true;
-          return (
-            l.name.toLowerCase().includes(query) ||
-            (l.phone && l.phone.includes(query)) ||
-            (l.city && l.city.toLowerCase().includes(query))
-          );
-        })
-        .map((l) => ({
-          id: l.id,
-          name: l.name,
-          phone: l.phone,
-          city: l.city,
-          state: l.state,
-          badge: LEAD_STAGE_LABELS[l.status] || l.status,
-          notesCount: parseLeadNotes(l.notes).length,
-        }));
-    } else {
-      return clients
-        .filter((c) => {
-          if (!query) return true;
-          return (
-            c.name.toLowerCase().includes(query) ||
-            (c.phone && c.phone.includes(query)) ||
-            (c.city && c.city.toLowerCase().includes(query))
-          );
-        })
-        .map((c) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone,
-          city: c.city,
-          state: c.state,
-          badge: c.activeStatus || c.type,
-          notesCount: parseLeadNotes(c.notes).length,
-        }));
-    }
-  }, [createTargetType, activeLeads, clients, targetSearchQuery]);
+    if (!query) return allTargetList;
+    return allTargetList.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        (item.phone && item.phone.includes(query)) ||
+        (item.city && item.city.toLowerCase().includes(query))
+    );
+  }, [allTargetList, targetSearchQuery]);
 
   // Contato selecionado no modal
   const selectedTarget = useMemo(() => {
     if (!selectedTargetId) return null;
-    return targetOptions.find((t) => t.id === selectedTargetId) || null;
-  }, [selectedTargetId, targetOptions]);
+    return allTargetList.find((t) => t.id === selectedTargetId) || null;
+  }, [selectedTargetId, allTargetList]);
 
   // Prepara criação de nota
   const handleOpenCreateModal = (defaultType?: NoteTargetType, defaultTargetId?: string) => {
@@ -1460,6 +1452,8 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                   {/* Opção Lead */}
                   <button
                     type="button"
+                    data-target-choice="true"
+                    data-no-override-hover="true"
                     onClick={() => {
                       setCreateTargetType('lead');
                       setSelectedTargetId('');
@@ -1467,15 +1461,15 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     }}
                     className={`group flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                       createTargetType === 'lead'
-                        ? 'ring-2 border-transparent'
-                        : 'hover:border-[var(--secondary)]/50'
+                        ? 'shadow-sm'
+                        : 'hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)]'
                     }`}
                     style={{
                       backgroundColor: createTargetType === 'lead'
-                        ? 'color-mix(in srgb, var(--secondary) 12%, transparent)'
+                        ? 'color-mix(in srgb, var(--secondary) 14%, transparent)'
                         : theme.background,
                       borderColor: createTargetType === 'lead' ? theme.secondary : theme.border,
-                      boxShadow: createTargetType === 'lead' ? `0 0 0 2px ${theme.secondary}` : 'none',
+                      boxShadow: createTargetType === 'lead' ? `0 0 0 1.5px ${theme.secondary}` : 'none',
                     }}
                   >
                     <div
@@ -1500,6 +1494,8 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                   {/* Opção Cliente */}
                   <button
                     type="button"
+                    data-target-choice="true"
+                    data-no-override-hover="true"
                     onClick={() => {
                       setCreateTargetType('client');
                       setSelectedTargetId('');
@@ -1507,15 +1503,15 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
                     }}
                     className={`group flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                       createTargetType === 'client'
-                        ? 'ring-2 border-transparent'
-                        : 'hover:border-[var(--secondary)]/50'
+                        ? 'shadow-sm'
+                        : 'hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)]'
                     }`}
                     style={{
                       backgroundColor: createTargetType === 'client'
-                        ? 'color-mix(in srgb, var(--secondary) 12%, transparent)'
+                        ? 'color-mix(in srgb, var(--secondary) 14%, transparent)'
                         : theme.background,
                       borderColor: createTargetType === 'client' ? theme.secondary : theme.border,
-                      boxShadow: createTargetType === 'client' ? `0 0 0 2px ${theme.secondary}` : 'none',
+                      boxShadow: createTargetType === 'client' ? `0 0 0 1.5px ${theme.secondary}` : 'none',
                     }}
                   >
                     <div
@@ -1540,93 +1536,222 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
               </div>
 
               {/* Etapa 2: Selecionar o Lead ou Cliente específico */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[var(--dim)]">
                     2. Selecionar {createTargetType === 'lead' ? 'o Lead' : 'o Cliente'}
                   </label>
-                  {selectedTarget && (
-                    <span className="text-[11px] font-semibold text-[var(--secondary)] flex items-center gap-1">
-                      <Check className="h-3.5 w-3.5" /> Selecionado: {selectedTarget.name}
+                  {selectedTarget ? (
+                    <button
+                      type="button"
+                      data-text-only="true"
+                      onClick={() => setSelectedTargetId('')}
+                      className="text-[11px] font-semibold text-[var(--secondary)] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      Trocar {createTargetType === 'lead' ? 'lead' : 'cliente'}
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-[var(--muted)]">
+                      {targetOptions.length} {createTargetType === 'lead' ? 'leads' : 'clientes'} disponíveis
                     </span>
                   )}
                 </div>
 
-                {/* Input de filtro para encontrar o contato rapidamente */}
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--dim)]" />
-                    <input
-                      type="text"
-                      value={targetSearchQuery}
-                      onChange={(e) => setTargetSearchQuery(e.target.value)}
-                      placeholder={`Filtrar ${createTargetType === 'lead' ? 'leads' : 'clientes'} por nome, telefone ou cidade...`}
-                      className="w-full h-10 pl-9 pr-3 rounded-xl border text-xs font-medium outline-none transition-all focus:border-[var(--secondary)]"
+                {/* Se já estiver selecionado e o usuário não estiver buscando outro, exibe card elegante de seleção */}
+                {selectedTarget && !targetSearchQuery ? (
+                  <div
+                    className="p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all shadow-sm"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--secondary) 8%, transparent)',
+                      borderColor: theme.secondary,
+                      boxShadow: `0 0 0 1px ${theme.secondary}40`,
+                    }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+                        style={{
+                          backgroundColor: 'color-mix(in srgb, var(--secondary) 18%, transparent)',
+                          color: theme.secondary,
+                        }}
+                      >
+                        {createTargetType === 'lead' ? (
+                          <User className="h-5 w-5" />
+                        ) : (
+                          <Building2 className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="font-bold text-sm text-[var(--text)] truncate">
+                          {selectedTarget.name}
+                        </div>
+                        <div className="text-[var(--muted)] flex flex-wrap items-center gap-2 text-[11px]">
+                          {selectedTarget.phone && <span>{formatPhone(selectedTarget.phone)}</span>}
+                          {selectedTarget.city && (
+                            <span>
+                              {selectedTarget.city}/{selectedTarget.state || 'UF'}
+                            </span>
+                          )}
+                          <span>• {selectedTarget.notesCount} anotação(ões)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold"
+                        style={{
+                          backgroundColor: 'color-mix(in srgb, var(--secondary) 22%, transparent)',
+                          color: theme.secondary,
+                        }}
+                      >
+                        {selectedTarget.badge}
+                      </span>
+                      <button
+                        type="button"
+                        data-text-only="true"
+                        onClick={() => setSelectedTargetId('')}
+                        title="Limpar seleção"
+                        className="p-1 rounded-lg text-[var(--dim)] hover:text-[var(--text)] transition-colors cursor-pointer"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Busca e lista customizada de seleção de alta fidelidade */
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--dim)]" />
+                      <input
+                        type="text"
+                        value={targetSearchQuery}
+                        onChange={(e) => setTargetSearchQuery(e.target.value)}
+                        placeholder={`Buscar ${createTargetType === 'lead' ? 'lead' : 'cliente'} por nome, telefone ou cidade...`}
+                        className="w-full h-10 pl-9 pr-8 rounded-xl border text-xs font-medium outline-none transition-all focus:border-[var(--secondary)]"
+                        style={{
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        }}
+                      />
+                      {targetSearchQuery && (
+                        <button
+                          type="button"
+                          data-text-only="true"
+                          onClick={() => setTargetSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-[var(--dim)] hover:text-[var(--text)]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Lista interativa estilizada com rolagem suave */}
+                    <div
+                      className="max-h-56 overflow-y-auto space-y-1 p-1 rounded-xl border"
                       style={{
                         backgroundColor: theme.background,
                         borderColor: theme.border,
-                        color: theme.text,
-                      }}
-                    />
-                  </div>
-
-                  {/* Dropdown / Lista de Seleção */}
-                  <select
-                    id="select-target-contact"
-                    value={selectedTargetId}
-                    onChange={(e) => setSelectedTargetId(e.target.value)}
-                    className="w-full h-11 pl-3.5 pr-10 rounded-xl border text-xs sm:text-sm font-semibold outline-none cursor-pointer"
-                    style={{
-                      backgroundColor: theme.background,
-                      borderColor: selectedTargetId ? theme.secondary : theme.border,
-                      color: theme.text,
-                    }}
-                    required
-                  >
-                    <option value="" style={{ backgroundColor: theme.primary, color: theme.text }}>
-                      -- Escolha um {createTargetType === 'lead' ? 'Lead' : 'Cliente'} ({targetOptions.length}{' '}
-                      {targetOptions.length === 1 ? 'disponível' : 'disponíveis'}) --
-                    </option>
-                    {targetOptions.map((opt) => (
-                      <option
-                        key={opt.id}
-                        value={opt.id}
-                        style={{ backgroundColor: theme.primary, color: theme.text }}
-                      >
-                        {opt.name} {opt.phone ? `· ${formatPhone(opt.phone)}` : ''} {opt.city ? `(${opt.city}/${opt.state || 'UF'})` : ''} [{opt.badge}]
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Card de Confirmação do Destinatário Selecionado */}
-                {selectedTarget && (
-                  <div
-                    className="p-3 rounded-xl border flex items-center justify-between gap-3 text-xs"
-                    style={{
-                      backgroundColor: 'color-mix(in srgb, var(--secondary) 6%, transparent)',
-                      borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
-                    }}
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-sm text-[var(--text)]">{selectedTarget.name}</div>
-                      <div className="text-[var(--muted)] flex items-center gap-3">
-                        {selectedTarget.phone && <span>{formatPhone(selectedTarget.phone)}</span>}
-                        {selectedTarget.city && <span>{selectedTarget.city}/{selectedTarget.state}</span>}
-                        <span>{selectedTarget.notesCount} anotação(ões) existentes</span>
-                      </div>
-                    </div>
-                    <span
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold"
-                      style={{
-                        backgroundColor: 'color-mix(in srgb, var(--secondary) 20%, transparent)',
-                        color: theme.secondary,
                       }}
                     >
-                      {selectedTarget.badge}
-                    </span>
+                      {targetOptions.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-[var(--muted)]">
+                          Nenhum {createTargetType === 'lead' ? 'lead' : 'cliente'} encontrado.
+                        </div>
+                      ) : (
+                        targetOptions.map((opt) => {
+                          const isSelected = selectedTargetId === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              data-status-option="true"
+                              data-no-override-hover="true"
+                              onClick={() => {
+                                setSelectedTargetId(opt.id);
+                                setTargetSearchQuery('');
+                              }}
+                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-all cursor-pointer border ${
+                                isSelected
+                                  ? 'font-bold'
+                                  : 'hover:bg-[color-mix(in_srgb,var(--secondary)_10%,transparent)]'
+                              }`}
+                              style={{
+                                backgroundColor: isSelected
+                                  ? 'color-mix(in srgb, var(--secondary) 15%, transparent)'
+                                  : 'transparent',
+                                borderColor: isSelected
+                                  ? 'color-mix(in srgb, var(--secondary) 40%, transparent)'
+                                  : 'transparent',
+                                color: isSelected ? theme.secondary : theme.text,
+                              }}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg shrink-0"
+                                  style={{
+                                    backgroundColor: isSelected
+                                      ? 'color-mix(in srgb, var(--secondary) 25%, transparent)'
+                                      : 'color-mix(in srgb, var(--text) 8%, transparent)',
+                                    color: isSelected ? theme.secondary : 'var(--muted)',
+                                  }}
+                                >
+                                  {createTargetType === 'lead' ? (
+                                    <User className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Building2 className="h-3.5 w-3.5" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 truncate">
+                                  <div className="font-bold truncate">{opt.name}</div>
+                                  <div className="text-[10px] text-[var(--muted)] flex items-center gap-1.5 truncate">
+                                    {opt.phone && <span>{formatPhone(opt.phone)}</span>}
+                                    {opt.city && <span>• {opt.city}/{opt.state || 'UF'}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                                  style={{
+                                    backgroundColor: 'color-mix(in srgb, var(--text) 8%, transparent)',
+                                    color: 'var(--muted)',
+                                  }}
+                                >
+                                  {opt.badge}
+                                </span>
+                                {isSelected && (
+                                  <Check
+                                    className="h-3.5 w-3.5 shrink-0"
+                                    style={{ color: theme.secondary }}
+                                  />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
+
+                {/* Elemento select nativo invisível/sincronizado para garantir validação HTML padrão do formulário */}
+                <select
+                  id="select-target-contact"
+                  value={selectedTargetId}
+                  onChange={(e) => setSelectedTargetId(e.target.value)}
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {allTargetList.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Etapa 3: Destino da Anotação (Geral do Interessado/Cliente OU Proposta Específica) */}

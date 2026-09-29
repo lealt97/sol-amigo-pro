@@ -723,7 +723,7 @@ export function ClientesView({
                               setOpenStatusMenuId((current) => (current === client.id ? null : client.id));
                             }}
                             disabled={isUpdatingThisStatus}
-                            className="status-badge group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                            className="status-badge group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
                             style={{
                               borderColor: statusStyle.border,
                               backgroundColor: statusStyle.bg,
@@ -749,7 +749,7 @@ export function ClientesView({
 
                           {isStatusMenuOpen && (
                             <div
-                              className="lead-status-dropdown absolute left-0 top-full mt-1.5 z-50 w-44 overflow-hidden rounded-xl border py-1.5 shadow-2xl backdrop-blur-md"
+                              className="lead-status-dropdown absolute left-0 top-full mt-1.5 z-50 min-w-[210px] w-56 overflow-hidden rounded-xl border p-1.5 shadow-2xl backdrop-blur-xl"
                               style={{
                                 backgroundColor: theme.primary,
                                 borderColor: theme.border,
@@ -757,8 +757,9 @@ export function ClientesView({
                                 boxShadow: `0 14px 38px ${theme.secondary}38`,
                               }}
                             >
-                              <div className="px-3 py-1 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1">
-                                Mudar Status
+                              <div className="px-2.5 py-1.5 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1 flex items-center justify-between">
+                                <span>Mudar Status</span>
+                                <span className="text-[9px] opacity-70 font-semibold">{statusStyle.label}</span>
                               </div>
                               {(Object.keys(LEAD_STATUS_PALETTE) as LeadStage[]).map((stageKey) => {
                                 const optionStyle = getLeadStatusStyle(stageKey, isLight);
@@ -767,23 +768,36 @@ export function ClientesView({
                                   <button
                                     key={stageKey}
                                     type="button"
+                                    data-status-option="true"
+                                    data-active={isCurrent ? "true" : "false"}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       void handleQuickStatusChange(client, stageKey);
                                     }}
-                                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer"
+                                    className={`flex w-full items-center justify-between px-2.5 py-2 rounded-lg text-left text-xs transition-all cursor-pointer border ${
+                                      isCurrent
+                                        ? 'font-bold'
+                                        : 'font-medium hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)]'
+                                    }`}
+                                    style={{
+                                      backgroundColor: isCurrent
+                                        ? `color-mix(in srgb, ${optionStyle.color} 15%, transparent)`
+                                        : 'transparent',
+                                      borderColor: isCurrent
+                                        ? `color-mix(in srgb, ${optionStyle.color} 35%, transparent)`
+                                        : 'transparent',
+                                      color: isCurrent ? optionStyle.color : theme.text,
+                                    }}
                                   >
-                                    <span className="flex items-center gap-2">
+                                    <span className="flex items-center gap-2.5">
                                       <span
-                                        className="h-2 w-2 rounded-full shrink-0"
-                                        style={{ backgroundColor: optionStyle.color }}
+                                        className="h-2 w-2 rounded-full shrink-0 shadow-sm"
+                                        style={{
+                                          backgroundColor: optionStyle.color,
+                                          boxShadow: isCurrent ? `0 0 8px ${optionStyle.color}80` : 'none',
+                                        }}
                                       />
-                                      <span
-                                        className={`font-medium ${isCurrent ? 'font-bold' : ''}`}
-                                        style={{ color: isCurrent ? optionStyle.color : theme.text }}
-                                      >
-                                        {optionStyle.label}
-                                      </span>
+                                      <span className="truncate">{optionStyle.label}</span>
                                     </span>
                                     {isCurrent && (
                                       <Check
@@ -799,7 +813,7 @@ export function ClientesView({
                         </div>
 
                         <span
-                          className="rounded-full border px-2.5 py-0.5 text-[10px] font-bold"
+                          className="rounded-full border px-2.5 py-1 text-[10px] font-bold"
                           style={{
                             borderColor: 'color-mix(in srgb, var(--auxiliary) 55%, transparent)',
                             backgroundColor: 'color-mix(in srgb, var(--auxiliary) 18%, transparent)',

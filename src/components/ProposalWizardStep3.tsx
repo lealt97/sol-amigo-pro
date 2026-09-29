@@ -914,22 +914,25 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                   key={kit.id}
                   className={`p-3.5 rounded-xl border transition-all relative flex flex-col justify-between ${
                     isSelected
-                      ? 'ring-2 ring-[var(--secondary)] shadow-md'
-                      : 'hover:border-[var(--secondary)]/50'
+                      ? 'shadow-md'
+                      : 'hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)]'
                   }`}
                   style={{
                     backgroundColor: isSelected
-                      ? 'color-mix(in srgb, var(--secondary) 8%, var(--card))'
+                      ? `color-mix(in srgb, var(--secondary) 10%, ${theme.primary})`
                       : theme.primary,
                     borderColor: isSelected ? 'var(--secondary)' : theme.border,
+                    boxShadow: isSelected
+                      ? `0 0 0 1.5px var(--secondary), 0 8px 24px color-mix(in srgb, var(--secondary) 18%, transparent)`
+                      : 'none',
                   }}
                 >
-                  <div className="space-y-2">
-                    {/* Header do Kit com Badges */}
-                    <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-2.5">
+                    {/* Header do Kit com Badges e Potência */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             kit.systemType === 'Híbrido'
                               ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                               : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
@@ -938,19 +941,27 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                           {kit.systemType}
                         </span>
                         {isRecommended && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
                             <span>Compatível com Demanda</span>
                           </span>
                         )}
                         {isSelected && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--secondary)] text-[var(--secondary-fg)]">
-                            Kit Selecionado
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-xs"
+                            style={{
+                              backgroundColor: 'color-mix(in srgb, var(--secondary) 25%, transparent)',
+                              color: 'var(--secondary)',
+                              border: '1px solid color-mix(in srgb, var(--secondary) 50%, transparent)',
+                            }}
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Kit Selecionado</span>
                           </span>
                         )}
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="text-sm font-black text-[var(--text)]">
                           {kwp.toFixed(2)} <span className="text-xs font-bold text-[var(--secondary)]">kWp</span>
                         </span>
@@ -963,7 +974,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                     </h6>
 
                     {/* Componentes do Kit */}
-                    <div className="space-y-1 text-[11px] text-[var(--dim)] pt-1">
+                    <div className="space-y-1 text-[11px] text-[var(--dim)] pt-0.5">
                       <div className="flex items-center gap-1.5">
                         <Layers className="w-3 h-3 text-[var(--muted)] shrink-0" />
                         <span className="truncate">
@@ -1009,21 +1020,38 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
 
                     <button
                       type="button"
-                      onClick={() => handleSelectKit(kit)}
-                      disabled={isSelected}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedKit(null);
+                        } else {
+                          handleSelectKit(kit);
+                        }
+                      }}
+                      data-no-override-hover="true"
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
                         isSelected
-                          ? 'bg-[var(--secondary)] text-[var(--secondary-fg)] opacity-90 cursor-default'
-                          : 'border text-[var(--secondary)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-fg)]'
+                          ? 'hover:opacity-95'
+                          : 'hover:scale-[1.02] active:scale-[0.98]'
                       }`}
                       style={{
-                        borderColor: isSelected ? 'transparent' : 'var(--secondary)',
+                        backgroundColor: isSelected
+                          ? 'var(--secondary)'
+                          : 'color-mix(in srgb, var(--secondary) 10%, transparent)',
+                        color: isSelected
+                          ? 'var(--secondary-fg, #ffffff)'
+                          : 'var(--secondary)',
+                        borderColor: isSelected
+                          ? 'var(--secondary)'
+                          : 'color-mix(in srgb, var(--secondary) 40%, transparent)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
                       }}
+                      title={isSelected ? 'Clique para desmarcar este kit' : 'Clique para aplicar este kit'}
                     >
                       {isSelected ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Aplicado</span>
+                          <span>Kit Selecionado</span>
                         </>
                       ) : (
                         <>
