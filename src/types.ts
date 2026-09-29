@@ -628,6 +628,8 @@ export interface OpportunityKitCosts {
   freightCost: number;
   otherCosts: number;
   additionalCosts?: AdditionalProjectCost[];
+  additionalDirectCost?: number;
+  additionalSaleValue?: number;
   taxesPercent: number;
   commissionPercent: number;
   targetMarginPercent?: number;
