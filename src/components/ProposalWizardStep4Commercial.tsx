@@ -21,7 +21,7 @@ interface ProposalWizardStep4CommercialProps {
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const CATEGORY_OPTIONS: AdditionalProjectCost['category'][] = [
+const CATEGORY_OPTIONS: string[] = [
   'Obra civil',
   'Elétrica',
   'Estrutura',
@@ -277,39 +277,54 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
               </div>
             ) : (
               <div className="space-y-2">
-                {additionalCosts.map((item) => (
-                  <div key={item.id} className="grid gap-2 rounded-xl border p-3 md:grid-cols-[1fr_150px_150px_40px]" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
-                    <input
-                      value={item.description}
-                      onChange={(e) => updateAdditionalCost(item.id, { description: e.target.value })}
-                      placeholder="Descrição do serviço ou material adicional"
-                      className={inputClass}
-                      style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                    />
-                    <select
-                      value={item.category}
-                      onChange={(e) => updateAdditionalCost(item.id, { category: e.target.value as AdditionalProjectCost['category'] })}
-                      className={inputClass}
-                      style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                    >
-                      {CATEGORY_OPTIONS.map((category) => <option key={category}>{category}</option>)}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={item.value}
-                      onChange={(e) => updateAdditionalCost(item.id, { value: Math.max(0, Number(e.target.value) || 0) })}
-                      className={inputClass}
-                      style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                    />
-                    <button type="button" onClick={() => removeAdditionalCost(item.id)} className="btn-delete flex h-10 items-center justify-center rounded-lg" title="Remover custo">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-                <div className="flex justify-end text-xs font-bold">
-                  Extras: {money.format(additionalCostsTotal)}
+                <div
+                  className={`space-y-2 transition-all ${
+                    additionalCosts.length >= 3 ? 'max-h-[195px] overflow-y-auto pr-1.5' : ''
+                  }`}
+                >
+                  {additionalCosts.map((item) => (
+                    <div key={item.id} className="grid gap-2 rounded-xl border p-2.5 md:grid-cols-[1fr_150px_150px_40px]" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+                      <input
+                        value={item.description}
+                        onChange={(e) => updateAdditionalCost(item.id, { description: e.target.value })}
+                        placeholder="Descrição do serviço ou material adicional"
+                        className={inputClass}
+                        style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                      />
+                      <input
+                        type="text"
+                        value={item.category}
+                        onChange={(e) => updateAdditionalCost(item.id, { category: e.target.value })}
+                        placeholder="Categoria / Tipo (ex: Serviço, Civil...)"
+                        list="additional-cost-categories"
+                        className={inputClass}
+                        style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                      />
+                      <datalist id="additional-cost-categories">
+                        {CATEGORY_OPTIONS.map((category) => (
+                          <option key={category} value={category} />
+                        ))}
+                      </datalist>
+                      <input
+                        type="number"
+                        min="0"
+                        step="10"
+                        value={item.value}
+                        onChange={(e) => updateAdditionalCost(item.id, { value: Math.max(0, Number(e.target.value) || 0) })}
+                        className={inputClass}
+                        style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                      />
+                      <button type="button" onClick={() => removeAdditionalCost(item.id)} className="btn-delete flex h-10 items-center justify-center rounded-lg" title="Remover custo">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between pt-1 text-xs font-bold">
+                  <span className="text-[11px] text-[var(--muted)]">
+                    {additionalCosts.length} {additionalCosts.length === 1 ? 'item adicional' : 'itens adicionais'}
+                  </span>
+                  <span>Extras: {money.format(additionalCostsTotal)}</span>
                 </div>
               </div>
             )}

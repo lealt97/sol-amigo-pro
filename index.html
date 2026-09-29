@@ -82,7 +82,7 @@
         window.location.replace(url.toString());
       }
 
-      window.setTimeout(function () {
+      window.__bootFallbackTimeout = window.setTimeout(function () {
         var fallback = document.getElementById('boot-fallback');
         if (!fallback) return;
 
@@ -90,7 +90,7 @@
         fallback.querySelector('strong').textContent = 'Não foi possível carregar o sistema';
         fallback.querySelector('span').textContent =
           'Verifique sua conexão e tente novamente. Se o problema continuar, aguarde alguns minutos.';
-      }, 8000);
+      }, 25000);
     </script>
   </body>
 </html>

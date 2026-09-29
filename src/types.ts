@@ -616,7 +616,7 @@ export type KitCostsStatus = 'rascunho' | 'concluido';
 export interface AdditionalProjectCost {
   id: string;
   description: string;
-  category: 'Obra civil' | 'Elétrica' | 'Estrutura' | 'Logística' | 'Equipamento' | 'Serviço' | 'Outros';
+  category: string;
   value: number;
 }
 
