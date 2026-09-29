@@ -53,17 +53,17 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme, onNavigate })
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ['Planos incluídos', plans.length, Wrench],
-          ['Propostas aprovadas', approved, ShieldCheck],
-          ['Aguardando aprovação', Math.max(0, plans.length - approved), CalendarClock],
-          ['Receita anual prevista', money.format(annualPortfolioValue), ClipboardCheck],
-        ].map(([label, value, Icon]) => (
-          <div key={String(label)} className="rounded-2xl border p-4" style={{ backgroundColor: theme.primary, borderColor: theme.border }}>
+          { label: 'Planos incluídos', value: String(plans.length), Icon: Wrench },
+          { label: 'Propostas aprovadas', value: String(approved), Icon: ShieldCheck },
+          { label: 'Aguardando aprovação', value: String(Math.max(0, plans.length - approved)), Icon: CalendarClock },
+          { label: 'Receita anual prevista', value: money.format(annualPortfolioValue), Icon: ClipboardCheck },
+        ].map(({ label, value, Icon }) => (
+          <div key={label} className="rounded-2xl border p-4" style={{ backgroundColor: theme.primary, borderColor: theme.border }}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--muted)]">{String(label)}</span>
+              <span className="text-xs font-bold text-[var(--muted)]">{label}</span>
               <Icon className="h-4 w-4" style={{ color: theme.secondary }} />
             </div>
-            <div className="mt-2 text-xl font-black text-[var(--text)]">{String(value)}</div>
+            <div className="mt-2 text-xl font-black text-[var(--text)]">{value}</div>
           </div>
         ))}
       </div>
