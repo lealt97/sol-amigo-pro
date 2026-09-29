@@ -27,8 +27,6 @@ const round = (value: number, digits = 4) => {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 };
 
-const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
-
 const assertFiniteRange = (label: string, value: number, min: number, max: number) => {
   if (!Number.isFinite(value) || value < min || value > max) {
     throw new Error(`${label} deve ficar entre ${min} e ${max}.`);
@@ -93,10 +91,13 @@ export interface OnGridMonthlySizingInput {
   performanceRatioPercent: number;
   targetCoveragePercent: number;
   modulePowerW: number;
+  futureConsumptionKWh?: number;
 }
 
 /**
- * Pré-dimensionamento mensal usado pelo Wizard comercial.
+ * Dimensionamento mensal do gerador FV usado no Wizard e no motor técnico.
+ * Aplica-se à parte fotovoltaica de sistemas On-Grid e Híbridos.
+ * O banco de baterias do sistema híbrido é dimensionado separadamente.
  *
  * Método da referência adotada:
  * 1. desconta o custo de disponibilidade (30/50/100 kWh);
@@ -110,6 +111,7 @@ export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) =>
   assertFiniteRange('Rendimento global (PR)', input.performanceRatioPercent, 1, 100);
   assertFiniteRange('Cobertura desejada', input.targetCoveragePercent, 1, 150);
   assertFiniteRange('Potência do módulo', input.modulePowerW, 50, 2_000);
+  assertFiniteRange('Consumo futuro', input.futureConsumptionKWh ?? 0, 0, 1_000_000);
 
   const daysInMonth = 30;
   const availabilityCostKWh = AVAILABILITY_COST_KWH[input.connectionType];
@@ -118,7 +120,8 @@ export const calculateOnGridMonthlySizing = (input: OnGridMonthlySizingInput) =>
     0
   );
   const designConsumptionKWh =
-    compensableConsumptionKWh * (input.targetCoveragePercent / 100);
+    compensableConsumptionKWh * (input.targetCoveragePercent / 100) +
+    (input.futureConsumptionKWh ?? 0);
   const dailyGenerationTargetKWh = designConsumptionKWh / daysInMonth;
   const performanceRatio = input.performanceRatioPercent / 100;
   const requiredPowerKWp =
@@ -155,10 +158,6 @@ export const calculateSolarSizing = (inputs: SolarSizingInputs): SolarSizingResu
   validateSolarSizingInputs(inputs);
 
   const averageConsumptionKWh = average(inputs.monthlyConsumptionKWh);
-  const availabilityCostKWh = AVAILABILITY_COST_KWH[inputs.connectionType];
-  const compensableConsumptionKWh = Math.max(averageConsumptionKWh - availabilityCostKWh, 0);
-  const designConsumptionKWh =
-    compensableConsumptionKWh * (inputs.targetCoveragePercent / 100) + inputs.futureConsumptionKWh;
   const correctedSunHours = inputs.monthlySunHours.map(
     (sunHours) => sunHours * inputs.inclinationFactor
   );
@@ -166,27 +165,37 @@ export const calculateSolarSizing = (inputs: SolarSizingInputs): SolarSizingResu
   const totalLossPercent =
     inputs.temperatureLossPercent + inputs.otherLossesPercent + inputs.transformerLossPercent;
   const performanceRatio = 1 - totalLossPercent / 100;
-  const annualDesignConsumptionKWh = designConsumptionKWh * 12;
-  const annualCorrectedSunHours = correctedSunHours.reduce(
-    (total, sunHours, index) => total + sunHours * MONTH_DAYS[index], 0
-  );
-  const theoreticalPowerKWp = annualDesignConsumptionKWh === 0
-    ? 0
-    : annualDesignConsumptionKWh / annualCorrectedSunHours;
-  const requiredPowerKWp = theoreticalPowerKWp / performanceRatio;
-  const modulesCount =
-    requiredPowerKWp === 0 ? 0 : Math.ceil((requiredPowerKWp * 1_000) / inputs.modulePowerW);
-  const installedPowerKWp = (modulesCount * inputs.modulePowerW) / 1_000;
+
+  // A parte fotovoltaica de On-Grid e Híbrido segue o mesmo método mensal
+  // aprovado para o Wizard: disponibilidade -> 30 dias -> HSP x rendimento.
+  const monthlySizing = calculateOnGridMonthlySizing({
+    monthlyConsumptionKWh: averageConsumptionKWh,
+    connectionType: inputs.connectionType,
+    hsp: averageCorrectedSunHours,
+    performanceRatioPercent: performanceRatio * 100,
+    targetCoveragePercent: inputs.targetCoveragePercent,
+    modulePowerW: inputs.modulePowerW,
+    futureConsumptionKWh: inputs.futureConsumptionKWh,
+  });
+  const availabilityCostKWh = monthlySizing.availabilityCostKWh;
+  const compensableConsumptionKWh = monthlySizing.compensableConsumptionKWh;
+  const designConsumptionKWh = monthlySizing.designConsumptionKWh;
+  const theoreticalPowerKWp =
+    monthlySizing.dailyGenerationTargetKWh === 0
+      ? 0
+      : monthlySizing.dailyGenerationTargetKWh / averageCorrectedSunHours;
+  const requiredPowerKWp = monthlySizing.requiredPowerKWp;
+  const modulesCount = monthlySizing.modulesCount;
+  const installedPowerKWp = monthlySizing.installedPowerKWp;
   const monthlyGenerationKWh = correctedSunHours.map(
-    (sunHours, index) => installedPowerKWp * sunHours * MONTH_DAYS[index] * performanceRatio
+    (sunHours) => installedPowerKWp * sunHours * 30 * performanceRatio
   );
   const estimatedAnnualGenerationKWh = monthlyGenerationKWh.reduce(
     (total, generation) => total + generation,
     0
   );
-  const estimatedMonthlyGenerationKWh = estimatedAnnualGenerationKWh / 12;
-  const estimatedCoveragePercent =
-    designConsumptionKWh === 0 ? 0 : (estimatedMonthlyGenerationKWh / designConsumptionKWh) * 100;
+  const estimatedMonthlyGenerationKWh = monthlySizing.estimatedMonthlyGenerationKWh;
+  const estimatedCoveragePercent = monthlySizing.estimatedCoveragePercent;
   const estimatedAreaM2 = modulesCount * inputs.moduleAreaM2;
   const totalInverterPowerKW = inputs.inverterPowerKW * inputs.inverterCount;
   const dcAcRatio = totalInverterPowerKW > 0 ? installedPowerKWp / totalInverterPowerKW : 0;
