@@ -58,16 +58,17 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     otherCosts: Math.max(0, Number(selectedKit?.otherCosts) || 0),
   }), [selectedKit, selectedKitEquipmentCost]);
 
-  const [taxesPercent, setTaxesPercent] = useState(selectedKit?.taxesPercent ?? 4.5);
-  const [commissionPercent, setCommissionPercent] = useState(selectedKit?.commissionPercent ?? 5);
-  const [targetMarginPercent, setTargetMarginPercent] = useState(selectedKit?.targetMarginPercent ?? 22);
+  const [taxesPercent, setTaxesPercent] = useState(selectedKit?.taxesPercent ?? 0);
+  const [commissionPercent, setCommissionPercent] = useState(selectedKit?.commissionPercent ?? 0);
+  const [targetMarginPercent, setTargetMarginPercent] = useState(selectedKit?.targetMarginPercent ?? 0);
   const [discountValue, setDiscountValue] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalProjectCost[]>([]);
 
   useEffect(() => {
-    setTaxesPercent(selectedKit?.taxesPercent ?? 4.5);
-    setCommissionPercent(selectedKit?.commissionPercent ?? 5);
-    setTargetMarginPercent(selectedKit?.targetMarginPercent ?? 22);
+    setTaxesPercent(selectedKit?.taxesPercent ?? 0);
+    setCommissionPercent(selectedKit?.commissionPercent ?? 0);
+    setTargetMarginPercent(selectedKit?.targetMarginPercent ?? 0);
+    setDiscountValue(0);
   }, [selectedKit?.id]);
 
   const additionalCostsTotal = useMemo(
@@ -365,41 +366,95 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
             </div>
           </div>
 
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Equipamentos</span><strong>{money.format(pricing.equipmentCost)}</strong></div>
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Custos fixos + extras</span><strong>{money.format(pricing.fixedCosts)}</strong></div>
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Impostos</span><strong>{money.format(pricing.taxesValue)}</strong></div>
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Comissão</span><strong>{money.format(pricing.commissionValue)}</strong></div>
-            <div className="border-t pt-2" style={{ borderColor: theme.border }} />
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Custo total</span><strong>{money.format(pricing.totalCost)}</strong></div>
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Preço antes do desconto</span><strong>{money.format(pricing.grossSalePrice)}</strong></div>
-            <div className="flex justify-between gap-3"><span className="text-[var(--muted)]">Desconto</span><strong>- {money.format(pricing.discountValue)}</strong></div>
-          </div>
-
-          <div className="mt-4 rounded-xl border p-4 text-center" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">Preço final de venda</div>
-            <div className="mt-1 text-2xl font-black" style={{ color: theme.secondary }}>{money.format(pricing.finalSalePrice)}</div>
-            <div className="mt-1 text-[10px] text-[var(--muted)]">{money.format(pricing.pricePerWp)} / Wp</div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg border p-3" style={{ borderColor: theme.border }}>
-              <div className="text-[10px] uppercase text-[var(--muted)]">Lucro estimado</div>
-              <div className="mt-1 text-sm font-black text-emerald-500">{money.format(pricing.profit)}</div>
+          {!selectedKit ? (
+            <div className="rounded-xl border border-dashed p-4 text-center text-xs text-[var(--muted)]" style={{ borderColor: theme.border }}>
+              Selecione um kit em <strong className="text-[var(--text)]">Dimensionamento & Kits</strong> para iniciar o resumo comercial.
             </div>
-            <div className="rounded-lg border p-3" style={{ borderColor: theme.border }}>
-              <div className="text-[10px] uppercase text-[var(--muted)]">Margem real</div>
-              <div className={`mt-1 text-sm font-black ${marginBelowTarget ? 'text-amber-500' : 'text-emerald-500'}`}>
-                {pricing.marginPercent.toFixed(1)}%
+          ) : (
+            <>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--muted)]">Kit selecionado</span>
+                  <strong>{money.format(
+                    selectedKitBaseCosts.equipmentCost +
+                    selectedKitBaseCosts.installationCost +
+                    selectedKitBaseCosts.engineeringCost +
+                    selectedKitBaseCosts.utilityFee +
+                    selectedKitBaseCosts.freightCost +
+                    selectedKitBaseCosts.otherCosts
+                  )}</strong>
+                </div>
+
+                {additionalCosts.filter((item) => Number(item.value) > 0).map((item) => (
+                  <div key={item.id} className="flex justify-between gap-3">
+                    <span className="min-w-0 truncate text-[var(--muted)]" title={item.description || item.category}>
+                      {item.description || item.category}
+                    </span>
+                    <strong className="shrink-0">{money.format(item.value)}</strong>
+                  </div>
+                ))}
+
+                {pricing.taxesValue > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Impostos ({taxesPercent.toFixed(1)}%)</span>
+                    <strong>{money.format(pricing.taxesValue)}</strong>
+                  </div>
+                )}
+
+                {pricing.commissionValue > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Comissão ({commissionPercent.toFixed(1)}%)</span>
+                    <strong>{money.format(pricing.commissionValue)}</strong>
+                  </div>
+                )}
+
+                <div className="border-t pt-2" style={{ borderColor: theme.border }} />
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--muted)]">Custo total</span>
+                  <strong>{money.format(pricing.totalCost)}</strong>
+                </div>
+
+                {pricing.grossSalePrice > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Preço antes do desconto</span>
+                    <strong>{money.format(pricing.grossSalePrice)}</strong>
+                  </div>
+                )}
+
+                {pricing.discountValue > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Desconto</span>
+                    <strong>- {money.format(pricing.discountValue)}</strong>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
 
-          {marginBelowTarget && (
-            <div className="mt-3 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              Margem real abaixo da meta de {targetMarginPercent.toFixed(1)}%, principalmente por causa do desconto aplicado.
-            </div>
+              <div className="mt-4 rounded-xl border p-4 text-center" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">Preço final de venda</div>
+                <div className="mt-1 text-2xl font-black" style={{ color: theme.secondary }}>{money.format(pricing.finalSalePrice)}</div>
+                <div className="mt-1 text-[10px] text-[var(--muted)]">{money.format(pricing.pricePerWp)} / Wp</div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-lg border p-3" style={{ borderColor: theme.border }}>
+                  <div className="text-[10px] uppercase text-[var(--muted)]">Lucro estimado</div>
+                  <div className="mt-1 text-sm font-black text-emerald-500">{money.format(pricing.profit)}</div>
+                </div>
+                <div className="rounded-lg border p-3" style={{ borderColor: theme.border }}>
+                  <div className="text-[10px] uppercase text-[var(--muted)]">Margem real</div>
+                  <div className={`mt-1 text-sm font-black ${marginBelowTarget ? 'text-amber-500' : 'text-emerald-500'}`}>
+                    {pricing.marginPercent.toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+
+              {marginBelowTarget && (
+                <div className="mt-3 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-300">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Margem real abaixo da meta de {targetMarginPercent.toFixed(1)}%, principalmente por causa do desconto aplicado.
+                </div>
+              )}
+            </>
           )}
         </aside>
       </div>
