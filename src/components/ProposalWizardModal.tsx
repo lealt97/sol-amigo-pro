@@ -24,7 +24,7 @@ import {
   Battery,
   Package,
 } from 'lucide-react';
-import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit } from '../types';
+import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
@@ -38,6 +38,7 @@ import {
   PRESET_APPLIANCES,
 } from './ProposalWizardStep2';
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
+import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
 import { BRAZIL_STATE_HSP } from '../data/initialKits';
 
 export interface ProposalTargetSelection {
@@ -79,7 +80,7 @@ interface ProposalWizardModalProps {
 }
 
 // Etapas do fluxo de dimensionamento
-export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'review_save';
+export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'commercial_pricing' | 'review_save';
 
 export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   isOpen,
@@ -154,6 +155,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const [selectedKit, setSelectedKit] = useState<SolarKit | null>(null);
   const [estimatedMonthlyGenKWh, setEstimatedMonthlyGenKWh] = useState<number>(580);
   const [totalKitPrice, setTotalKitPrice] = useState<number>(16900);
+  const [commercialPricing, setCommercialPricing] = useState<OpportunityKitCosts | null>(null);
 
   // Sincroniza dados do titular selecionado com a Etapa 2 e Etapa 3
   useEffect(() => {
@@ -492,13 +494,20 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     const finalKWp = installedPowerKWp > 0 ? Number(installedPowerKWp.toFixed(2)) : Number((consKWh / 115).toFixed(2));
     const finalModules = modulesCount > 0 ? modulesCount : Math.max(4, Math.ceil((finalKWp * 1000) / modulePowerW));
 
-    const finalValue = totalKitPrice > 0
-      ? totalKitPrice
-      : Math.round(finalKWp * 2950) + (isHybrid ? (batteryCount || 1) * 9800 + 3500 : 0);
+    const finalValue = commercialPricing?.finalSalePrice && commercialPricing.finalSalePrice > 0
+      ? commercialPricing.finalSalePrice
+      : totalKitPrice > 0
+        ? totalKitPrice
+        : Math.round(finalKWp * 2950) + (isHybrid ? (batteryCount || 1) * 9800 + 3500 : 0);
 
     const finalMonthlyGen = estimatedMonthlyGenKWh > 0
       ? estimatedMonthlyGenKWh
       : Math.round(finalKWp * hsp * 30 * (performanceRatio / 100));
+
+    const monthlySavings = Math.min(finalMonthlyGen, consKWh) * energyTariff;
+    const simplePaybackYears = monthlySavings > 0
+      ? Number((finalValue / (monthlySavings * 12)).toFixed(2))
+      : 0;
 
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,
@@ -521,13 +530,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       batteryCount: isHybrid ? batteryCount : undefined,
       batteryCapacityKWh: isHybrid ? Number((batteryCapacityKWh * (batteryCount || 1)).toFixed(2)) : undefined,
       estimatedMonthlyGenKWh: finalMonthlyGen,
-      estimatedMonthlySavings: Math.round(Math.min(finalMonthlyGen, consKWh) * energyTariff),
-      paybackYears: isHybrid ? 4.2 : 2.9,
+      estimatedMonthlySavings: Math.round(monthlySavings),
+      paybackYears: simplePaybackYears,
       totalValue: finalValue,
       hsp: hsp,
       performanceRatio: performanceRatio,
       selectedKitId: selectedKit?.id,
       selectedKitName: selectedKit?.name,
+      pricing: commercialPricing || undefined,
       commercialConditions: {
         paymentMethods: isHybrid
           ? 'Financiamento Solar em até 84x com 90 dias de carência ou à vista com 6% de desconto'
@@ -565,8 +575,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       subtitle: 'Potência e módulos',
     },
     {
-      id: 'review_save',
+      id: 'commercial_pricing',
       number: 4,
+      title: 'Custos & Margem',
+      subtitle: 'Preço e rentabilidade',
+    },
+    {
+      id: 'review_save',
+      number: 5,
       title: 'Proposta & Condições',
       subtitle: 'Revisão e fechamento',
     },
@@ -1377,7 +1393,21 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 4: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
+          {/* ETAPA 4: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
+          {/* ========================================================================= */}
+          {currentStep === 'commercial_pricing' && (
+            <ProposalWizardStep4Commercial
+              theme={theme}
+              installedPowerKWp={installedPowerKWp}
+              selectedKit={selectedKit}
+              systemType={systemType}
+              onPricingChange={setCommercialPricing}
+              onShowToast={onShowToast}
+            />
+          )}
+
+          {/* ========================================================================= */}
+          {/* ETAPA 5: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
           {/* ========================================================================= */}
           {currentStep === 'review_save' && (
             <div className="space-y-5 animate-fadeIn">
@@ -1392,7 +1422,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         color: theme.secondary,
                       }}
                     >
-                      Etapa 4 de 4
+                      Etapa 5 de 5
                     </span>
                     <span className="text-xs text-[var(--muted)]">Resumo Técnico & Emissão</span>
                   </div>
@@ -1509,9 +1539,25 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Valor do Investimento</span>
                       <span className="font-black text-lg text-[var(--text)]">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalKitPrice)}
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(commercialPricing?.finalSalePrice ?? totalKitPrice)}
                       </span>
                     </div>
+                    {commercialPricing && (
+                      <div className="grid grid-cols-2 gap-2 py-1">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Lucro estimado</span>
+                          <span className="font-bold text-emerald-500">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(commercialPricing.profit)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Margem real</span>
+                          <span className={`font-bold ${commercialPricing.marginPercent + 0.01 < (commercialPricing.targetMarginPercent || 0) ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {commercialPricing.marginPercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Economia Mensal Estimada</span>
                       <span className="font-bold text-emerald-500">
@@ -1521,7 +1567,12 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">Payback Estimado</span>
                       <span className="font-semibold text-[var(--dim)]">
-                        {systemType === 'Híbrido' ? '4.2 anos' : '2.9 anos'}
+                        {(() => {
+                          const finalPrice = commercialPricing?.finalSalePrice ?? totalKitPrice;
+                          const monthlySavings = Math.min(estimatedMonthlyGenKWh, effectiveAverageKWh) * energyTariff;
+                          if (monthlySavings <= 0) return '—';
+                          return `${(finalPrice / (monthlySavings * 12)).toFixed(2)} anos`;
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -1621,26 +1672,30 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             {currentStep === 'sizing_hardware' && (
               <button
                 type="button"
-                onClick={() => setCurrentStep('review_save')}
+                onClick={() => setCurrentStep('commercial_pricing')}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
                 <span>
-                  Avançar para Revisão & Comercial
+                  Avançar para Custos & Margem
                   {installedPowerKWp > 0 ? ` (${installedPowerKWp.toFixed(2)} kWp)` : ''}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}
 
-            {currentStep !== 'client_selection' && currentStep !== 'consumption_bills' && currentStep !== 'sizing_hardware' && currentStepIndex < stepsConfig.length - 1 && (
+            {currentStep === 'commercial_pricing' && (
               <button
                 type="button"
-                onClick={() => setCurrentStep(stepsConfig[currentStepIndex + 1].id)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                disabled={!commercialPricing || commercialPricing.finalSalePrice <= 0}
+                onClick={() => setCurrentStep('review_save')}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
-                <span>Próxima Etapa</span>
+                <span>
+                  Avançar para Revisão
+                  {commercialPricing?.finalSalePrice ? ` (${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(commercialPricing.finalSalePrice)})` : ''}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}
