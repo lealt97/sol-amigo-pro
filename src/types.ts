@@ -600,6 +600,13 @@ export interface KitEquipmentItem {
 
 export type KitCostsStatus = 'rascunho' | 'concluido';
 
+export interface AdditionalProjectCost {
+  id: string;
+  description: string;
+  category: 'Obra civil' | 'Elétrica' | 'Estrutura' | 'Logística' | 'Equipamento' | 'Serviço' | 'Outros';
+  value: number;
+}
+
 export interface OpportunityKitCosts {
   equipmentItems: KitEquipmentItem[];
   installationCost: number;
@@ -607,6 +614,7 @@ export interface OpportunityKitCosts {
   utilityFee: number;
   freightCost: number;
   otherCosts: number;
+  additionalCosts?: AdditionalProjectCost[];
   taxesPercent: number;
   commissionPercent: number;
   targetMarginPercent?: number;
