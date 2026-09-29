@@ -48,7 +48,8 @@ import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
 import { LeadParametersModal } from './LeadParametersModal';
 import { LeadNotesModal } from './LeadNotesModal';
-import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
+import { LEAD_STAGE_LABELS, getLeadStatusStyle, LEAD_STATUS_PALETTE } from '../utils/leadStatus';
+import { getStoredLeadStatus, setStoredLeadStatus, LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 
 interface ClientesViewProps {
   theme: ThemeConfig;
@@ -93,6 +94,8 @@ export function ClientesView({
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
 
   // Modais de ações
@@ -113,12 +116,17 @@ export function ClientesView({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // Fechar menu de ações ao clicar fora
+  // Fechar menu de ações e de status ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setOpenMenuId(null);
+      }
+      if (statusMenuRef.current && !statusMenuRef.current.contains(target)) {
+        setOpenStatusMenuId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -166,15 +174,103 @@ export function ClientesView({
       }
     };
 
+    const handleLeadStatusChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ leadId: string; status: LeadStage }>;
+      if (customEvent.detail) {
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === customEvent.detail.leadId || c.sourceLeadId === customEvent.detail.leadId
+              ? { ...c, crmStatus: customEvent.detail.status as any }
+              : c
+          )
+        );
+      }
+    };
+
     window.addEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
     window.addEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+    window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusChange);
     return () => {
       window.removeEventListener(CLIENTS_UPDATED_EVENT, handleClientsUpdate);
       window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+      window.removeEventListener(LEAD_STATUS_CHANGED_EVENT, handleLeadStatusChange);
     };
   }, []);
 
   const isLight = getContrastFg(theme.primary) === '#0F172A';
+
+  // Obter o status no funil para o cliente
+  const getClientFunnelStatus = (client: Client): LeadStage => {
+    const stored = getStoredLeadStatus(client.sourceLeadId || client.id);
+    if (stored) return stored;
+
+    const raw = client.crmStatus as string | undefined;
+    if (!raw) return 'qualificado';
+
+    switch (raw) {
+      case 'Novo lead':
+      case 'novo':
+        return 'novo';
+      case 'Em contato':
+      case 'em_contato':
+        return 'em_contato';
+      case 'Qualificado':
+      case 'qualificado':
+        return 'qualificado';
+      case 'Em estudo':
+      case 'em_estudo':
+        return 'em_estudo';
+      case 'Proposta enviada':
+      case 'proposta_enviada':
+        return 'proposta_enviada';
+      case 'Negociação':
+      case 'negociacao':
+        return 'negociacao';
+      case 'Contrato assinado':
+      case 'ganho':
+      case 'Cliente':
+        return 'ganho';
+      case 'Perdido':
+      case 'perdido':
+        return 'perdido';
+      default:
+        if (raw in LEAD_STATUS_PALETTE) return raw as LeadStage;
+        return 'qualificado';
+    }
+  };
+
+  // Mudar status rapidamente direto pelo badge na frente do card
+  const handleQuickStatusChange = async (client: Client, newStatus: LeadStage) => {
+    const statusLabel = LEAD_STAGE_LABELS[newStatus] || newStatus;
+
+    // Atualização otimista imediata na UI
+    setStoredLeadStatus(client.sourceLeadId || client.id, newStatus);
+    const updatedClient: Client = {
+      ...client,
+      crmStatus: newStatus as any,
+      updatedAt: new Date().toISOString(),
+    };
+    setClients((current) =>
+      current.map((item) => (item.id === client.id ? updatedClient : item))
+    );
+    if (paramsModalClient && paramsModalClient.id === client.id) {
+      setParamsModalClient(updatedClient);
+    }
+    setOpenStatusMenuId(null);
+    setUpdatingStatusId(client.id);
+
+    try {
+      if (client.sourceLeadId) {
+        await updateLeadStatus(client.sourceLeadId, newStatus);
+      }
+      await updateClient(client.id, updatedClient);
+      onShowToast(`Status de ${client.name} alterado para "${statusLabel}".`);
+    } catch (err: any) {
+      console.warn('Erro ao atualizar status do cliente:', err);
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   // Obter propostas de um cliente
   const getProposalsForClient = (client: Client): ClientProposal[] => {
@@ -245,7 +341,7 @@ export function ClientesView({
       averageMonthlyBill: paramsModalClient.avgMonthlyBill,
       averageConsumptionKWh: paramsModalClient.avgConsumptionKWh,
       distributor: paramsModalClient.concessionaria,
-      status: ((paramsModalClient.crmStatus as any) || 'qualificado') as LeadStage,
+      status: getClientFunnelStatus(paramsModalClient),
       responsible: paramsModalClient.responsible,
       source: paramsModalClient.source || 'Clientes',
       notes: paramsModalClient.notes || '',
@@ -589,6 +685,10 @@ export function ClientesView({
           {filteredClients.map((client) => {
             const clientProposals = getProposalsForClient(client);
             const notesCount = parseLeadNotes(client.notes).length;
+            const funnelStatus = getClientFunnelStatus(client);
+            const statusStyle = getLeadStatusStyle(funnelStatus, isLight);
+            const isStatusMenuOpen = openStatusMenuId === client.id;
+            const isUpdatingThisStatus = updatingStatusId === client.id;
 
             return (
               <article
@@ -605,6 +705,99 @@ export function ClientesView({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                        {/* Tag de Status do Funil na Frente do Card */}
+                        <div
+                          ref={isStatusMenuOpen ? statusMenuRef : undefined}
+                          className="relative inline-block"
+                        >
+                          <button
+                            type="button"
+                            id={`client-status-btn-${client.id}`}
+                            data-status-badge="true"
+                            aria-label={`Status: ${statusStyle.label}. Clique para alterar.`}
+                            aria-haspopup="listbox"
+                            aria-expanded={isStatusMenuOpen}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              setOpenStatusMenuId((current) => (current === client.id ? null : client.id));
+                            }}
+                            disabled={isUpdatingThisStatus}
+                            className="status-badge group/status inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                            style={{
+                              borderColor: statusStyle.border,
+                              backgroundColor: statusStyle.bg,
+                              color: statusStyle.color,
+                            }}
+                            title="Clique para mudar o status diretamente"
+                          >
+                            {isUpdatingThisStatus ? (
+                              <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                            ) : (
+                              <span
+                                className="h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: statusStyle.color }}
+                              />
+                            )}
+                            <span>{statusStyle.label}</span>
+                            <ChevronDown
+                              className={`h-3 w-3 opacity-70 transition-transform group-hover/status:opacity-100 ${
+                                isStatusMenuOpen ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+
+                          {isStatusMenuOpen && (
+                            <div
+                              className="lead-status-dropdown absolute left-0 top-full mt-1.5 z-50 w-44 overflow-hidden rounded-xl border py-1.5 shadow-2xl backdrop-blur-md"
+                              style={{
+                                backgroundColor: theme.primary,
+                                borderColor: theme.border,
+                                color: theme.text,
+                                boxShadow: `0 14px 38px ${theme.secondary}38`,
+                              }}
+                            >
+                              <div className="px-3 py-1 text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider border-b border-[var(--border)] mb-1">
+                                Mudar Status
+                              </div>
+                              {(Object.keys(LEAD_STATUS_PALETTE) as LeadStage[]).map((stageKey) => {
+                                const optionStyle = getLeadStatusStyle(stageKey, isLight);
+                                const isCurrent = funnelStatus === stageKey;
+                                return (
+                                  <button
+                                    key={stageKey}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void handleQuickStatusChange(client, stageKey);
+                                    }}
+                                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] cursor-pointer"
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="h-2 w-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: optionStyle.color }}
+                                      />
+                                      <span
+                                        className={`font-medium ${isCurrent ? 'font-bold' : ''}`}
+                                        style={{ color: isCurrent ? optionStyle.color : theme.text }}
+                                      >
+                                        {optionStyle.label}
+                                      </span>
+                                    </span>
+                                    {isCurrent && (
+                                      <Check
+                                        className="h-3.5 w-3.5 shrink-0"
+                                        style={{ color: optionStyle.color }}
+                                      />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
                         <span
                           className="rounded-full border px-2.5 py-0.5 text-[10px] font-bold"
                           style={{
