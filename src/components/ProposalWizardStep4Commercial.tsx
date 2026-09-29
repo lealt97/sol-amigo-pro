@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Calculator, Plus, Receipt, Trash2, WalletCards } from 'lucide-react';
+import { AlertTriangle, Calculator, CheckCircle2, Package, Plus, Trash2, WalletCards } from 'lucide-react';
 import {
   AdditionalProjectCost,
   OpportunityKitCosts,
@@ -39,15 +39,25 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
   onPricingChange,
   onShowToast,
 }) => {
-  const [equipmentCost, setEquipmentCost] = useState(
-    selectedKit?.equipmentCost ?? Math.round(installedPowerKWp * 2200)
-  );
-  const [installationCost, setInstallationCost] = useState(
-    selectedKit?.installationCost ?? Math.round(installedPowerKWp * 500)
-  );
-  const [engineeringCost, setEngineeringCost] = useState(selectedKit?.engineeringCost ?? 800);
-  const [utilityFee, setUtilityFee] = useState(selectedKit?.utilityFee ?? 350);
-  const [freightCost, setFreightCost] = useState(selectedKit?.freightCost ?? 500);
+  const selectedKitEquipmentCost = useMemo(() => {
+    if (!selectedKit) return 0;
+    const direct = Math.max(0, Number(selectedKit.equipmentCost) || 0);
+    if (direct > 0) return direct;
+    return (selectedKit.items || []).reduce(
+      (sum, item) => sum + Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.product?.unitCost) || 0),
+      0
+    );
+  }, [selectedKit]);
+
+  const selectedKitBaseCosts = useMemo(() => ({
+    equipmentCost: selectedKitEquipmentCost,
+    installationCost: Math.max(0, Number(selectedKit?.installationCost) || 0),
+    engineeringCost: Math.max(0, Number(selectedKit?.engineeringCost) || 0),
+    utilityFee: Math.max(0, Number(selectedKit?.utilityFee) || 0),
+    freightCost: Math.max(0, Number(selectedKit?.freightCost) || 0),
+    otherCosts: Math.max(0, Number(selectedKit?.otherCosts) || 0),
+  }), [selectedKit, selectedKitEquipmentCost]);
+
   const [taxesPercent, setTaxesPercent] = useState(selectedKit?.taxesPercent ?? 4.5);
   const [commissionPercent, setCommissionPercent] = useState(selectedKit?.commissionPercent ?? 5);
   const [targetMarginPercent, setTargetMarginPercent] = useState(selectedKit?.targetMarginPercent ?? 22);
@@ -55,15 +65,10 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalProjectCost[]>([]);
 
   useEffect(() => {
-    setEquipmentCost(selectedKit?.equipmentCost ?? Math.round(installedPowerKWp * 2200));
-    setInstallationCost(selectedKit?.installationCost ?? Math.round(installedPowerKWp * 500));
-    setEngineeringCost(selectedKit?.engineeringCost ?? 800);
-    setUtilityFee(selectedKit?.utilityFee ?? 350);
-    setFreightCost(selectedKit?.freightCost ?? 500);
     setTaxesPercent(selectedKit?.taxesPercent ?? 4.5);
     setCommissionPercent(selectedKit?.commissionPercent ?? 5);
     setTargetMarginPercent(selectedKit?.targetMarginPercent ?? 22);
-  }, [selectedKit?.id, installedPowerKWp]);
+  }, [selectedKit?.id]);
 
   const additionalCostsTotal = useMemo(
     () => additionalCosts.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0),
@@ -72,18 +77,18 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
 
   const pricing = useMemo(() => {
     const result = calculateCommercialPricing({
-      equipmentItems: [{
+      equipmentItems: selectedKit ? [{
         id: 'equipment-base',
-        description: selectedKit?.name || `Equipamentos principais ${systemType}`,
-        category: 'Equipamentos',
+        description: selectedKit.name,
+        category: 'Kit solar',
         quantity: 1,
-        unitCost: equipmentCost,
-      }],
-      installationCost,
-      engineeringCost,
-      utilityFee,
-      freightCost,
-      otherCosts: additionalCostsTotal,
+        unitCost: selectedKitBaseCosts.equipmentCost,
+      }] : [],
+      installationCost: selectedKitBaseCosts.installationCost,
+      engineeringCost: selectedKitBaseCosts.engineeringCost,
+      utilityFee: selectedKitBaseCosts.utilityFee,
+      freightCost: selectedKitBaseCosts.freightCost,
+      otherCosts: selectedKitBaseCosts.otherCosts + additionalCostsTotal,
       taxesPercent,
       commissionPercent,
       targetMarginPercent,
@@ -92,18 +97,18 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     });
 
     return {
-      equipmentItems: [{
+      equipmentItems: selectedKit ? [{
         id: 'equipment-base',
-        description: selectedKit?.name || `Equipamentos principais ${systemType}`,
-        category: 'Equipamentos',
+        description: selectedKit.name,
+        category: 'Kit solar',
         quantity: 1,
-        unitCost: equipmentCost,
-      }],
-      installationCost,
-      engineeringCost,
-      utilityFee,
-      freightCost,
-      otherCosts: additionalCostsTotal,
+        unitCost: selectedKitBaseCosts.equipmentCost,
+      }] : [],
+      installationCost: selectedKitBaseCosts.installationCost,
+      engineeringCost: selectedKitBaseCosts.engineeringCost,
+      utilityFee: selectedKitBaseCosts.utilityFee,
+      freightCost: selectedKitBaseCosts.freightCost,
+      otherCosts: selectedKitBaseCosts.otherCosts + additionalCostsTotal,
       additionalCosts,
       taxesPercent,
       commissionPercent,
@@ -117,16 +122,11 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     additionalCostsTotal,
     commissionPercent,
     discountValue,
-    engineeringCost,
-    equipmentCost,
-    freightCost,
-    installationCost,
     installedPowerKWp,
     selectedKit,
-    systemType,
+    selectedKitBaseCosts,
     targetMarginPercent,
     taxesPercent,
-    utilityFee,
   ]);
 
   useEffect(() => {
@@ -182,42 +182,75 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
       <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
         <div className="space-y-4">
           <section className="rounded-xl border p-4" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold">
-              <Receipt className="h-4 w-4" style={{ color: theme.secondary }} />
-              Custos base do projeto
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Package className="mt-0.5 h-4 w-4" style={{ color: theme.secondary }} />
+                <div>
+                  <div className="text-sm font-bold">Kit selecionado no Dimensionamento</div>
+                  <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                    O custo do kit vem automaticamente da etapa Dimensionamento & Kits e entra direto na margem.
+                  </p>
+                </div>
+              </div>
+              {selectedKit && (
+                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold text-emerald-500" style={{ borderColor: theme.border }}>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Sincronizado
+                </span>
+              )}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {[
-                ['Equipamentos', equipmentCost, setEquipmentCost],
-                ['Instalação elétrica', installationCost, setInstallationCost],
-                ['Engenharia / projeto', engineeringCost, setEngineeringCost],
-                ['Taxa concessionária', utilityFee, setUtilityFee],
-                ['Frete / logística', freightCost, setFreightCost],
-              ].map(([label, value, setter]) => (
-                <label key={String(label)} className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{String(label)}</span>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">R$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={Number(value)}
-                      onChange={(e) => (setter as React.Dispatch<React.SetStateAction<number>>)(Math.max(0, Number(e.target.value) || 0))}
-                      className={`${inputClass} pl-9`}
-                      style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
-                    />
+
+            {selectedKit ? (
+              <div className="rounded-xl border p-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-bold text-[var(--text)]">{selectedKit.name}</div>
+                    <div className="mt-0.5 text-[11px] text-[var(--muted)]">
+                      {selectedKit.sku ? `${selectedKit.sku} • ` : ''}
+                      {(selectedKit.powerKWp || selectedKit.maxPowerKWp || installedPowerKWp).toFixed(2)} kWp • {selectedKit.systemType}
+                    </div>
                   </div>
-                </label>
-              ))}
-            </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] font-bold uppercase text-[var(--muted)]">Custo base utilizado</div>
+                    <div className="text-lg font-black" style={{ color: theme.secondary }}>
+                      {money.format(
+                        selectedKitBaseCosts.equipmentCost +
+                        selectedKitBaseCosts.installationCost +
+                        selectedKitBaseCosts.engineeringCost +
+                        selectedKitBaseCosts.utilityFee +
+                        selectedKitBaseCosts.freightCost +
+                        selectedKitBaseCosts.otherCosts
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--muted)] sm:grid-cols-3">
+                  <span>Equipamentos: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.equipmentCost)}</strong></span>
+                  <span>Instalação: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.installationCost)}</strong></span>
+                  <span>Engenharia: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.engineeringCost)}</strong></span>
+                  <span>Concessionária: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.utilityFee)}</strong></span>
+                  <span>Frete: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.freightCost)}</strong></span>
+                  <span>Outros do kit: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.otherCosts)}</strong></span>
+                </div>
+                {selectedKitBaseCosts.equipmentCost <= 0 && (
+                  <div className="mt-3 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] text-amber-300">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Este kit não possui custo de equipamentos cadastrado. Atualize o kit na aba Kits para calcular a margem corretamente.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-300">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Nenhum kit foi selecionado. Volte para “Dimensionamento & Kits” e escolha um kit; ele será trazido automaticamente para esta etapa.
+              </div>
+            )}
           </section>
 
           <section className="rounded-xl border p-4" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-sm font-bold">Custos adicionais do projeto</div>
-                <p className="text-[11px] text-[var(--muted)]">Obra civil, adequação elétrica, andaime, plataforma, reforço estrutural, deslocamento e outros extras.</p>
+                <p className="text-[11px] text-[var(--muted)]">Adicione somente o que não estiver incluído no kit: pedreiro, eletroduto extra, adequação elétrica, andaime, reforço estrutural, deslocamento etc.</p>
               </div>
               <button
                 type="button"
@@ -230,22 +263,9 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
             </div>
 
             {additionalCosts.length === 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setAdditionalCosts([{
-                    id: `extra-${Date.now()}`,
-                    description: 'Pedreiro — passagem de fiação embutida',
-                    category: 'Obra civil',
-                    value: 1200,
-                  }]);
-                  onShowToast?.('Exemplo de custo adicional inserido. Ajuste o valor conforme o orçamento real.');
-                }}
-                className="w-full rounded-xl border border-dashed p-5 text-left text-xs text-[var(--muted)]"
-                style={{ borderColor: theme.border }}
-              >
-                Nenhum custo adicional. Clique aqui para inserir um exemplo de <strong className="text-[var(--text)]">pedreiro para fiação embutida</strong>.
-              </button>
+              <div className="rounded-xl border border-dashed p-5 text-center text-xs text-[var(--muted)]" style={{ borderColor: theme.border }}>
+                Nenhum custo adicional incluído. Use <strong className="text-[var(--text)]">+ Adicionar custo</strong> somente quando houver algo fora do kit selecionado.
+              </div>
             ) : (
               <div className="space-y-2">
                 {additionalCosts.map((item) => (
