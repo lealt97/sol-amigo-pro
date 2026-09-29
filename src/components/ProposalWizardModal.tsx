@@ -24,7 +24,7 @@ import {
   Battery,
   Package,
 } from 'lucide-react';
-import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts } from '../types';
+import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
@@ -39,6 +39,7 @@ import {
 } from './ProposalWizardStep2';
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
 import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
+import { ProposalWizardMaintenanceStep } from './ProposalWizardMaintenanceStep';
 import { BRAZIL_STATE_HSP } from '../data/initialKits';
 
 export interface ProposalTargetSelection {
@@ -80,7 +81,7 @@ interface ProposalWizardModalProps {
 }
 
 // Etapas do fluxo de dimensionamento
-export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'commercial_pricing' | 'review_save';
+export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'maintenance_plan' | 'commercial_pricing' | 'review_save';
 
 export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   isOpen,
@@ -156,6 +157,17 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const [estimatedMonthlyGenKWh, setEstimatedMonthlyGenKWh] = useState<number>(580);
   const [totalKitPrice, setTotalKitPrice] = useState<number>(16900);
   const [commercialPricing, setCommercialPricing] = useState<OpportunityKitCosts | null>(null);
+  const [maintenancePlan, setMaintenancePlan] = useState<MaintenancePlanSelection>({
+    enabled: false,
+    type: 'none',
+    name: 'Sem plano de manutenção',
+    frequencyMonths: 0,
+    visitsPerYear: 0,
+    internalCostPerVisit: 0,
+    annualPrice: 0,
+    includedServices: [],
+    notes: '',
+  });
 
   // Sincroniza dados do titular selecionado com a Etapa 2 e Etapa 3
   useEffect(() => {
@@ -538,6 +550,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       selectedKitId: selectedKit?.id,
       selectedKitName: selectedKit?.name,
       pricing: commercialPricing || undefined,
+      maintenancePlan,
       commercialConditions: {
         paymentMethods: isHybrid
           ? 'Financiamento Solar em até 84x com 90 dias de carência ou à vista com 6% de desconto'
@@ -575,14 +588,20 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       subtitle: 'Potência e módulos',
     },
     {
-      id: 'commercial_pricing',
+      id: 'maintenance_plan',
       number: 4,
+      title: 'Manutenção',
+      subtitle: 'Plano opcional',
+    },
+    {
+      id: 'commercial_pricing',
+      number: 5,
       title: 'Custos & Margem',
       subtitle: 'Preço e rentabilidade',
     },
     {
       id: 'review_save',
-      number: 5,
+      number: 6,
       title: 'Proposta & Condições',
       subtitle: 'Revisão e fechamento',
     },
@@ -1396,7 +1415,18 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 4: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
+          {/* ETAPA 4: PLANO DE MANUTENÇÃO OPCIONAL                                     */}
+          {/* ========================================================================= */}
+          {currentStep === 'maintenance_plan' && (
+            <ProposalWizardMaintenanceStep
+              theme={theme}
+              value={maintenancePlan}
+              onChange={setMaintenancePlan}
+            />
+          )}
+
+          {/* ========================================================================= */}
+          {/* ETAPA 5: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
           {/* ========================================================================= */}
           {currentStep === 'commercial_pricing' && (
             <ProposalWizardStep4Commercial
@@ -1404,13 +1434,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               installedPowerKWp={installedPowerKWp}
               selectedKit={selectedKit}
               systemType={systemType}
+              maintenancePlan={maintenancePlan}
               onPricingChange={setCommercialPricing}
               onShowToast={onShowToast}
             />
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 5: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
+          {/* ETAPA 6: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
           {/* ========================================================================= */}
           {currentStep === 'review_save' && (
             <div className="space-y-5 animate-fadeIn">
@@ -1425,7 +1456,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         color: theme.secondary,
                       }}
                     >
-                      Etapa 5 de 5
+                      Etapa 6 de 6
                     </span>
                     <span className="text-xs text-[var(--muted)]">Resumo Técnico & Emissão</span>
                   </div>
@@ -1582,6 +1613,26 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 </div>
               </div>
 
+              {maintenancePlan.enabled && (
+                <div className="rounded-xl border p-4 shadow-xs" style={{ backgroundColor: theme.card, borderColor: theme.border }}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-[var(--text)]">Plano de Manutenção incluído</div>
+                      <div className="mt-1 text-sm font-black" style={{ color: theme.secondary }}>{maintenancePlan.name}</div>
+                      <div className="mt-1 text-[11px] text-[var(--muted)]">
+                        {maintenancePlan.visitsPerYear} visita(s)/ano • a cada {maintenancePlan.frequencyMonths} meses • {maintenancePlan.includedServices.length} serviço(s) incluído(s)
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <div className="text-[10px] font-bold uppercase text-[var(--muted)]">Valor anual do plano</div>
+                      <div className="text-lg font-black text-emerald-500">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(maintenancePlan.annualPrice)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Botão de Conclusão */}
               <div className="pt-2 flex justify-center">
                 <button
@@ -1675,14 +1726,26 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             {currentStep === 'sizing_hardware' && (
               <button
                 type="button"
-                onClick={() => setCurrentStep('commercial_pricing')}
+                onClick={() => setCurrentStep('maintenance_plan')}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
                 <span>
-                  Avançar para Custos & Margem
+                  Avançar para Manutenção
                   {installedPowerKWp > 0 ? ` (${installedPowerKWp.toFixed(2)} kWp)` : ''}
                 </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {currentStep === 'maintenance_plan' && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep('commercial_pricing')}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+              >
+                <span>{maintenancePlan.enabled ? 'Avançar com Plano de Manutenção' : 'Continuar sem Manutenção'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}

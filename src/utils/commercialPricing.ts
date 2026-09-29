@@ -12,6 +12,8 @@ export interface CommercialPricingInput {
   targetMarginPercent: number;
   discountValue: number;
   installedPowerKWp: number;
+  additionalDirectCost?: number;
+  additionalSaleValue?: number;
 }
 
 const nonNegative = (value: number) => Math.max(0, Number(value) || 0);
@@ -23,11 +25,15 @@ export const calculateCommercialPricing = (input: CommercialPricingInput) => {
   );
   const fixedCosts = nonNegative(input.installationCost) + nonNegative(input.engineeringCost)
     + nonNegative(input.utilityFee) + nonNegative(input.freightCost) + nonNegative(input.otherCosts);
-  const directCost = equipmentCost + fixedCosts;
+  const baseDirectCost = equipmentCost + fixedCosts;
+  const additionalDirectCost = nonNegative(input.additionalDirectCost ?? 0);
+  const additionalSaleValue = nonNegative(input.additionalSaleValue ?? 0);
+  const directCost = baseDirectCost + additionalDirectCost;
   const deductionsPercent = nonNegative(input.taxesPercent) + nonNegative(input.commissionPercent)
     + nonNegative(input.targetMarginPercent);
   const divisor = Math.max(0.05, 1 - deductionsPercent / 100);
-  const grossSalePrice = directCost > 0 ? directCost / divisor : 0;
+  const baseGrossSalePrice = baseDirectCost > 0 ? baseDirectCost / divisor : 0;
+  const grossSalePrice = baseGrossSalePrice + additionalSaleValue;
   const discountValue = Math.min(nonNegative(input.discountValue), grossSalePrice * 0.5);
   const finalSalePrice = Math.max(0, grossSalePrice - discountValue);
   const taxesValue = finalSalePrice * nonNegative(input.taxesPercent) / 100;
@@ -38,7 +44,8 @@ export const calculateCommercialPricing = (input: CommercialPricingInput) => {
   const installedPowerWp = nonNegative(input.installedPowerKWp) * 1000;
 
   return {
-    equipmentCost, fixedCosts, grossSalePrice, discountValue, finalSalePrice,
+    equipmentCost, fixedCosts, additionalDirectCost, additionalSaleValue,
+    grossSalePrice, discountValue, finalSalePrice,
     taxesValue, commissionValue, totalCost, profit, marginPercent,
     pricePerWp: installedPowerWp > 0 ? finalSalePrice / installedPowerWp : 0,
   };

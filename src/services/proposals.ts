@@ -1,3 +1,4 @@
+import { MaintenancePlanSelection } from '../types';
 export interface ClientProposal {
   id: string;
   code: string;
@@ -15,6 +16,7 @@ export interface ClientProposal {
   batteryCount?: number;
   estimatedMonthlyGenKWh?: number;
   estimatedMonthlySavings?: number;
+  maintenancePlan?: MaintenancePlanSelection;
   notes?: string;
   createdAt: string;
 }
@@ -159,6 +161,7 @@ export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
             modulesCount: row.modules_count,
             moduleModel: row.module_model,
             inverterModel: row.inverter_model,
+            maintenancePlan: row.maintenance_plan || undefined,
             createdAt: row.created_at || new Date().toISOString(),
           });
         }
@@ -206,6 +209,7 @@ export async function createQuickProposalForClient(
     inverterModel: data.inverterModel,
     estimatedMonthlyGenKWh: data.estimatedMonthlyGenKWh,
     estimatedMonthlySavings: data.estimatedMonthlySavings,
+    maintenancePlan: data.maintenancePlan,
     notes: data.notes,
     createdAt: new Date().toISOString(),
   };
@@ -292,6 +296,7 @@ export async function createQuickProposalForTarget(
     modulesCount: data?.modulesCount || 20,
     moduleModel: data?.moduleModel || 'Canadian Solar 585W TOPCon',
     inverterModel: data?.inverterModel || 'Inversor Deye 12kW',
+    maintenancePlan: data?.maintenancePlan,
     createdAt: new Date().toISOString(),
   };
 

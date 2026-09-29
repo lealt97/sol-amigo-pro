@@ -26,3 +26,22 @@ test('desconto é limitado a metade do preço bruto na prévia', () => {
   assert.equal(result.discountValue, 500);
   assert.equal(result.finalSalePrice, 500);
 });
+
+
+test('plano de manutenção soma custo interno e preço de venda sem alterar a regra base', () => {
+  const result = calculateCommercialPricing({
+    equipmentItems: [{ id: 'kit', description: 'Kit', category: 'Kit solar', quantity: 1, unitCost: 10000 }],
+    installationCost: 0, engineeringCost: 0, utilityFee: 0, freightCost: 0,
+    otherCosts: 0, taxesPercent: 0, commissionPercent: 0, targetMarginPercent: 20,
+    discountValue: 0, installedPowerKWp: 5,
+    additionalDirectCost: 400,
+    additionalSaleValue: 1000,
+  });
+
+  assert.equal(result.additionalDirectCost, 400);
+  assert.equal(result.additionalSaleValue, 1000);
+  assert.equal(result.grossSalePrice, 13500);
+  assert.equal(result.totalCost, 10400);
+  assert.equal(result.profit, 3100);
+  assert.ok(Math.abs(result.marginPercent - (3100 / 13500 * 100)) < 0.0001);
+});

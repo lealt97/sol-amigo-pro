@@ -22,6 +22,7 @@ import { ClientesView } from './components/ClientesView';
 import { AnotacoesView } from './components/AnotacoesView';
 import { PropostasView } from './components/PropostasView';
 import { KitsView } from './components/KitsView';
+import { PosVendaView } from './components/PosVendaView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -242,7 +243,8 @@ export default function App() {
             onNavigate={(page) => setActivePage(page)}
           />
         );
-      case 'pos-venda': return <div id="pos-venda-page" />;
+      case 'pos-venda':
+        return <PosVendaView theme={currentTheme} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
       case 'anotacoes':
         return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={(page, propCode) => { setProposalFilterCode(propCode || ''); setActivePage(page); }} />;
       case 'perfil': return <ProfileView theme={currentTheme} onShowToast={showToast} />;

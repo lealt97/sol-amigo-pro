@@ -135,6 +135,18 @@ export interface ProposalRecord {
   };
 }
 
+export interface MaintenancePlanSelection {
+  enabled: boolean;
+  type: 'none' | 'annual' | 'semiannual' | 'custom';
+  name: string;
+  frequencyMonths: number;
+  visitsPerYear: number;
+  internalCostPerVisit: number;
+  annualPrice: number;
+  includedServices: string[];
+  notes: string;
+}
+
 export interface SolarProposal {
   id: string;
   code: string;
@@ -175,6 +187,7 @@ export interface SolarProposal {
   selectedKitName?: string;
   sizing?: OpportunitySizing;
   pricing?: OpportunityKitCosts;
+  maintenancePlan?: MaintenancePlanSelection;
   commercialConditions?: {
     paymentMethods?: string;
     warrantyTerms?: string;
@@ -615,6 +628,8 @@ export interface OpportunityKitCosts {
   freightCost: number;
   otherCosts: number;
   additionalCosts?: AdditionalProjectCost[];
+  additionalDirectCost?: number;
+  additionalSaleValue?: number;
   taxesPercent: number;
   commissionPercent: number;
   targetMarginPercent?: number;

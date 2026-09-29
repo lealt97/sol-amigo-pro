@@ -17,6 +17,7 @@ import {
   Copy,
   AlertTriangle,
   Battery,
+  Wrench,
 } from 'lucide-react';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
 
@@ -327,6 +328,47 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
                     <div className="text-slate-600">Capacidade: <b>{((proposal.batteryCapacityKWh || 5.12) * (proposal.batteryCount || 1)).toFixed(1)} kWh</b></div>
                     <div className="text-slate-500">Garantia: <b>10 anos / 6.000 ciclos</b></div>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {proposal.maintenancePlan?.enabled && (
+            <div className="space-y-3">
+              <h4
+                className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-100"
+                style={{ color: effectivePrimary }}
+              >
+                <Wrench className="w-4 h-4" />
+                Plano de Manutenção
+              </h4>
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">{proposal.maintenancePlan.name}</div>
+                    <div className="mt-1 text-slate-600">
+                      {proposal.maintenancePlan.visitsPerYear} visita(s) por ano • periodicidade de {proposal.maintenancePlan.frequencyMonths} meses
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">Valor anual</div>
+                    <div className="text-base font-black text-emerald-700">
+                      R$ {proposal.maintenancePlan.annualPrice.toLocaleString('pt-BR')}
+                    </div>
+                  </div>
+                </div>
+                {proposal.maintenancePlan.includedServices.length > 0 && (
+                  <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {proposal.maintenancePlan.includedServices.map((service) => (
+                      <div key={service} className="flex items-center gap-1.5 text-slate-600">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{service}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {proposal.maintenancePlan.notes && (
+                  <div className="mt-3 text-slate-500">{proposal.maintenancePlan.notes}</div>
                 )}
               </div>
             </div>

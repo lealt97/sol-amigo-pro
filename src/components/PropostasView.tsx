@@ -138,6 +138,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
     paybackYears: 3.2,
     status: p.status,
+    maintenancePlan: p.maintenancePlan,
     createdAt: p.createdAt,
   });
 
@@ -164,6 +165,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       batteryCount: newSolar.batteryCount,
       estimatedMonthlyGenKWh: newSolar.estimatedMonthlyGenKWh,
       estimatedMonthlySavings: newSolar.estimatedMonthlySavings,
+      maintenancePlan: newSolar.maintenancePlan,
       createdAt: newSolar.createdAt || new Date().toISOString(),
     };
 
