@@ -25,7 +25,7 @@ test('dimensionamento desconta custo de disponibilidade e aplica perdas como efi
   assert.equal(result.performanceRatio, 0.8);
   assert.equal(result.modulesCount, 9);
   assert.equal(result.installedPowerKWp, 4.95);
-  assert.equal(result.estimatedMonthlyGenerationKWh, 602.25);
+  assert.equal(result.estimatedMonthlyGenerationKWh, 594);
 });
 
 test('referência On-Grid do wizard: 658 kWh, HSP 5.56, PR 80%, módulo 550 W', () => {
@@ -90,6 +90,11 @@ test('dimensionamento híbrido usa cargas prioritárias, eficiências e pico de 
   });
 
   assert.equal(result.availabilityCostKWh, 100);
+  assert.equal(result.compensableConsumptionKWh, 620);
+  assert.equal(result.requiredPowerKWp, 4.8627);
+  assert.equal(result.modulesCount, 9);
+  assert.equal(result.installedPowerKWp, 4.95);
+  assert.equal(result.estimatedMonthlyGenerationKWh, 631.125);
   assert.equal(result.batteryTotalCapacityKWh, 10.24);
   assert.equal(result.backupEnergyKWh, 4);
   assert.equal(result.backupSimultaneousPowerKW, 1);
