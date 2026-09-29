@@ -498,7 +498,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
 
     const finalMonthlyGen = estimatedMonthlyGenKWh > 0
       ? estimatedMonthlyGenKWh
-      : Math.round(finalKWp * hsp * 30.416 * (performanceRatio / 100));
+      : Math.round(finalKWp * hsp * 30 * (performanceRatio / 100));
 
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,

@@ -144,8 +144,11 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     const prVal = Math.max(10, Math.min(100, Number(performanceRatio) || 80)) / 100;
     const coverage = Math.max(1, Number(targetCoveragePercent) > 0 ? Number(targetCoveragePercent) : 100) / 100;
 
-    // Usa a fonte única do pré-dimensionamento mensal On-Grid.
-    // P (kWp) = (Consumo Mensal * Cobertura) / (30 dias * HSP * PR)
+    // Método aprovado para o pré-dimensionamento mensal On-Grid:
+    // 1) consumo mensal - custo de disponibilidade (30/50/100 kWh)
+    // 2) divide por 30 dias
+    // 3) P_FV = energia diária / (HSP x rendimento)
+    // 4) arredonda a quantidade de módulos para cima
     const modW = Math.max(100, Number(modulePowerW) || 550);
     const sizing = calculateOnGridMonthlySizing({
       monthlyConsumptionKWh: cons,
@@ -167,7 +170,11 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     const suggestedInverterKW = Math.max(3, Math.ceil(calculatedInstalledKWp));
 
     return {
+      availabilityCostKWh: sizing.availabilityCostKWh,
+      compensableConsumptionKWh: sizing.compensableConsumptionKWh,
+      dailyGenerationTargetKWh: sizing.dailyGenerationTargetKWh,
       requiredPowerKWp: Number(requiredPowerKWp.toFixed(2)),
+      requiredPowerKWpExact: sizing.requiredPowerKWp,
       calculatedModules,
       calculatedInstalledKWp,
       calculatedGenKWh,
@@ -176,7 +183,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
       prPercent: Math.round(prVal * 100),
       lossPercent: Math.round((1 - prVal) * 100),
     };
-  }, [effectiveAverageKWh, hsp, performanceRatio, targetCoveragePercent, modulePowerW]);
+  }, [effectiveAverageKWh, connectionType, hsp, performanceRatio, targetCoveragePercent, modulePowerW]);
 
   // Se nenhum kit estiver selecionado, sincroniza os cálculos teóricos com as variáveis do pai
   useEffect(() => {
@@ -581,6 +588,23 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
           </div>
         </div>
 
+        <div
+          className="rounded-xl border p-3.5"
+          style={{ backgroundColor: theme.primary, borderColor: theme.border }}
+        >
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
+            <span>Consumo: <strong className="text-[var(--text)]">{effectiveAverageKWh.toLocaleString('pt-BR')} kWh/mês</strong></span>
+            <span>Disponibilidade ({connectionType}): <strong className="text-[var(--text)]">− {theoreticalCalculations.availabilityCostKWh} kWh</strong></span>
+            <span>Compensável: <strong className="text-[var(--text)]">{theoreticalCalculations.compensableConsumptionKWh.toLocaleString('pt-BR')} kWh/mês</strong></span>
+            <span>Energia diária: <strong className="text-[var(--text)]">{theoreticalCalculations.dailyGenerationTargetKWh.toLocaleString('pt-BR')} kWh/dia</strong></span>
+          </div>
+          <div className="mt-2 text-xs font-semibold text-[var(--text)]">
+            P<sub>FV</sub> = {theoreticalCalculations.dailyGenerationTargetKWh.toLocaleString('pt-BR')} ÷ ({Number(hsp).toLocaleString('pt-BR')} × {(Number(performanceRatio) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+            {' = '}
+            <strong className="text-[var(--secondary)]">{theoreticalCalculations.requiredPowerKWpExact.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} kWp</strong>
+          </div>
+        </div>
+
         {/* CARDS COM RESULTADOS DO DIMENSIONAMENTO CALCULADO */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
           <div
@@ -593,10 +617,10 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
             </span>
             <div className="mt-1">
               <div className="text-base sm:text-lg font-black text-[var(--text)]">
-                {installedPowerKWp.toFixed(2)} <span className="text-xs font-bold text-[var(--secondary)]">kWp</span>
+                {theoreticalCalculations.requiredPowerKWp.toFixed(2)} <span className="text-xs font-bold text-[var(--secondary)]">kWp</span>
               </div>
               <span className="text-[10px] text-[var(--muted)] block">
-                Teórico: {theoreticalCalculations.requiredPowerKWp} kWp
+                Instalada após arredondar módulos: {installedPowerKWp.toFixed(2)} kWp
               </span>
             </div>
           </div>
