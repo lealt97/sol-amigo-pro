@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Calculator, CheckCircle2, Package, Plus, Trash2, WalletCards } from 'lucide-react';
 import {
   AdditionalProjectCost,
+  MaintenancePlanSelection,
   OpportunityKitCosts,
   SolarKit,
   ThemeConfig,
@@ -13,6 +14,7 @@ interface ProposalWizardStep4CommercialProps {
   installedPowerKWp: number;
   selectedKit: SolarKit | null;
   systemType: 'On-Grid' | 'Híbrido';
+  maintenancePlan: MaintenancePlanSelection;
   onPricingChange: (pricing: OpportunityKitCosts) => void;
   onShowToast?: (message: string) => void;
 }
@@ -36,6 +38,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
   installedPowerKWp,
   selectedKit,
   systemType,
+  maintenancePlan,
   onPricingChange,
   onShowToast,
 }) => {
@@ -95,6 +98,10 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
       targetMarginPercent,
       discountValue,
       installedPowerKWp,
+      additionalDirectCost: maintenancePlan.enabled
+        ? maintenancePlan.internalCostPerVisit * maintenancePlan.visitsPerYear
+        : 0,
+      additionalSaleValue: maintenancePlan.enabled ? maintenancePlan.annualPrice : 0,
     });
 
     return {
@@ -128,6 +135,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     selectedKitBaseCosts,
     targetMarginPercent,
     taxesPercent,
+    maintenancePlan,
   ]);
 
   useEffect(() => {
@@ -393,6 +401,20 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
                     <strong className="shrink-0">{money.format(item.value)}</strong>
                   </div>
                 ))}
+
+                {maintenancePlan.enabled && maintenancePlan.annualPrice > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Plano de manutenção</span>
+                    <strong>+ {money.format(maintenancePlan.annualPrice)}</strong>
+                  </div>
+                )}
+
+                {maintenancePlan.enabled && pricing.additionalDirectCost > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--muted)]">Custo interno da manutenção</span>
+                    <strong>{money.format(pricing.additionalDirectCost)}</strong>
+                  </div>
+                )}
 
                 {pricing.taxesValue > 0 && (
                   <div className="flex justify-between gap-3">
