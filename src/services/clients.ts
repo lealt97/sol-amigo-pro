@@ -172,7 +172,7 @@ export function syncLeadAsClient(
 export function mergeClientsWithLeads(clientsList: Client[], leadsList: Lead[]): Client[] {
   const merged = [...clientsList];
   leadsList.forEach((lead) => {
-    if (lead.clientId || (lead.status as string) === 'Cliente') {
+    if (lead.clientId || (lead.status as string) === 'Cliente' || lead.status === 'ganho') {
       const clientId = lead.clientId || `lead-cli-${lead.id}`;
       const existing = merged.find(
         (c) => c.id === clientId || c.id === lead.id || c.sourceLeadId === lead.id

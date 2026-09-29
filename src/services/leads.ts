@@ -17,6 +17,10 @@ type LeadRow = Record<string, any>;
 
 const MANUAL_LEADS_STORAGE_KEY = 'sol_amigo_manual_leads_cache';
 
+export function isValidUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 export function getStoredManualLeads(): Lead[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -42,7 +46,7 @@ export const LEADS_UPDATED_EVENT = 'solamigo:leads-updated';
 
 export const isLeadConverted = (lead?: Lead | Partial<Lead> | null): boolean => {
   if (!lead) return false;
-  return Boolean(lead.clientId || (lead.status as string) === 'Cliente');
+  return Boolean(lead.clientId || (lead.status as string) === 'Cliente' || lead.status === 'ganho');
 };
 
 export const isActiveLead = (lead: Lead): boolean => {
@@ -243,10 +247,47 @@ export async function createManualLead(input: CreateLeadInput): Promise<Lead> {
 }
 
 export async function addLeadToClients(leadId: string): Promise<string> {
-  const { data, error } = await supabase.rpc('add_lead_to_clients', { p_lead_id: leadId });
-  if (error) throw error;
-  if (!data) throw new Error('O cliente não foi criado.');
-  return String(data);
+  const isUuid = isValidUuid(leadId);
+  if (isUuid) {
+    try {
+      const { data, error } = await supabase.rpc('add_lead_to_clients', { p_lead_id: leadId });
+      if (!error && data) {
+        return String(data);
+      }
+      if (error) {
+        console.warn('Aviso RPC add_lead_to_clients:', error);
+      }
+    } catch (err) {
+      console.warn('Erro ao chamar add_lead_to_clients no Supabase:', err);
+    }
+  }
+
+  // Fallback garantido para leads manuais ou quando RPC do banco falhar:
+  const generatedClientId = `cli-${leadId.replace(/^lead-/, '')}`;
+
+  // Atualiza status do lead para 'ganho' e vincula o ID do cliente
+  setStoredLeadStatus(leadId, 'ganho');
+  const manualLeads = getStoredManualLeads();
+  const existingLead = manualLeads.find((l) => l.id === leadId);
+  if (existingLead) {
+    existingLead.status = 'ganho';
+    existingLead.clientId = generatedClientId;
+    existingLead.updatedAt = new Date().toISOString();
+    saveStoredManualLeads(manualLeads);
+  }
+
+  if (isUuid) {
+    try {
+      await supabase
+        .from('leads')
+        .update({ status: 'ganho', client_id: generatedClientId, updated_at: new Date().toISOString() })
+        .eq('id', leadId);
+    } catch {
+      // non-blocking
+    }
+  }
+
+  return generatedClientId;
 }
 
 export async function createProposalFromLead(
@@ -254,19 +295,21 @@ export async function createProposalFromLead(
   systemType: ProposalSystemType,
   extra?: { clientId?: string | null; clientName?: string | null }
 ): Promise<ProposalDraftResult> {
-  try {
-    const { data, error } = await supabase.rpc('create_proposal_from_lead', {
-      p_lead_id: leadId,
-      p_system_type: systemType,
-    });
-    if (!error && data) {
-      const result = Array.isArray(data) ? data[0] : data;
-      if (result?.proposal_id && result?.proposal_code) {
-        return { proposalId: result.proposal_id, proposalCode: result.proposal_code };
+  if (isValidUuid(leadId)) {
+    try {
+      const { data, error } = await supabase.rpc('create_proposal_from_lead', {
+        p_lead_id: leadId,
+        p_system_type: systemType,
+      });
+      if (!error && data) {
+        const result = Array.isArray(data) ? data[0] : data;
+        if (result?.proposal_id && result?.proposal_code) {
+          return { proposalId: result.proposal_id, proposalCode: result.proposal_code };
+        }
       }
+    } catch (err) {
+      console.warn('RPC create_proposal_from_lead falhou, gerando proposta local:', err);
     }
-  } catch (err) {
-    console.warn('RPC create_proposal_from_lead falhou, gerando proposta local:', err);
   }
 
   // Fallback seguro caso seja um cliente sem lead no backend Supabase
@@ -291,13 +334,15 @@ export async function deleteOwnedLead(leadId: string): Promise<void> {
   removeStoredLeadNotes(leadId);
   const localList = getStoredManualLeads();
   saveStoredManualLeads(localList.filter((l) => l.id !== leadId));
-  try {
-    const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
-    if (error) {
-      console.warn('Aviso RPC delete_owned_lead:', error);
+  if (isValidUuid(leadId)) {
+    try {
+      const { data, error } = await supabase.rpc('delete_owned_lead', { p_lead_id: leadId });
+      if (error) {
+        console.warn('Aviso RPC delete_owned_lead:', error);
+      }
+    } catch (err) {
+      console.warn('Erro ao deletar lead no Supabase:', err);
     }
-  } catch (err) {
-    console.warn('Erro ao deletar lead no Supabase:', err);
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(LEADS_UPDATED_EVENT, { detail: { deletedLeadId: leadId } }));
@@ -317,27 +362,29 @@ export async function updateLeadNotes(leadId: string, notes: string, skipClientS
     saveStoredManualLeads(localList);
   }
 
-  // 3. Tenta persistir no Supabase
-  try {
-    const { error } = await supabase
-      .from('leads')
-      .update({ notes, updated_at: new Date().toISOString() })
-      .eq('id', leadId);
-    if (!error) {
-      const userResponse = await supabase.auth.getUser();
-      const userId = userResponse.data?.user?.id;
-      if (userId) {
-        await supabase.from('lead_activities').insert({
-          user_id: userId,
-          lead_id: leadId,
-          activity_type: 'nota',
-          title: 'Anotação atualizada',
-          description: notes.slice(0, 300),
-        });
+  // 3. Tenta persistir no Supabase se for UUID válido
+  if (isValidUuid(leadId)) {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ notes, updated_at: new Date().toISOString() })
+        .eq('id', leadId);
+      if (!error) {
+        const userResponse = await supabase.auth.getUser();
+        const userId = userResponse.data?.user?.id;
+        if (userId) {
+          await supabase.from('lead_activities').insert({
+            user_id: userId,
+            lead_id: leadId,
+            activity_type: 'nota',
+            title: 'Anotação atualizada',
+            description: notes.slice(0, 300),
+          });
+        }
       }
+    } catch (err) {
+      console.warn('Aviso ao sincronizar notas no Supabase leads:', err);
     }
-  } catch (err) {
-    console.warn('Aviso ao sincronizar notas no Supabase leads:', err);
   }
 
   // 4. Sincroniza também no registro do cliente se aplicável (sem recursão circular)
@@ -405,25 +452,55 @@ export async function updateLeadParameters(
   if (params.responsible !== undefined) payload.responsible = params.responsible;
   if (params.notes !== undefined) payload.notes = params.notes;
 
-  try {
-    const { error } = await supabase
-      .from('leads')
-      .update(payload)
-      .eq('id', leadId);
+  const isUuid = isValidUuid(leadId);
+  if (isUuid) {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update(payload)
+        .eq('id', leadId);
 
-    if (error) {
-      if (params.status !== undefined && isLegacyStatusTransitionError(error)) {
-        const fallbackPayload = { ...payload };
-        delete fallbackPayload.status;
-        const { error: fallbackError } = await supabase
-          .from('leads')
-          .update(fallbackPayload)
-          .eq('id', leadId);
-        if (fallbackError) console.warn('Aviso ao atualizar lead fallback:', fallbackError);
+      if (error) {
+        if (params.status !== undefined && isLegacyStatusTransitionError(error)) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.status;
+          const { error: fallbackError } = await supabase
+            .from('leads')
+            .update(fallbackPayload)
+            .eq('id', leadId);
+          if (fallbackError) console.warn('Aviso ao atualizar lead fallback:', fallbackError);
+        }
       }
+    } catch (err) {
+      console.warn('Erro ao atualizar leads no Supabase (pode ser cliente cadastrado diretamente):', err);
     }
-  } catch (err) {
-    console.warn('Erro ao atualizar leads no Supabase (pode ser cliente cadastrado diretamente):', err);
+  }
+
+  // Atualiza lead manual local se for o caso
+  const localList = getStoredManualLeads();
+  const existingIdx = localList.findIndex((l) => l.id === leadId);
+  if (existingIdx !== -1) {
+    const updatedLead = { ...localList[existingIdx] };
+    if (params.name !== undefined) updatedLead.name = params.name;
+    if (params.phone !== undefined) updatedLead.phone = params.phone;
+    if (params.email !== undefined) updatedLead.email = params.email;
+    if (params.street !== undefined) updatedLead.street = params.street;
+    if (params.addressNumber !== undefined) updatedLead.addressNumber = params.addressNumber;
+    if (params.city !== undefined) updatedLead.city = params.city;
+    if (params.state !== undefined) updatedLead.state = params.state;
+    if (params.status !== undefined) updatedLead.status = params.status;
+    if (params.propertyType !== undefined) updatedLead.propertyType = params.propertyType;
+    if (params.propertyStatus !== undefined) updatedLead.propertyStatus = params.propertyStatus;
+    if (params.distributor !== undefined) updatedLead.distributor = params.distributor;
+    if (params.averageMonthlyBill !== undefined) updatedLead.averageMonthlyBill = params.averageMonthlyBill;
+    if (params.averageConsumptionKWh !== undefined) updatedLead.averageConsumptionKWh = params.averageConsumptionKWh;
+    if (params.installationTimeframe !== undefined) updatedLead.installationTimeframe = params.installationTimeframe;
+    if (params.preferredContactTime !== undefined) updatedLead.preferredContactTime = params.preferredContactTime;
+    if (params.responsible !== undefined) updatedLead.responsible = params.responsible;
+    if (params.notes !== undefined) updatedLead.notes = params.notes;
+    updatedLead.updatedAt = new Date().toISOString();
+    localList[existingIdx] = updatedLead;
+    saveStoredManualLeads(localList);
   }
 
   // Atualiza também nos clientes se o leadId for um cliente ou sourceLeadId

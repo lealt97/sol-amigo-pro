@@ -240,7 +240,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
 
   const isLight = getContrastFg(theme.primary) === '#0F172A';
 
-  const isLeadConverted = (l: Lead) => Boolean(l.clientId || (l.status as string) === 'Cliente');
+  const isLeadConverted = (l: Lead) => Boolean(l.clientId || (l.status as string) === 'Cliente' || l.status === 'ganho');
 
   const activeLeads = useMemo(() => {
     return leads.filter((lead) => !isLeadConverted(lead));
@@ -260,6 +260,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   const handleAddClient = async (lead: Lead) => {
     setOpenMenuId(null);
     setWorkingId(lead.id);
+    setError('');
     try {
       const clientId = await addLeadToClients(lead.id);
       syncLeadAsClient(lead, clientId);
