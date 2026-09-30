@@ -17,7 +17,6 @@ import {
   deleteMaintenancePlan,
   getStoredMaintenancePlans,
   restoreDefaultMaintenancePlans,
-  saveStoredMaintenancePlans,
   updateMaintenancePlan,
 } from '../data/maintenancePlans';
 
