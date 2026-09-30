@@ -6,6 +6,7 @@ import {
   FileText,
   Package,
   Wrench,
+  CalendarDays,
   NotepadText,
   Settings,
   ChevronRight,
@@ -50,6 +51,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { key: 'propostas', label: 'Propostas', icon: FileText },
   { key: 'kits', label: 'Kits', icon: Package },
   { key: 'pos-venda', label: 'Pós-venda', icon: Wrench },
+  { key: 'calendario', label: 'Calendário', icon: CalendarDays },
   { key: 'anotacoes', label: 'Anotações', icon: NotepadText },
 ];
 
