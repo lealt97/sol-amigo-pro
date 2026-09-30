@@ -41,7 +41,6 @@ import {
 } from './ProposalWizardStep2';
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
 import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
-import { ProposalWizardMaintenanceStep } from './ProposalWizardMaintenanceStep';
 import { BRAZIL_STATE_HSP } from '../data/initialKits';
 
 export interface ProposalTargetSelection {
@@ -83,7 +82,7 @@ interface ProposalWizardModalProps {
 }
 
 // Etapas do fluxo de dimensionamento
-export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'maintenance_plan' | 'commercial_pricing' | 'review_save';
+export type WizardStep = 'client_selection' | 'consumption_bills' | 'sizing_hardware' | 'commercial_pricing' | 'review_save';
 
 export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   isOpen,
@@ -590,20 +589,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       subtitle: 'Potência e módulos',
     },
     {
-      id: 'maintenance_plan',
-      number: 4,
-      title: 'Manutenção',
-      subtitle: 'Plano opcional',
-    },
-    {
       id: 'commercial_pricing',
-      number: 5,
+      number: 4,
       title: 'Custos & Margem',
       subtitle: 'Preço e rentabilidade',
     },
     {
       id: 'review_save',
-      number: 6,
+      number: 5,
       title: 'Proposta & Condições',
       subtitle: 'Revisão e fechamento',
     },
@@ -1532,6 +1525,18 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               setBatteryCapacityKWh={setBatteryCapacityKWh}
               selectedKit={selectedKit}
               setSelectedKit={setSelectedKit}
+              selectedMaintenancePlan={maintenancePlan.enabled ? maintenancePlan : null}
+              setSelectedMaintenancePlan={(plan) => setMaintenancePlan(plan || {
+                enabled: false,
+                type: 'none',
+                name: 'Sem plano de manutenção',
+                frequencyMonths: 0,
+                visitsPerYear: 0,
+                internalCostPerVisit: 0,
+                annualPrice: 0,
+                includedServices: [],
+                notes: '',
+              })}
               estimatedMonthlyGenKWh={estimatedMonthlyGenKWh}
               setEstimatedMonthlyGenKWh={setEstimatedMonthlyGenKWh}
               totalKitPrice={totalKitPrice}
@@ -1541,18 +1546,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 4: PLANO DE MANUTENÇÃO OPCIONAL                                     */}
-          {/* ========================================================================= */}
-          {currentStep === 'maintenance_plan' && (
-            <ProposalWizardMaintenanceStep
-              theme={theme}
-              value={maintenancePlan}
-              onChange={setMaintenancePlan}
-            />
-          )}
-
-          {/* ========================================================================= */}
-          {/* ETAPA 5: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
+          {/* ETAPA 4: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
           {/* ========================================================================= */}
           {currentStep === 'commercial_pricing' && (
             <ProposalWizardStep4Commercial
@@ -1567,7 +1561,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* ETAPA 6: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
+          {/* ETAPA 5: REVISÃO COMERCIAL & EMISSÃO DA PROPOSTA                         */}
           {/* ========================================================================= */}
           {currentStep === 'review_save' && (
             <div className="space-y-5 animate-fadeIn">
@@ -1582,7 +1576,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         color: theme.secondary,
                       }}
                     >
-                      Etapa 6 de 6
+                      Etapa 5 de 5
                     </span>
                     <span className="text-xs text-[var(--muted)]">Resumo Técnico & Emissão</span>
                   </div>
@@ -1852,26 +1846,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             {currentStep === 'sizing_hardware' && (
               <button
                 type="button"
-                onClick={() => setCurrentStep('maintenance_plan')}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
-                style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-              >
-                <span>
-                  Avançar para Manutenção
-                  {installedPowerKWp > 0 ? ` (${installedPowerKWp.toFixed(2)} kWp)` : ''}
-                </span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {currentStep === 'maintenance_plan' && (
-              <button
-                type="button"
                 onClick={() => setCurrentStep('commercial_pricing')}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
-                <span>{maintenancePlan.enabled ? 'Avançar com Plano de Manutenção' : 'Continuar sem Manutenção'}</span>
+                <span>
+                  Avançar para Custos & Margem
+                  {installedPowerKWp > 0 ? ` (${installedPowerKWp.toFixed(2)} kWp)` : ''}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}

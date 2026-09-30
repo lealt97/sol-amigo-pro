@@ -20,7 +20,7 @@ import {
   X,
   FileCheck,
 } from 'lucide-react';
-import { ThemeConfig, SolarProposal, SolarConnectionType, SolarKit, SolarSystemType } from '../types';
+import { MaintenancePlanSelection, ThemeConfig, SolarProposal, SolarConnectionType, SolarKit, SolarSystemType } from '../types';
 import { calculateOnGridMonthlySizing } from '../utils/solarSizing';
 import {
   BRAZIL_STATE_HSP,
@@ -28,6 +28,7 @@ import {
   saveStoredKits,
   addCustomKit,
 } from '../data/initialKits';
+import { getStoredMaintenancePlans, MAINTENANCE_PLANS_UPDATED_EVENT } from '../data/maintenancePlans';
 
 interface ProposalWizardStep3Props {
   theme: ThemeConfig;
@@ -62,6 +63,8 @@ interface ProposalWizardStep3Props {
   setBatteryCapacityKWh: (val: number) => void;
   selectedKit: SolarKit | null;
   setSelectedKit: (kit: SolarKit | null) => void;
+  selectedMaintenancePlan: MaintenancePlanSelection | null;
+  setSelectedMaintenancePlan: (plan: MaintenancePlanSelection | null) => void;
   estimatedMonthlyGenKWh: number;
   setEstimatedMonthlyGenKWh: (val: number) => void;
   totalKitPrice: number;
@@ -101,6 +104,8 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
   setBatteryCapacityKWh,
   selectedKit,
   setSelectedKit,
+  selectedMaintenancePlan,
+  setSelectedMaintenancePlan,
   estimatedMonthlyGenKWh,
   setEstimatedMonthlyGenKWh,
   totalKitPrice,
@@ -112,6 +117,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
   const [kitFilterType, setKitFilterType] = useState<'all' | 'On-Grid' | 'Híbrido'>('all');
   const [kitSearchQuery, setKitSearchQuery] = useState('');
   const [showAddKitModal, setShowAddKitModal] = useState(false);
+  const [maintenancePlans, setMaintenancePlans] = useState<MaintenancePlanSelection[]>(() => getStoredMaintenancePlans());
 
   // Formulário de Cadastro de Novo Kit para a futura aba "Kits"
   const [newKitName, setNewKitName] = useState('');
@@ -130,6 +136,17 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
   const [newKitWarranty, setNewKitWarranty] = useState('Módulos 12 anos / Inversor 10 anos');
   const [newKitNotes, setNewKitNotes] = useState('');
   const [applyKitImmediatelyOnCreate, setApplyKitImmediatelyOnCreate] = useState(true);
+
+  useEffect(() => {
+    const refreshPlans = () => setMaintenancePlans(getStoredMaintenancePlans());
+    window.addEventListener(MAINTENANCE_PLANS_UPDATED_EVENT, refreshPlans as EventListener);
+    return () => window.removeEventListener(MAINTENANCE_PLANS_UPDATED_EVENT, refreshPlans as EventListener);
+  }, []);
+
+  const activeMaintenancePlans = useMemo(
+    () => maintenancePlans.filter((plan) => plan.active !== false),
+    [maintenancePlans]
+  );
 
   // Sugestão de HSP com base no estado do cliente
   const stateHspSuggestion = useMemo(() => {
@@ -372,7 +389,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                 color: theme.secondary,
               }}
             >
-              Etapa 3 de 4
+              Etapa 3 de 5
             </span>
             <span className="text-xs text-[var(--muted)]">Dimensionamento & Catálogo de Kits</span>
           </div>
@@ -1066,6 +1083,106 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
             })
           )}
         </div>
+      </div>
+
+      {/* SEÇÃO 3: CATÁLOGO DE PLANOS DE MANUTENÇÃO */}
+      <div
+        className="rounded-2xl border p-4 sm:p-5 space-y-4 shadow-xs"
+        style={{ backgroundColor: theme.card, borderColor: theme.border }}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center border shadow-xs"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
+                borderColor: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+                color: theme.secondary,
+              }}
+            >
+              <Wrench className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h5 className="text-sm font-bold text-[var(--text)]">Plano de Manutenção</h5>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Opcional
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--muted)]">
+                Selecione um plano já cadastrado no Pós-venda. Ele será levado para Custos & Margem e para a proposta.
+              </p>
+            </div>
+          </div>
+          {selectedMaintenancePlan && (
+            <button
+              type="button"
+              onClick={() => setSelectedMaintenancePlan(null)}
+              className="btn-danger-text text-xs font-bold"
+              data-danger-text
+            >
+              Remover plano
+            </button>
+          )}
+        </div>
+
+        {activeMaintenancePlans.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-5 text-center" style={{ borderColor: theme.border }}>
+            <Wrench className="w-7 h-7 mx-auto text-[var(--muted)]" />
+            <div className="mt-2 text-xs font-bold text-[var(--text)]">Nenhum plano ativo cadastrado</div>
+            <div className="mt-1 text-[11px] text-[var(--muted)]">
+              Cadastre seus planos na aba Pós-venda para reutilizá-los nas propostas.
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {activeMaintenancePlans.map((plan) => {
+              const selected = selectedMaintenancePlan?.id === plan.id;
+              const annualCost = plan.internalCostPerVisit * plan.visitsPerYear;
+              return (
+                <button
+                  key={plan.id || plan.code || plan.name}
+                  type="button"
+                  onClick={() => setSelectedMaintenancePlan(selected ? null : { ...plan, enabled: true })}
+                  className="rounded-xl border p-3.5 text-left transition-all hover:border-[var(--secondary)]"
+                  style={{
+                    backgroundColor: selected
+                      ? 'color-mix(in srgb, var(--secondary) 10%, var(--primary))'
+                      : theme.primary,
+                    borderColor: selected ? theme.secondary : theme.border,
+                    boxShadow: selected ? '0 0 0 1px var(--secondary)' : 'none',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-[var(--text)]">{plan.name}</span>
+                        {selected && (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: theme.secondary }}>
+                            <CheckCircle2 className="w-3 h-3" /> Selecionado
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-[10px] font-mono text-[var(--muted)]">{plan.code || 'SEM-CÓDIGO'}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] uppercase text-[var(--muted)]">Preço anual</div>
+                      <div className="text-sm font-black text-emerald-500">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.annualPrice)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--muted)]">
+                    <span>{plan.visitsPerYear} visita(s)/ano</span>
+                    <span>A cada {plan.frequencyMonths} meses</span>
+                    <span>Custo anual: <strong className="text-[var(--text)]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(annualCost)}</strong></span>
+                    <span>{plan.includedServices.length} serviço(s)</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* MODAL PARA CADASTRO DE NOVO KIT NA ABA KITS */}
