@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, Check, HelpCircle, Menu } from 'lucide-react';
+import { Bell, CalendarDays, Check, HelpCircle, Menu } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
 import { BrandLogo } from './BrandLogo';
 import { getContrastFg } from '../utils/themeEngine';
@@ -9,6 +9,12 @@ import {
   markLeadAsRead,
   subscribeToLeadNotifications,
 } from '../services/leadNotifications';
+import { CalendarNotificationItem } from '../utils/calendar';
+import {
+  markAllCalendarNotificationsAsRead,
+  markCalendarNotificationAsRead,
+  subscribeToCalendarNotifications,
+} from '../services/calendarNotifications';
 
 interface TopbarProps {
   activePage: PageKey;
@@ -26,6 +32,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   propostas: 'Propostas',
   kits: 'Kits',
   'pos-venda': 'Pós-venda',
+  calendario: 'Calendário',
   anotacoes: 'Anotações',
   levantamento: 'Levantamento',
   empresas: 'Empresas',
@@ -51,7 +58,10 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<LeadNotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [leadUnreadCount, setLeadUnreadCount] = useState(0);
+  const [calendarNotifications, setCalendarNotifications] = useState<CalendarNotificationItem[]>([]);
+  const [calendarUnreadCount, setCalendarUnreadCount] = useState(0);
+  const unreadCount = leadUnreadCount + calendarUnreadCount;
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -59,7 +69,15 @@ export const Topbar: React.FC<TopbarProps> = ({
   useEffect(() => {
     const unsubscribe = subscribeToLeadNotifications((items, count) => {
       setNotifications(items);
-      setUnreadCount(count);
+      setLeadUnreadCount(count);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToCalendarNotifications((items, count) => {
+      setCalendarNotifications(items);
+      setCalendarUnreadCount(count);
     });
     return () => unsubscribe();
   }, []);
@@ -90,8 +108,15 @@ export const Topbar: React.FC<TopbarProps> = ({
     onNavigate?.('leads');
   };
 
+  const handleCalendarNotificationClick = (item: CalendarNotificationItem) => {
+    markCalendarNotificationAsRead(item.notificationKey);
+    setNotificationsOpen(false);
+    onNavigate?.('calendario');
+  };
+
   const handleMarkAllRead = () => {
     markAllLeadsAsRead();
+    markAllCalendarNotificationsAsRead();
   };
 
   const topbarBg = theme?.primary || '#161B22';
@@ -156,7 +181,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             className="relative p-1.5 rounded-md border transition-opacity hover:opacity-85"
             style={{ backgroundColor: controlBg, borderColor: controlBorder, color: controlFg }}
             aria-label={unreadCount > 0 ? `${unreadCount} novas notificações` : 'Ver notificações'}
-            title={unreadCount > 0 ? `${unreadCount} novo(s) lead(s)` : 'Notificações'}
+            title={unreadCount > 0 ? `${unreadCount} notificação(ões) pendente(s)` : 'Notificações'}
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -213,63 +238,98 @@ export const Topbar: React.FC<TopbarProps> = ({
                 className="max-h-80 overflow-y-auto divide-y"
                 style={{ borderColor }}
               >
-                {notifications.length === 0 ? (
+                {notifications.length === 0 && calendarNotifications.length === 0 ? (
                   <div className="py-8 px-4 text-center">
                     <Bell className="w-7 h-7 opacity-40 mx-auto mb-2" style={{ color: topbarFg }} />
                     <p className="text-xs font-semibold" style={{ color: topbarFg }}>
                       Nenhuma notificação
                     </p>
                     <p className="mt-1 text-[11px] opacity-70" style={{ color: topbarFg }}>
-                      Quando novos leads forem captados, eles aparecerão aqui.
+                      Novos leads e compromissos próximos aparecerão aqui.
                     </p>
                   </div>
                 ) : (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotificationClick(notif)}
-                      className="p-3 text-xs cursor-pointer transition-colors flex items-start gap-2.5 hover:opacity-90"
-                      style={{
-                        backgroundColor: !notif.read
-                          ? isDark
-                            ? 'rgba(255, 255, 255, 0.06)'
-                            : 'rgba(0, 0, 0, 0.04)'
-                          : 'transparent',
-                        borderBottom: `1px solid ${borderColor}`,
-                      }}
-                    >
+                  <>
+                    {calendarNotifications.map((notif) => (
                       <div
-                        className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                          !notif.read ? 'bg-red-500 shadow-sm' : 'bg-transparent'
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-semibold truncate" style={{ color: topbarFg }}>
-                            Novo Lead Recebido
-                          </span>
-                          <span className="text-[10px] opacity-70 shrink-0" style={{ color: topbarFg }}>
-                            {notif.timeAgo}
-                          </span>
+                        key={notif.notificationKey}
+                        onClick={() => handleCalendarNotificationClick(notif)}
+                        className="p-3 text-xs cursor-pointer transition-colors flex items-start gap-2.5 hover:opacity-90"
+                        style={{
+                          backgroundColor: !notif.read
+                            ? isDark
+                              ? 'rgba(255, 255, 255, 0.06)'
+                              : 'rgba(0, 0, 0, 0.04)'
+                            : 'transparent',
+                          borderBottom: `1px solid ${borderColor}`,
+                        }}
+                      >
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: 'color-mix(in srgb, var(--secondary) 16%, transparent)', color: 'var(--secondary)' }}>
+                          <CalendarDays className="h-3.5 w-3.5" />
                         </div>
-                        <p className="text-xs font-medium text-[var(--secondary)] truncate mt-0.5">
-                          {notif.leadName}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] opacity-75 truncate" style={{ color: topbarFg }}>
-                          {notif.propertyType && <span>{notif.propertyType}</span>}
-                          {(notif.city || notif.state) && (
-                            <span>
-                              {notif.propertyType ? '· ' : ''}
-                              {[notif.city, notif.state].filter(Boolean).join(', ')}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate font-semibold" style={{ color: topbarFg }}>
+                              {notif.stage === 'overdue' ? 'Compromisso atrasado' : notif.eventType}
                             </span>
-                          )}
-                          {notif.phone && (
-                            <span className="ml-auto opacity-70 truncate">{notif.phone}</span>
-                          )}
+                            {!notif.read && <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />}
+                          </div>
+                          <p className="mt-0.5 truncate text-xs font-medium text-[var(--secondary)]">{notif.title}</p>
+                          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] opacity-75" style={{ color: topbarFg }}>
+                            <span className="truncate">{notif.clientName || 'Agenda Sol Amigo Pro'}</span>
+                            <span className="shrink-0 font-semibold">{notif.label}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleNotificationClick(notif)}
+                        className="p-3 text-xs cursor-pointer transition-colors flex items-start gap-2.5 hover:opacity-90"
+                        style={{
+                          backgroundColor: !notif.read
+                            ? isDark
+                              ? 'rgba(255, 255, 255, 0.06)'
+                              : 'rgba(0, 0, 0, 0.04)'
+                            : 'transparent',
+                          borderBottom: `1px solid ${borderColor}`,
+                        }}
+                      >
+                        <div
+                          className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                            !notif.read ? 'bg-red-500 shadow-sm' : 'bg-transparent'
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-semibold truncate" style={{ color: topbarFg }}>
+                              Novo Lead Recebido
+                            </span>
+                            <span className="text-[10px] opacity-70 shrink-0" style={{ color: topbarFg }}>
+                              {notif.timeAgo}
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-[var(--secondary)] truncate mt-0.5">
+                            {notif.leadName}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] opacity-75 truncate" style={{ color: topbarFg }}>
+                            {notif.propertyType && <span>{notif.propertyType}</span>}
+                            {(notif.city || notif.state) && (
+                              <span>
+                                {notif.propertyType ? '· ' : ''}
+                                {[notif.city, notif.state].filter(Boolean).join(', ')}
+                              </span>
+                            )}
+                            {notif.phone && (
+                              <span className="ml-auto opacity-70 truncate">{notif.phone}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
 
@@ -280,20 +340,34 @@ export const Topbar: React.FC<TopbarProps> = ({
                   backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
                 }}
               >
-                <button
-                  type="button"
-                  id="notifications-view-all-leads-btn"
-                  data-sol-amigo-text-hover
-                  onClick={() => {
-                    setNotificationsOpen(false);
-                    onNavigate?.('leads');
-                  }}
-                  className="text-xs hover:text-[var(--secondary)] hover:underline font-semibold py-1 flex items-center gap-1 transition-colors bg-transparent border-0 cursor-pointer"
-                  style={{ color: topbarFg }}
-                >
-                  <span>Ver todos os leads</span>
-                  <span className="text-[10px]">&rarr;</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    data-sol-amigo-text-hover
+                    onClick={() => {
+                      setNotificationsOpen(false);
+                      onNavigate?.('calendario');
+                    }}
+                    className="text-xs hover:text-[var(--secondary)] hover:underline font-semibold py-1 flex items-center gap-1 transition-colors bg-transparent border-0 cursor-pointer"
+                    style={{ color: topbarFg }}
+                  >
+                    <span>Calendário</span>
+                    <span className="text-[10px]">&rarr;</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="notifications-view-all-leads-btn"
+                    data-sol-amigo-text-hover
+                    onClick={() => {
+                      setNotificationsOpen(false);
+                      onNavigate?.('leads');
+                    }}
+                    className="text-xs hover:text-[var(--secondary)] hover:underline font-semibold py-1 flex items-center gap-1 transition-colors bg-transparent border-0 cursor-pointer"
+                    style={{ color: topbarFg }}
+                  >
+                    <span>Leads</span>
+                  </button>
+                </div>
                 {unreadCount > 0 && (
                   <span className="text-[10px] opacity-70" style={{ color: topbarFg }}>
                     {unreadCount} não {unreadCount > 1 ? 'lidos' : 'lido'}
