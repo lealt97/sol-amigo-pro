@@ -51,36 +51,39 @@ export function buildCalendarNotifications(
   readKeys: Set<string>,
   now = new Date()
 ): CalendarNotificationItem[] {
-  return events
-    .map((event) => {
-      const stage = getNotificationStage(event, now);
-      if (!stage) return null;
-      const notificationKey = `${event.id}:${stage}`;
-      return {
-        id: notificationKey,
-        eventId: event.id,
-        notificationKey,
-        title: event.title,
-        clientName: event.clientName,
-        eventType: event.type,
-        startAt: event.startAt,
-        stage,
-        label: notificationLabel(stage, event.startAt),
-        read: readKeys.has(notificationKey),
-      } satisfies CalendarNotificationItem;
-    })
-    .filter((item): item is CalendarNotificationItem => Boolean(item))
-    .sort((a, b) => {
-      const stageRank: Record<CalendarNotificationStage, number> = {
-        overdue: 0,
-        today: 1,
-        tomorrow: 2,
-        soon: 3,
-      };
-      const rankDiff = stageRank[a.stage] - stageRank[b.stage];
-      if (rankDiff !== 0) return rankDiff;
-      return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+  const items: CalendarNotificationItem[] = [];
+
+  events.forEach((event) => {
+    const stage = getNotificationStage(event, now);
+    if (!stage) return;
+
+    const notificationKey = `${event.id}:${stage}`;
+    items.push({
+      id: notificationKey,
+      eventId: event.id,
+      notificationKey,
+      title: event.title,
+      clientName: event.clientName,
+      eventType: event.type,
+      startAt: event.startAt,
+      stage,
+      label: notificationLabel(stage, event.startAt),
+      read: readKeys.has(notificationKey),
     });
+  });
+
+  const stageRank: Record<CalendarNotificationStage, number> = {
+    overdue: 0,
+    today: 1,
+    tomorrow: 2,
+    soon: 3,
+  };
+
+  return items.sort((a, b) => {
+    const rankDiff = stageRank[a.stage] - stageRank[b.stage];
+    if (rankDiff !== 0) return rankDiff;
+    return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+  });
 }
 
 export function addMonthsKeepingDay(dateInput: string | Date, months: number): Date {
