@@ -43,6 +43,25 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
     includedServices: DEFAULT_SERVICES,
     notes: 'Plano preventivo com uma visita anual.',
   },
+  {
+    id: 'maintenance-quarterly',
+    code: 'MAN-TRI-01',
+    enabled: true,
+    active: true,
+    type: 'custom',
+    planType: 'Completa',
+    name: 'O&M Completa Trimestral',
+    frequencyMonths: 3,
+    visitsPerYear: 4,
+    internalCostPerVisit: 160,
+    annualPrice: 1600,
+    includedServices: [
+      ...DEFAULT_SERVICES,
+      'Inspeção termográfica dos módulos',
+      'Reaperto elétrico de conexões e quadros',
+    ],
+    notes: 'Plano completo de alta performance com quatro visitas anuais.',
+  },
 ];
 
 const normalizePlan = (plan: Partial<MaintenancePlanSelection>, index = 0): MaintenancePlanSelection => ({
@@ -70,7 +89,11 @@ export function getStoredMaintenancePlans(): MaintenancePlanSelection[] {
       return DEFAULT_MAINTENANCE_PLANS;
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_MAINTENANCE_PLANS;
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_MAINTENANCE_PLANS;
+    if (parsed.length === 2 && parsed.every((p) => p.id === 'maintenance-semiannual' || p.id === 'maintenance-annual')) {
+      saveStoredMaintenancePlans(DEFAULT_MAINTENANCE_PLANS);
+      return DEFAULT_MAINTENANCE_PLANS;
+    }
     return parsed.map(normalizePlan);
   } catch (err) {
     console.warn('Erro ao carregar planos de manutenção:', err);

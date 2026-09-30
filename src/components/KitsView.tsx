@@ -430,11 +430,10 @@ export const KitsView: React.FC<KitsViewProps> = ({ theme, onShowToast }) => {
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(kit)}
-                      className="p-1.5 rounded-lg border opacity-80 hover:opacity-100 hover:text-[var(--secondary)] hover:border-[var(--secondary)] transition-colors cursor-pointer flex items-center justify-center"
+                      className="p-1.5 rounded-lg border text-[var(--dim)] hover:text-[var(--secondary)] hover:border-[var(--secondary)]/40 transition-colors cursor-pointer flex items-center justify-center"
                       style={{
                         backgroundColor: theme.background,
                         borderColor: theme.border,
-                        color: theme.text,
                       }}
                       title="Editar kit"
                       aria-label="Editar kit"
@@ -444,9 +443,10 @@ export const KitsView: React.FC<KitsViewProps> = ({ theme, onShowToast }) => {
 
                     <button
                       type="button"
+                      data-delete-btn="true"
                       onClick={() => removeKit(safeId)}
-                      className="p-1.5 rounded-lg border opacity-80 hover:opacity-100 hover:text-red-500 hover:border-red-500 transition-colors cursor-pointer flex items-center justify-center"
-                      style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                      className="btn-delete p-1.5 rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors cursor-pointer flex items-center justify-center"
+                      style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
                       title="Excluir kit"
                       aria-label="Excluir kit"
                     >

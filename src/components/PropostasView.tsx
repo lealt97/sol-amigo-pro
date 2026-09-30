@@ -668,9 +668,10 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
                     {/* Botão de Exclusão */}
                     <button
                       type="button"
+                      data-delete-btn="true"
                       onClick={() => handleDeleteProposal(p)}
-                      className="p-2 rounded-xl border text-[var(--dim)] hover:text-red-500 hover:border-red-500 transition-colors cursor-pointer"
-                      style={{ borderColor: theme.border }}
+                      className="btn-delete p-2 rounded-xl border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors cursor-pointer"
+                      style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
                       title="Excluir proposta"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

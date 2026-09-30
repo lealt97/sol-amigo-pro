@@ -160,10 +160,9 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Planos cadastrados', value: plans.length, Icon: Wrench },
-          { label: 'Planos ativos', value: activeCount, Icon: ShieldCheck },
+          { label: 'Planos cadastrados', value: `${activeCount} ativos (${plans.length} total)`, Icon: Wrench },
           { label: 'Ticket anual médio', value: money.format(avgTicket), Icon: CircleDollarSign },
           { label: 'Margem bruta média', value: `${avgMargin.toFixed(1)}%`, Icon: CheckCircle2 },
         ].map(({ label, value, Icon }) => (
@@ -217,7 +216,7 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((plan) => {
             const annualCost = plan.internalCostPerVisit * plan.visitsPerYear;
             const profit = plan.annualPrice - annualCost;
@@ -237,11 +236,24 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                     <h3 className="mt-2 text-base font-black text-[var(--text)]">{plan.name}</h3>
                     <div className="mt-1 text-[10px] font-mono text-[var(--muted)]">{plan.code || 'SEM-CÓDIGO'}</div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => openEdit(plan)} className="rounded-lg border p-2" style={{ borderColor: theme.border }} title="Editar">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(plan)}
+                      className="p-1.5 rounded-lg border text-[var(--dim)] hover:text-[var(--secondary)] hover:border-[var(--secondary)]/40 transition-colors cursor-pointer flex items-center justify-center"
+                      style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                      title="Editar plano"
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
-                    <button type="button" onClick={() => remove(plan)} className="btn-delete rounded-lg border p-2" style={{ borderColor: theme.border }} title="Excluir">
+                    <button
+                      type="button"
+                      data-delete-btn="true"
+                      onClick={() => remove(plan)}
+                      className="btn-delete p-1.5 rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors cursor-pointer flex items-center justify-center"
+                      style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
+                      title="Excluir plano"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
