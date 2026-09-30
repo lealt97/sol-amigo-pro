@@ -712,6 +712,14 @@ main > #area-risco-page {
   background: color-mix(in srgb, var(--primary) 55%, var(--neutral));
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Tag de proposta em anotações: link sem preenchimento forte de hover, mantendo estilo sutil */
 .proposal-tag-link,
 .proposal-tag-link:hover,

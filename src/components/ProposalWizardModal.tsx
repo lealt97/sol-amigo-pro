@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   User,
@@ -23,6 +23,8 @@ import {
   Layers,
   Battery,
   Package,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
@@ -610,6 +612,65 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const currentStepIndex = stepsConfig.findIndex((s) => s.id === currentStep);
   const progressPercent = Math.round(((currentStepIndex + 1) / stepsConfig.length) * 100);
 
+  const stepperContainerRef = useRef<HTMLDivElement | null>(null);
+  const stepItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScrollState = () => {
+    const el = stepperContainerRef.current;
+    if (el) {
+      setCanScrollLeft(el.scrollLeft > 6);
+      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 6);
+    }
+  };
+
+  // Efeito para mover as etapas em linha para a esquerda conforme o usuário avança
+  useEffect(() => {
+    if (!isOpen) return;
+    const container = stepperContainerRef.current;
+    const activeEl = stepItemRefs.current[currentStep];
+    if (container && activeEl) {
+      // Move o contêiner para a esquerda para posicionar a etapa ativa confortavelmente no início
+      const targetLeft = Math.max(0, activeEl.offsetLeft - 8);
+      container.scrollTo({
+        left: targetLeft,
+        behavior: 'smooth',
+      });
+    }
+    const timer = setTimeout(checkScrollState, 350);
+    return () => clearTimeout(timer);
+  }, [currentStep, isOpen]);
+
+  useEffect(() => {
+    const el = stepperContainerRef.current;
+    if (el) {
+      checkScrollState();
+      el.addEventListener('scroll', checkScrollState, { passive: true });
+      window.addEventListener('resize', checkScrollState);
+      return () => {
+        el.removeEventListener('scroll', checkScrollState);
+        window.removeEventListener('resize', checkScrollState);
+      };
+    }
+  }, [isOpen]);
+
+  const handleStepperWheel = (e: React.WheelEvent) => {
+    if (stepperContainerRef.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      stepperContainerRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
+  const handleScrollStepper = (direction: 'left' | 'right') => {
+    if (stepperContainerRef.current) {
+      const scrollAmount = 240;
+      stepperContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -687,57 +748,122 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               />
             </div>
 
-            {/* Stepper com passos clicáveis/visuais */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-              {stepsConfig.map((s, idx) => {
-                const isPassed = idx < currentStepIndex;
-                const isCurrent = s.id === currentStep;
+            {/* Stepper horizontal em uma única linha com auto-scroll para a esquerda */}
+            <div className="relative group/stepper flex items-center">
+              {/* Botão de rolagem para esquerda */}
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  onClick={() => handleScrollStepper('left')}
+                  className="absolute left-0 z-20 h-7 w-7 rounded-full border shadow-md flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+                  style={{
+                    backgroundColor: theme.primary,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  }}
+                  title="Ver etapas anteriores"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
 
-                return (
-                  <div
-                    key={s.id}
-                    onClick={() => {
-                      if (isPassed) setCurrentStep(s.id);
-                    }}
-                    className={`flex items-center gap-2 p-1.5 rounded-lg text-left transition-colors ${
-                      isPassed ? 'cursor-pointer hover:bg-[var(--neutral)]/20' : ''
-                    } ${
-                      isCurrent
-                        ? 'bg-[var(--neutral)]/40 font-semibold'
-                        : isPassed
-                        ? 'opacity-85'
-                        : 'opacity-50'
-                    }`}
-                  >
+              {/* Contêiner de etapas em linha única */}
+              <div
+                ref={stepperContainerRef}
+                onWheel={handleStepperWheel}
+                className="relative flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 w-full"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {stepsConfig.map((s, idx) => {
+                  const isPassed = idx < currentStepIndex;
+                  const isCurrent = s.id === currentStep;
+
+                  return (
                     <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border"
+                      key={s.id}
+                      ref={(el) => {
+                        stepItemRefs.current[s.id] = el;
+                      }}
+                      onClick={() => {
+                        if (isPassed) setCurrentStep(s.id);
+                      }}
+                      className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-left transition-all shrink-0 border select-none ${
+                        isPassed ? 'cursor-pointer hover:bg-[var(--neutral)]/20' : ''
+                      } ${
+                        isCurrent
+                          ? 'font-bold shadow-xs'
+                          : isPassed
+                          ? 'opacity-85'
+                          : 'opacity-40'
+                      }`}
                       style={{
                         backgroundColor: isCurrent
-                          ? theme.secondary
+                          ? 'color-mix(in srgb, var(--secondary) 14%, transparent)'
                           : isPassed
-                          ? 'color-mix(in srgb, var(--secondary) 25%, transparent)'
+                          ? 'color-mix(in srgb, var(--neutral) 35%, transparent)'
                           : 'transparent',
-                        color: isCurrent
-                          ? 'var(--secondary-fg)'
-                          : isPassed
+                        borderColor: isCurrent
                           ? theme.secondary
-                          : 'var(--muted)',
-                        borderColor: isCurrent || isPassed ? theme.secondary : 'var(--border)',
+                          : isPassed
+                          ? 'color-mix(in srgb, var(--secondary) 30%, transparent)'
+                          : 'transparent',
                       }}
                     >
-                      {isPassed ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.number}
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border transition-all"
+                        style={{
+                          backgroundColor: isCurrent
+                            ? theme.secondary
+                            : isPassed
+                            ? 'color-mix(in srgb, var(--secondary) 25%, transparent)'
+                            : 'transparent',
+                          color: isCurrent
+                            ? 'var(--secondary-fg)'
+                            : isPassed
+                            ? theme.secondary
+                            : 'var(--muted)',
+                          borderColor: isCurrent || isPassed ? theme.secondary : 'var(--border)',
+                        }}
+                      >
+                        {isPassed ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.number}
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className={`text-xs whitespace-nowrap transition-colors ${
+                            isCurrent
+                              ? 'font-bold text-[var(--text)]'
+                              : isPassed
+                              ? 'font-semibold text-[var(--text)]'
+                              : 'font-medium text-[var(--muted)]'
+                          }`}
+                        >
+                          {s.title}
+                        </p>
+                        <p className="text-[10px] text-[var(--muted)] whitespace-nowrap">
+                          {s.subtitle}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] sm:text-xs font-medium truncate text-[var(--text)]">
-                        {s.title}
-                      </p>
-                      <p className="text-[9px] sm:text-[10px] text-[var(--muted)] truncate hidden sm:block">
-                        {s.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Botão de rolagem para direita */}
+              {canScrollRight && (
+                <button
+                  type="button"
+                  onClick={() => handleScrollStepper('right')}
+                  className="absolute right-0 z-20 h-7 w-7 rounded-full border shadow-md flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+                  style={{
+                    backgroundColor: theme.primary,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  }}
+                  title="Ver próximas etapas"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>

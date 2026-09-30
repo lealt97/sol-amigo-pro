@@ -244,7 +244,7 @@ export default function App() {
           />
         );
       case 'pos-venda':
-        return <PosVendaView theme={currentTheme} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
+        return <PosVendaView theme={currentTheme} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
       case 'anotacoes':
         return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={(page, propCode) => { setProposalFilterCode(propCode || ''); setActivePage(page); }} />;
       case 'perfil': return <ProfileView theme={currentTheme} onShowToast={showToast} />;
