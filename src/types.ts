@@ -31,6 +31,7 @@ export type PageKey =
   | 'propostas'
   | 'kits'
   | 'pos-venda'
+  | 'calendario'
   | 'anotacoes'
   | 'levantamento'
   | 'empresas'
@@ -752,4 +753,41 @@ export interface FinancialRecord {
   value: number;
   status: 'Recebido' | 'Previsto' | 'Atrasado';
   date: string;
+}
+
+
+export type CalendarEventType =
+  | 'Manutenção'
+  | 'Instalação'
+  | 'Vistoria'
+  | 'Visita Técnica'
+  | 'Homologação'
+  | 'Reunião Comercial'
+  | 'Outro';
+
+export type CalendarEventStatus = 'Agendado' | 'Em andamento' | 'Concluído' | 'Cancelado';
+export type CalendarEventPriority = 'Alta' | 'Média' | 'Baixa';
+
+export interface CalendarEvent {
+  id: string;
+  userId?: string;
+  seriesId?: string;
+  occurrenceIndex?: number;
+  title: string;
+  type: CalendarEventType;
+  startAt: string;
+  endAt?: string;
+  allDay: boolean;
+  status: CalendarEventStatus;
+  priority: CalendarEventPriority;
+  clientId?: string;
+  clientName?: string;
+  proposalCode?: string;
+  maintenancePlanId?: string;
+  maintenancePlanName?: string;
+  recurrenceMonths?: number;
+  location?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
