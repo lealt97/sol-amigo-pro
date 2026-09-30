@@ -136,8 +136,12 @@ export interface ProposalRecord {
 }
 
 export interface MaintenancePlanSelection {
+  id?: string;
+  code?: string;
   enabled: boolean;
+  active?: boolean;
   type: 'none' | 'annual' | 'semiannual' | 'custom';
+  planType?: 'Limpeza' | 'Preventiva' | 'Inspeção' | 'Completa' | 'Personalizada';
   name: string;
   frequencyMonths: number;
   visitsPerYear: number;
