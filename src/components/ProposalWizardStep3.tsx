@@ -389,7 +389,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                 color: theme.secondary,
               }}
             >
-              Etapa 3 de 4
+              Etapa 3 de 5
             </span>
             <span className="text-xs text-[var(--muted)]">Dimensionamento & Catálogo de Kits</span>
           </div>
