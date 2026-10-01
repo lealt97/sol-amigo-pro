@@ -21,6 +21,7 @@ import {
 } from '../services/calendarEvents';
 import { ClientProposal, fetchAllClientProposals } from '../services/proposals';
 import { createRecurringCalendarEvents } from '../utils/calendar';
+import { formatMaintenanceFrequency, getMaintenanceFrequency } from '../utils/maintenance';
 
 interface CalendarViewProps {
   theme: ThemeConfig;
@@ -185,10 +186,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
         maintenancePlanId: undefined,
         maintenancePlanName: undefined,
         recurrenceMonths: undefined,
+        recurrenceInterval: undefined,
+        recurrenceUnit: undefined,
       }));
       return;
     }
     const plan = proposal.maintenancePlan;
+    const frequency = plan?.enabled ? getMaintenanceFrequency(plan) : null;
     setEditing((current) => ({
       ...current,
       proposalCode: proposal.code,
@@ -199,6 +203,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
       maintenancePlanId: plan?.enabled ? plan.id : undefined,
       maintenancePlanName: plan?.enabled ? plan.name : undefined,
       recurrenceMonths: plan?.enabled ? plan.frequencyMonths : undefined,
+      recurrenceInterval: frequency?.interval,
+      recurrenceUnit: frequency?.unit,
     }));
   };
 
@@ -213,13 +219,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
     };
 
     const plan = selectedProposal?.maintenancePlan;
-    if (!isExisting && repeatPlan && base.type === 'Manutenção' && plan?.enabled && plan.frequencyMonths > 0) {
+    if (!isExisting && repeatPlan && base.type === 'Manutenção' && plan?.enabled) {
+      const frequency = getMaintenanceFrequency(plan);
       const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, seriesId: _seriesId, occurrenceIndex: _occurrenceIndex, ...seriesBase } = base;
-      const occurrences = Math.max(2, Math.min(12, (plan.visitsPerYear || 1) * 2));
+      const occurrences = Math.max(2, Math.min(160, (plan.visitsPerYear || 1) * 2));
       const series = createRecurringCalendarEvents(
-        seriesBase,
+        {
+          ...seriesBase,
+          recurrenceInterval: frequency.interval,
+          recurrenceUnit: frequency.unit,
+        },
         occurrences,
-        plan.frequencyMonths
+        frequency
       );
       await saveCalendarEvents(series);
       onShowToast?.(`${series.length} manutenções do plano foram adicionadas ao calendário.`);
@@ -454,7 +465,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                 <div className="rounded-xl border p-3 text-xs" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
                   <div className="flex items-center gap-2 font-bold"><Wrench className="h-4 w-4" style={{ color: theme.secondary }} />{editing.maintenancePlanName}</div>
                   <div className="mt-1 text-[11px] text-[var(--muted)]">
-                    Plano contratado • periodicidade de {editing.recurrenceMonths || selectedProposal?.maintenancePlan?.frequencyMonths || 0} meses.
+                    Plano contratado • {selectedProposal?.maintenancePlan
+                      ? formatMaintenanceFrequency(selectedProposal.maintenancePlan)
+                      : editing.recurrenceInterval && editing.recurrenceUnit
+                        ? formatMaintenanceFrequency({ interval: editing.recurrenceInterval, unit: editing.recurrenceUnit })
+                        : `a cada ${editing.recurrenceMonths || 1} mês(es)`}.
                   </div>
                 </div>
               )}
@@ -495,7 +510,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                   <div>
                     <div className="text-xs font-bold">Gerar próximas manutenções automaticamente</div>
                     <div className="mt-1 text-[11px] text-[var(--muted)]">
-                      Cria dois anos de visitas com intervalo de {selectedProposal.maintenancePlan.frequencyMonths} meses conforme o plano {selectedProposal.maintenancePlan.name}.
+                      Cria até dois anos de visitas, {formatMaintenanceFrequency(selectedProposal.maintenancePlan)}, conforme o plano {selectedProposal.maintenancePlan.name}.
                     </div>
                   </div>
                 </label>
