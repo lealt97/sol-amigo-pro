@@ -413,7 +413,18 @@ const VerticalBarChart: React.FC<{
   secondaryColor?: string;
   formatter?: (value: number) => string;
 }> = ({ data, primaryLabel, secondaryLabel, primaryColor, secondaryColor = '#94a3b8', formatter = number.format }) => {
-  const max = Math.max(1, ...data.flatMap((item) => [item.value, item.secondaryValue || 0]));
+  const rawMax = Math.max(0, ...data.flatMap((item) => [item.value, item.secondaryValue || 0]));
+  const max = Math.max(1, rawMax);
+
+  if (rawMax === 0) {
+    return (
+      <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
+        <Activity className="h-9 w-9 text-[var(--muted)]" />
+        <div className="mt-3 text-sm font-bold text-[var(--text)]">Sem dados para o período</div>
+        <div className="mt-1 text-[10px] text-[var(--muted)]">Os gráficos serão preenchidos conforme o CRM receber movimentações.</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -704,7 +715,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Aprovadas ÷ propostas"
             Icon={Target}
             theme={theme}
-            delta={period === 'all' ? undefined : currentConversion - previousConversion}
+            delta={period === 'all' ? undefined : (previousProposals.length ? currentConversion - previousConversion : null)}
             accent="#8b5cf6"
           />
         );
