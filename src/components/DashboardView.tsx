@@ -532,15 +532,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const range = useMemo(() => getDashboardDateRange(period), [period]);
 
   const periodProposals = useMemo(
-    () => filterByPeriod(proposals, (proposal) => proposal.createdAt, range),
+    () => filterByPeriod<ClientProposal>(proposals, (proposal) => proposal.createdAt, range),
     [proposals, range]
   );
   const periodLeads = useMemo(
-    () => filterByPeriod(leads, (lead) => lead.createdAt, range),
+    () => filterByPeriod<Lead>(leads, (lead) => lead.createdAt, range),
     [leads, range]
   );
   const periodClients = useMemo(
-    () => filterByPeriod(clients, (client) => client.createdAt, range),
+    () => filterByPeriod<Client>(clients, (client) => client.createdAt, range),
     [clients, range]
   );
 
@@ -553,13 +553,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const previousProposals = useMemo(
     () => range.previousStart && range.previousEnd
-      ? filterByPeriod(proposals, (proposal) => proposal.createdAt, previousRange)
+      ? filterByPeriod<ClientProposal>(proposals, (proposal) => proposal.createdAt, previousRange)
       : [],
     [proposals, previousRange, range.previousStart, range.previousEnd]
   );
   const previousLeads = useMemo(
     () => range.previousStart && range.previousEnd
-      ? filterByPeriod(leads, (lead) => lead.createdAt, previousRange)
+      ? filterByPeriod<Lead>(leads, (lead) => lead.createdAt, previousRange)
       : [],
     [leads, previousRange, range.previousStart, range.previousEnd]
   );
@@ -626,8 +626,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activitySeries = useMemo(
     () => buckets.map((bucket) => ({
       label: bucket.label,
-      value: countRowsInBucket(leads, bucket, (lead) => lead.createdAt),
-      secondaryValue: countRowsInBucket(proposals, bucket, (proposal) => proposal.createdAt),
+      value: countRowsInBucket<Lead>(leads, bucket, (lead) => lead.createdAt),
+      secondaryValue: countRowsInBucket<ClientProposal>(proposals, bucket, (proposal) => proposal.createdAt),
     })),
     [buckets, leads, proposals]
   );
