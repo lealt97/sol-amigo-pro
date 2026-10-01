@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowDownRight,
@@ -522,38 +522,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const reload = async (notify = false) => {
-    setLoading(true);
-    const [proposalRows, leadRows, clientRows, eventRows] = await Promise.all([
-      fetchAllClientProposals().catch(() => []),
-      fetchLeads().catch(() => []),
-      fetchClients().catch(() => []),
-      fetchCalendarEvents().catch(() => []),
-    ]);
-    setProposals(proposalRows);
-    setLeads(leadRows);
-    setClients(clientRows);
-    setEvents(eventRows);
-    setLoading(false);
-    if (notify) onShowToast?.('Dashboard atualizado.');
+  const isFetchingRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const reload = async (notify = false, showLoader = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    if (showLoader) setLoading(true);
+
+    try {
+      const [proposalRows, leadRows, clientRows, eventRows] = await Promise.all([
+        fetchAllClientProposals().catch(() => []),
+        fetchLeads().catch(() => []),
+        fetchClients().catch(() => []),
+        fetchCalendarEvents().catch(() => []),
+      ]);
+      setProposals(proposalRows);
+      setLeads(leadRows);
+      setClients(clientRows);
+      setEvents(eventRows);
+    } finally {
+      setLoading(false);
+      isFetchingRef.current = false;
+      if (notify) onShowToast?.('Dashboard atualizado.');
+    }
   };
 
   useEffect(() => {
-    void reload();
+    void reload(false, true);
 
-    const refresh = () => void reload();
-    window.addEventListener(PROPOSALS_UPDATED_EVENT, refresh);
-    window.addEventListener(LEADS_UPDATED_EVENT, refresh);
-    window.addEventListener(CLIENTS_UPDATED_EVENT, refresh);
-    window.addEventListener(CALENDAR_EVENTS_UPDATED_EVENT, refresh);
-    window.addEventListener('focus', refresh);
+    const handleDataEvent = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        void reload(false, false);
+      }, 400);
+    };
+
+    window.addEventListener(PROPOSALS_UPDATED_EVENT, handleDataEvent);
+    window.addEventListener(LEADS_UPDATED_EVENT, handleDataEvent);
+    window.addEventListener(CLIENTS_UPDATED_EVENT, handleDataEvent);
+    window.addEventListener(CALENDAR_EVENTS_UPDATED_EVENT, handleDataEvent);
+    window.addEventListener('focus', handleDataEvent);
 
     return () => {
-      window.removeEventListener(PROPOSALS_UPDATED_EVENT, refresh);
-      window.removeEventListener(LEADS_UPDATED_EVENT, refresh);
-      window.removeEventListener(CLIENTS_UPDATED_EVENT, refresh);
-      window.removeEventListener(CALENDAR_EVENTS_UPDATED_EVENT, refresh);
-      window.removeEventListener('focus', refresh);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleDataEvent);
+      window.removeEventListener(LEADS_UPDATED_EVENT, handleDataEvent);
+      window.removeEventListener(CLIENTS_UPDATED_EVENT, handleDataEvent);
+      window.removeEventListener(CALENDAR_EVENTS_UPDATED_EVENT, handleDataEvent);
+      window.removeEventListener('focus', handleDataEvent);
     };
   }, []);
 
@@ -1000,7 +1017,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               data-no-override-hover
-              onClick={() => void reload(true)}
+              onClick={() => void reload(true, true)}
               disabled={loading}
               className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold"
               style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}

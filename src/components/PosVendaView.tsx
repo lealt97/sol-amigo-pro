@@ -77,6 +77,7 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
   const [search, setSearch] = useState('');
   const [showEditor, setShowEditor] = useState(false);
   const [editing, setEditing] = useState<MaintenancePlanSelection>(blankPlan());
+  const [confirmDeletePlanId, setConfirmDeletePlanId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('pt-BR');
@@ -145,9 +146,9 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
 
   const remove = (plan: MaintenancePlanSelection) => {
     if (!plan.id) return;
-    if (!window.confirm(`Excluir o plano "${plan.name}" do catálogo?`)) return;
     deleteMaintenancePlan(plan.id);
     setPlans(getStoredMaintenancePlans());
+    setConfirmDeletePlanId(null);
   };
 
   const toggleService = (service: string) => {
@@ -248,13 +249,20 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {filtered.map((plan) => {
             const annualCost = plan.internalCostPerVisit * plan.visitsPerYear;
             const profit = plan.annualPrice - annualCost;
             const margin = plan.annualPrice > 0 ? (profit / plan.annualPrice) * 100 : 0;
+            const planKey = plan.id || plan.code || plan.name;
+            const isDeleting = confirmDeletePlanId === planKey;
+
             return (
-              <article key={plan.id || plan.code || plan.name} className="rounded-2xl border p-5" style={{ backgroundColor: theme.primary, borderColor: theme.border }}>
+              <article
+                key={planKey}
+                className="flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all hover:shadow-md relative overflow-hidden min-w-0"
+                style={{ backgroundColor: theme.primary, borderColor: theme.border }}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -268,26 +276,50 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                     <h3 className="mt-2 text-base font-black text-[var(--text)]">{plan.name}</h3>
                     <div className="mt-1 text-[10px] font-mono text-[var(--muted)]">{plan.code || 'SEM-CÓDIGO'}</div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(plan)}
-                      className="p-1.5 rounded-lg border text-[var(--dim)] hover:text-[var(--secondary)] hover:border-[var(--secondary)]/40 transition-colors cursor-pointer flex items-center justify-center"
-                      style={{ borderColor: theme.border, backgroundColor: theme.background }}
-                      title="Editar plano"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      data-delete-btn="true"
-                      onClick={() => remove(plan)}
-                      className="btn-delete p-1.5 rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors cursor-pointer flex items-center justify-center"
-                      style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
-                      title="Excluir plano"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isDeleting ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-[var(--danger)] font-bold">Excluir?</span>
+                        <button
+                          type="button"
+                          data-delete-btn="true"
+                          onClick={() => remove(plan)}
+                          className="btn-danger-solid px-2 py-1 rounded-md text-[11px] font-bold cursor-pointer"
+                        >
+                          Sim
+                        </button>
+                        <button
+                          type="button"
+                          data-text-only="true"
+                          onClick={() => setConfirmDeletePlanId(null)}
+                          className="btn-text px-2 py-1 text-[11px] font-medium cursor-pointer"
+                        >
+                          Não
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(plan)}
+                          className="p-1.5 rounded-lg border text-[var(--dim)] hover:text-[var(--secondary)] hover:border-[var(--secondary)]/40 transition-colors cursor-pointer"
+                          style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                          title="Editar plano"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          data-delete-btn="true"
+                          onClick={() => setConfirmDeletePlanId(planKey)}
+                          className="btn-delete p-1.5 rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors cursor-pointer"
+                          style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
+                          title="Excluir plano"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 

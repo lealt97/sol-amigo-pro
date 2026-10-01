@@ -50,11 +50,13 @@ export function fetchClientsLocal(): Client[] {
   return [];
 }
 
-export function saveClientsLocal(clients: Client[]): void {
+export function saveClientsLocal(clients: Client[], emitEvent = true): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
-    window.dispatchEvent(new CustomEvent(CLIENTS_UPDATED_EVENT, { detail: clients }));
+    if (emitEvent) {
+      window.dispatchEvent(new CustomEvent(CLIENTS_UPDATED_EVENT, { detail: clients }));
+    }
   } catch (err) {
     console.warn('Erro ao salvar clientes no localStorage:', err);
   }
@@ -114,7 +116,7 @@ export async function fetchClients(): Promise<Client[]> {
         }
       });
 
-      saveClientsLocal(combined);
+      saveClientsLocal(combined, false);
       return combined;
     }
   } catch (err) {

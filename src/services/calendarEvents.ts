@@ -55,12 +55,14 @@ async function getLocalEvents(): Promise<CalendarEvent[]> {
   }
 }
 
-async function saveLocalEvents(events: CalendarEvent[]): Promise<void> {
+async function saveLocalEvents(events: CalendarEvent[], emitEvent = true): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
     const key = await getStorageKey();
     localStorage.setItem(key, JSON.stringify(events.map(normalizeEvent)));
-    window.dispatchEvent(new CustomEvent(CALENDAR_EVENTS_UPDATED_EVENT, { detail: events }));
+    if (emitEvent) {
+      window.dispatchEvent(new CustomEvent(CALENDAR_EVENTS_UPDATED_EVENT, { detail: events }));
+    }
   } catch {
     // local persistence is only a fallback
   }
@@ -127,7 +129,7 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     if (error || !Array.isArray(data)) return local;
 
     const remote = data.map(mapRow);
-    await saveLocalEvents(remote);
+    await saveLocalEvents(remote, false);
     return remote;
   } catch {
     return local;
