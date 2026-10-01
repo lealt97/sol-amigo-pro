@@ -66,3 +66,25 @@ test('série de manutenção usa o intervalo configurado no plano', () => {
   assert.equal(new Date(series[1].startAt).getMonth(), 3);
   assert.equal(new Date(series[2].startAt).getMonth(), 9);
 });
+
+
+test('série quinzenal cria visitas a cada 15 dias', () => {
+  const { id, createdAt, updatedAt, ...seriesBase } = baseEvent;
+  const series = createRecurringCalendarEvents(
+    seriesBase,
+    4,
+    { interval: 15, unit: 'days' }
+  );
+
+  assert.equal(series.length, 4);
+  assert.equal(series[0].recurrenceInterval, 15);
+  assert.equal(series[0].recurrenceUnit, 'days');
+
+  const dates = series.map((item) => new Date(item.startAt).toISOString().slice(0, 10));
+  assert.deepEqual(dates, [
+    '2026-10-01',
+    '2026-10-16',
+    '2026-10-31',
+    '2026-11-15',
+  ]);
+});
