@@ -59,16 +59,39 @@ export function getDashboardDateRange(period: DashboardPeriod, now = new Date())
     return { start: null, end, previousStart: null, previousEnd: null };
   }
 
-  const durations: Record<Exclude<DashboardPeriod, 'all'>, number> = {
-    '30d': 30,
-    quarter: 90,
-    semester: 183,
-    year: 365,
+  if (period === '30d') {
+    const start = startOfDay(addDays(now, -29));
+    const previousEnd = endOfDay(addDays(start, -1));
+    const previousStart = startOfDay(addDays(previousEnd, -29));
+    return { start, end, previousStart, previousEnd };
+  }
+
+  const monthCount: Record<Exclude<DashboardPeriod, '30d' | 'all'>, number> = {
+    quarter: 3,
+    semester: 6,
+    year: 12,
   };
-  const days = durations[period];
-  const start = startOfDay(addDays(now, -(days - 1)));
+  const count = monthCount[period];
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const start = new Date(
+    currentMonthStart.getFullYear(),
+    currentMonthStart.getMonth() - (count - 1),
+    1,
+    0,
+    0,
+    0,
+    0
+  );
   const previousEnd = endOfDay(addDays(start, -1));
-  const previousStart = startOfDay(addDays(previousEnd, -(days - 1)));
+  const previousStart = new Date(
+    start.getFullYear(),
+    start.getMonth() - count,
+    1,
+    0,
+    0,
+    0,
+    0
+  );
   return { start, end, previousStart, previousEnd };
 }
 
