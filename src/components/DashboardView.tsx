@@ -52,7 +52,7 @@ interface DashboardViewProps {
   onShowToast?: (message: string) => void;
 }
 
-type CardSize = 'small' | 'medium' | 'large';
+type CardSize = 'compact' | 'small' | 'medium' | 'large';
 type CardId =
   | 'revenue'
   | 'proposals'
@@ -76,14 +76,14 @@ interface CardLayoutItem {
 const LAYOUT_STORAGE_KEY = 'solamigo.dashboard.layout.v1';
 
 const DEFAULT_LAYOUT: CardLayoutItem[] = [
-  { id: 'revenue', size: 'small' },
-  { id: 'proposals', size: 'small' },
-  { id: 'conversion', size: 'small' },
-  { id: 'ticket', size: 'small' },
-  { id: 'power', size: 'small' },
-  { id: 'leads', size: 'small' },
-  { id: 'clients', size: 'small' },
-  { id: 'maintenance', size: 'small' },
+  { id: 'revenue', size: 'compact' },
+  { id: 'proposals', size: 'compact' },
+  { id: 'conversion', size: 'compact' },
+  { id: 'ticket', size: 'compact' },
+  { id: 'power', size: 'compact' },
+  { id: 'leads', size: 'compact' },
+  { id: 'clients', size: 'compact' },
+  { id: 'maintenance', size: 'compact' },
   { id: 'sales-chart', size: 'large' },
   { id: 'status-donut', size: 'medium' },
   { id: 'activity-chart', size: 'medium' },
@@ -126,7 +126,7 @@ const readLayout = (): CardLayoutItem[] => {
       .filter((item) => knownIds.has(item?.id))
       .map((item) => ({
         id: item.id as CardId,
-        size: (['small', 'medium', 'large'].includes(item.size) ? item.size : 'medium') as CardSize,
+        size: (['compact', 'small', 'medium', 'large'].includes(item.size) ? item.size : 'medium') as CardSize,
       }));
     const missing = DEFAULT_LAYOUT.filter((item) => !sanitized.some((saved) => saved.id === item.id));
     return [...sanitized, ...missing];
@@ -144,13 +144,14 @@ const saveLayout = (layout: CardLayoutItem[]) => {
 };
 
 const sizeClass: Record<CardSize, string> = {
-  small: 'col-span-12 md:col-span-6 xl:col-span-3',
+  compact: 'col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-2',
+  small: 'col-span-12 sm:col-span-6 xl:col-span-3',
   medium: 'col-span-12 md:col-span-6',
   large: 'col-span-12',
 };
 
 const nextSize = (size: CardSize, direction: 1 | -1): CardSize => {
-  const sizes: CardSize[] = ['small', 'medium', 'large'];
+  const sizes: CardSize[] = ['compact', 'small', 'medium', 'large'];
   const index = sizes.indexOf(size);
   return sizes[Math.max(0, Math.min(sizes.length - 1, index + direction))];
 };
@@ -201,12 +202,12 @@ const eventColor = (type: CalendarEvent['type']) => {
 
 const DeltaBadge: React.FC<{ value: number | null; suffix?: string }> = ({ value, suffix = '%' }) => {
   if (value === null) {
-    return <span className="text-[10px] font-semibold text-[var(--muted)]">sem base anterior</span>;
+    return <span className="max-w-full truncate text-[10px] font-semibold text-[var(--muted)]">sem base anterior</span>;
   }
   const positive = value >= 0;
   const Icon = positive ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black ${
+    <span className={`inline-flex max-w-full shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-black ${
       positive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
     }`}>
       <Icon className="h-3 w-3" />
@@ -237,62 +238,76 @@ const CardShell: React.FC<CardShellProps> = ({
   onDrop,
   onResize,
   children,
-}) => (
-  <section
-    onDragOver={(event) => event.preventDefault()}
-    onDrop={() => onDrop(layout.id)}
-    className={`${sizeClass[layout.size]} rounded-2xl border shadow-xs transition-all duration-200 ${
-      draggedId === layout.id ? 'opacity-50 scale-[0.99]' : ''
-    }`}
-    style={{ backgroundColor: theme.primary, borderColor: theme.border }}
-  >
-    <div className="flex min-h-12 items-center justify-between gap-2 border-b px-4 py-2.5" style={{ borderColor: theme.border }}>
-      <div className="min-w-0">
-        <h3 className="truncate text-xs font-black text-[var(--text)]">{title}</h3>
-        {subtitle && <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{subtitle}</p>}
+}) => {
+  const compact = layout.size === 'compact';
+
+  return (
+    <section
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={() => onDrop(layout.id)}
+      data-dashboard-card-size={layout.size}
+      className={`${sizeClass[layout.size]} min-w-0 overflow-hidden rounded-2xl border shadow-xs transition-all duration-200 ${
+        draggedId === layout.id ? 'opacity-50 scale-[0.99]' : ''
+      }`}
+      style={{ backgroundColor: theme.primary, borderColor: theme.border }}
+    >
+      <div
+        className={`flex items-center justify-between gap-2 border-b ${
+          compact ? 'min-h-10 px-3 py-2' : 'min-h-12 px-4 py-2.5'
+        }`}
+        style={{ borderColor: theme.border }}
+      >
+        <div className="min-w-0">
+          <h3 className={`truncate font-black text-[var(--text)] ${compact ? 'text-[11px]' : 'text-xs'}`} title={title}>
+            {title}
+          </h3>
+          {!compact && subtitle && <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{subtitle}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button
+            type="button"
+            data-no-override-hover
+            onClick={() => onResize(layout.id, -1)}
+            disabled={layout.size === 'compact'}
+            className={`flex items-center justify-center rounded-lg border ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Diminuir card"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            data-no-override-hover
+            onClick={() => onResize(layout.id, 1)}
+            disabled={layout.size === 'large'}
+            className={`flex items-center justify-center rounded-lg border ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Aumentar card"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            draggable
+            data-no-override-hover
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = 'move';
+              onDragStart(layout.id);
+            }}
+            className={`flex cursor-grab items-center justify-center rounded-lg border active:cursor-grabbing ${
+              compact ? 'h-6 w-6' : 'h-7 w-7'
+            }`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Clique e arraste para reorganizar"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          data-no-override-hover
-          onClick={() => onResize(layout.id, -1)}
-          disabled={layout.size === 'small'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Diminuir card"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          data-no-override-hover
-          onClick={() => onResize(layout.id, 1)}
-          disabled={layout.size === 'large'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Aumentar card"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          draggable
-          data-no-override-hover
-          onDragStart={(event) => {
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart(layout.id);
-          }}
-          className="flex h-7 w-7 cursor-grab items-center justify-center rounded-lg border active:cursor-grabbing"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Clique e arraste para reorganizar"
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-    <div className="p-4">{children}</div>
-  </section>
-);
+      <div className={`min-w-0 max-w-full overflow-hidden ${compact ? 'p-3' : 'p-4'}`}>{children}</div>
+    </section>
+  );
+};
 
 interface KpiProps {
   label: string;
@@ -302,28 +317,36 @@ interface KpiProps {
   theme: ThemeConfig;
   delta?: number | null;
   accent?: string;
+  compact?: boolean;
 }
 
-const KpiContent: React.FC<KpiProps> = ({ label, value, detail, Icon, theme, delta, accent }) => (
-  <div className="flex min-h-[112px] flex-col justify-between">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
-        <div className="mt-2 text-2xl font-black tracking-tight text-[var(--text)]">{value}</div>
+const KpiContent: React.FC<KpiProps> = ({ label, value, detail, Icon, theme, delta, accent, compact = false }) => (
+  <div className={`flex min-w-0 max-w-full flex-col justify-between overflow-hidden ${compact ? 'min-h-[86px]' : 'min-h-[112px]'}`}>
+    <div className={`flex min-w-0 items-start justify-between ${compact ? 'gap-2' : 'gap-3'}`}>
+      <div className="min-w-0 flex-1">
+        <div className={`truncate font-bold uppercase tracking-[0.12em] text-[var(--muted)] ${compact ? 'text-[9px]' : 'text-[10px]'}`} title={label}>{label}</div>
+        <div
+          className={`max-w-full break-words font-black leading-tight tracking-tight text-[var(--text)] [overflow-wrap:anywhere] ${
+            compact ? 'mt-1.5 text-[clamp(0.95rem,1.4vw,1.25rem)]' : 'mt-2 text-[clamp(1.2rem,1.8vw,1.5rem)]'
+          }`}
+          title={value}
+        >
+          {value}
+        </div>
       </div>
       <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+        className={`flex shrink-0 items-center justify-center rounded-xl border ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
         style={{
           borderColor: theme.border,
           backgroundColor: theme.background,
           color: accent || theme.secondary,
         }}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </div>
     </div>
-    <div className="mt-3 flex items-center justify-between gap-2">
-      <span className="truncate text-[10px] text-[var(--muted)]">{detail}</span>
+    <div className={`${compact ? 'mt-2 flex min-w-0 flex-col items-start gap-1' : 'mt-3 flex min-w-0 items-center justify-between gap-2'}`}>
+      <span className={`max-w-full truncate text-[var(--muted)] ${compact ? 'text-[9px]' : 'text-[10px]'}`} title={detail}>{detail}</span>
       {delta !== undefined && <DeltaBadge value={delta} />}
     </div>
   </div>
@@ -336,19 +359,22 @@ interface DonutDatum {
   color: string;
 }
 
-const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValue: string }> = ({
+const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValue: string; size: CardSize }> = ({
   data,
   centerLabel,
   centerValue,
+  size,
 }) => {
+  const compact = size === 'compact';
+  const small = size === 'small';
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
   let cumulative = 0;
 
   return (
-    <div className="flex flex-col items-center gap-5 lg:flex-row lg:items-center">
-      <div className="relative h-44 w-44 shrink-0">
+    <div className={`flex min-w-0 max-w-full flex-col items-center overflow-hidden ${compact ? 'gap-3' : 'gap-5'} ${size === 'large' ? 'lg:flex-row lg:items-center' : ''}`}>
+      <div className={`relative shrink-0 ${compact ? 'h-28 w-28' : small ? 'h-36 w-36' : 'h-44 w-44'}`}>
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
           <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="24" />
           {total > 0 && data.map((item) => {
@@ -374,18 +400,18 @@ const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValu
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <div className="text-2xl font-black text-[var(--text)]">{centerValue}</div>
-          <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--muted)]">{centerLabel}</div>
+          <div className={`font-black text-[var(--text)] ${compact ? 'text-lg' : 'text-2xl'}`}>{centerValue}</div>
+          <div className={`mt-0.5 font-bold uppercase tracking-wider text-[var(--muted)] ${compact ? 'text-[8px]' : 'text-[9px]'}`}>{centerLabel}</div>
         </div>
       </div>
-      <div className="w-full space-y-2">
+      <div className={`min-w-0 w-full ${compact ? 'space-y-1.5' : 'space-y-2'}`}>
         {data.map((item) => {
           const percent = total > 0 ? (item.value / total) * 100 : 0;
           return (
-            <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)' }}>
+            <div key={item.key} className={`flex min-w-0 items-center justify-between rounded-xl border ${compact ? 'gap-2 px-2 py-1.5' : 'gap-3 px-3 py-2'}`} style={{ borderColor: 'var(--border)' }}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="truncate text-[11px] font-semibold text-[var(--text)]">{item.label}</span>
+                <span className={`truncate font-semibold text-[var(--text)] ${compact ? 'text-[9px]' : 'text-[11px]'}`} title={item.label}>{item.label}</span>
               </div>
               <div className="shrink-0 text-right">
                 <span className="text-xs font-black text-[var(--text)]">{item.value}</span>
@@ -412,13 +438,15 @@ const VerticalBarChart: React.FC<{
   primaryColor: string;
   secondaryColor?: string;
   formatter?: (value: number) => string;
-}> = ({ data, primaryLabel, secondaryLabel, primaryColor, secondaryColor = '#94a3b8', formatter = number.format }) => {
+  size: CardSize;
+}> = ({ data, primaryLabel, secondaryLabel, primaryColor, secondaryColor = '#94a3b8', formatter = number.format, size }) => {
+  const compact = size === 'compact';
   const rawMax = Math.max(0, ...data.flatMap((item) => [item.value, item.secondaryValue || 0]));
   const max = Math.max(1, rawMax);
 
   if (rawMax === 0) {
     return (
-      <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
+      <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[170px]' : 'min-h-[260px]'}`}>
         <Activity className="h-9 w-9 text-[var(--muted)]" />
         <div className="mt-3 text-sm font-bold text-[var(--text)]">Sem dados para o período</div>
         <div className="mt-1 text-[10px] text-[var(--muted)]">Os gráficos serão preenchidos conforme o CRM receber movimentações.</div>
@@ -427,8 +455,8 @@ const VerticalBarChart: React.FC<{
   }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-[10px] font-bold text-[var(--muted)]">
+    <div className="min-w-0 max-w-full overflow-hidden">
+      <div className={`flex min-w-0 flex-wrap items-center font-bold text-[var(--muted)] ${compact ? 'mb-2 gap-2 text-[8px]' : 'mb-4 gap-4 text-[10px]'}`}>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: primaryColor }} />
           {primaryLabel}
@@ -440,31 +468,31 @@ const VerticalBarChart: React.FC<{
           </span>
         )}
       </div>
-      <div className="relative h-56 border-b border-l pl-3 pt-3" style={{ borderColor: 'var(--border)' }}>
+      <div className={`relative overflow-hidden border-b border-l ${compact ? 'h-40 pl-1.5 pt-2' : 'h-56 pl-3 pt-3'}`} style={{ borderColor: 'var(--border)' }}>
         <div className="absolute inset-x-3 top-[25%] border-t border-dashed opacity-40" style={{ borderColor: 'var(--border)' }} />
         <div className="absolute inset-x-3 top-[50%] border-t border-dashed opacity-40" style={{ borderColor: 'var(--border)' }} />
         <div className="absolute inset-x-3 top-[75%] border-t border-dashed opacity-40" style={{ borderColor: 'var(--border)' }} />
-        <div className="relative z-10 flex h-full items-end gap-2 overflow-hidden pr-2">
+        <div className={`relative z-10 flex h-full min-w-0 items-end overflow-hidden ${compact ? 'gap-0.5 pr-1' : 'gap-2 pr-2'}`}>
           {data.map((item) => {
             const primaryHeight = Math.max(item.value > 0 ? 3 : 0, (item.value / max) * 100);
             const secondaryHeight = Math.max((item.secondaryValue || 0) > 0 ? 3 : 0, ((item.secondaryValue || 0) / max) * 100);
             return (
               <div key={item.label} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-                <div className="flex h-[calc(100%-24px)] items-end justify-center gap-1">
+                <div className={`flex items-end justify-center ${compact ? 'h-[calc(100%-18px)] gap-0.5' : 'h-[calc(100%-24px)] gap-1'}`}>
                   <div
-                    className="w-full max-w-7 rounded-t-md transition-all duration-300"
+                    className={`w-full rounded-t-md transition-all duration-300 ${compact ? 'max-w-3' : 'max-w-7'}`}
                     style={{ height: `${primaryHeight}%`, backgroundColor: primaryColor }}
                     title={`${primaryLabel}: ${formatter(item.value)}`}
                   />
                   {secondaryLabel && (
                     <div
-                      className="w-full max-w-7 rounded-t-md transition-all duration-300"
+                      className={`w-full rounded-t-md transition-all duration-300 ${compact ? 'max-w-3' : 'max-w-7'}`}
                       style={{ height: `${secondaryHeight}%`, backgroundColor: secondaryColor }}
                       title={`${secondaryLabel}: ${formatter(item.secondaryValue || 0)}`}
                     />
                   )}
                 </div>
-                <div className="h-6 truncate pt-1 text-center text-[9px] font-semibold capitalize text-[var(--muted)]">
+                <div className={`truncate text-center font-semibold capitalize text-[var(--muted)] ${compact ? 'h-[18px] pt-0.5 text-[7px]' : 'h-6 pt-1 text-[9px]'}`}>
                   {item.label}
                 </div>
               </div>
@@ -472,7 +500,7 @@ const VerticalBarChart: React.FC<{
           })}
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-[9px] text-[var(--muted)]">
+      <div className={`flex min-w-0 items-center justify-between text-[var(--muted)] ${compact ? 'mt-2 text-[8px]' : 'mt-3 text-[9px]'}`}>
         <span>0</span>
         <span>máx. {formatter(max)}</span>
       </div>
@@ -682,7 +710,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? 'Todo o histórico disponível'
     : `Comparado ao ${getDashboardPeriodLabel(period).toLocaleLowerCase('pt-BR')} anterior`;
 
-  const renderCardContent = (id: CardId) => {
+  const renderCardContent = (id: CardId, size: CardSize) => {
+    const compact = size === 'compact';
     switch (id) {
       case 'revenue':
         return (
@@ -692,6 +721,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`${approvedCount} proposta(s) aprovada(s)`}
             Icon={CircleDollarSign}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentRevenue, previousRevenue)}
             accent="#10b981"
           />
@@ -704,6 +734,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`${approvedCount} aprovada(s) no período`}
             Icon={FileText}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(periodProposals.length, previousProposals.length)}
           />
         );
@@ -715,6 +746,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Aprovadas ÷ propostas"
             Icon={Target}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : (previousProposals.length ? currentConversion - previousConversion : null)}
             accent="#8b5cf6"
           />
@@ -727,6 +759,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Média das propostas aprovadas"
             Icon={WalletCards}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentTicket, previousTicket)}
             accent="#f59e0b"
           />
@@ -739,6 +772,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Somente propostas aprovadas"
             Icon={Zap}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentPower, previousPower)}
             accent="#eab308"
           />
@@ -751,6 +785,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={comparisonDetail}
             Icon={Users}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(periodLeads.length, previousLeads.length)}
             accent="#3b82f6"
           />
@@ -763,6 +798,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`+${periodClients.length} cadastro(s) no período`}
             Icon={UserCheck}
             theme={theme}
+            compact={compact}
             accent="#06b6d4"
           />
         );
@@ -774,6 +810,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Próximos 30 dias"
             Icon={Wrench}
             theme={theme}
+            compact={compact}
             accent="#10b981"
           />
         );
@@ -784,6 +821,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             primaryLabel="Vendas aprovadas"
             primaryColor={theme.secondary}
             formatter={(value) => compactMoney.format(value)}
+            size={size}
           />
         );
       case 'status-donut':
@@ -792,6 +830,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             data={donutData}
             centerLabel="propostas"
             centerValue={number.format(periodProposals.length)}
+            size={size}
           />
         );
       case 'activity-chart':
@@ -803,12 +842,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             primaryColor={theme.secondary}
             secondaryColor="#94a3b8"
             formatter={(value) => number.format(value)}
+            size={size}
           />
         );
       case 'agenda':
         return upcomingEvents.length === 0 ? (
-          <div className="flex min-h-[230px] flex-col items-center justify-center text-center">
-            <CalendarDays className="h-9 w-9 text-[var(--muted)]" />
+          <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>
+            <CalendarDays className={`${compact ? 'h-7 w-7' : 'h-9 w-9'} text-[var(--muted)]`} />
             <div className="mt-3 text-sm font-bold">Nenhum compromisso futuro</div>
             <button
               type="button"
@@ -821,24 +861,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
             {upcomingEvents.map((event) => (
               <button
                 key={event.id}
                 type="button"
                 data-no-override-hover
                 onClick={() => onNavigate?.('calendario')}
-                className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-opacity hover:opacity-80"
+                className={`flex min-w-0 w-full rounded-xl border text-left transition-opacity hover:opacity-80 ${
+                  compact ? 'flex-col items-stretch gap-1.5 p-2' : 'items-center gap-3 p-3'
+                }`}
                 style={{ borderColor: theme.border, backgroundColor: theme.background }}
               >
-                <span className="h-9 w-1 shrink-0 rounded-full" style={{ backgroundColor: eventColor(event.type) }} />
+                <span className={`shrink-0 rounded-full ${compact ? 'h-1 w-full' : 'h-9 w-1'}`} style={{ backgroundColor: eventColor(event.type) }} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-black text-[var(--text)]">{event.title}</div>
                   <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
                     {event.clientName || event.type}
                   </div>
                 </div>
-                <div className="shrink-0 text-right text-[10px] font-bold text-[var(--muted)]">
+                <div className={`max-w-full shrink-0 truncate font-bold text-[var(--muted)] ${compact ? 'text-left text-[9px]' : 'text-right text-[10px]'}`} title={formatDateTime(event.startAt, event.allDay)}>
                   {formatDateTime(event.startAt, event.allDay)}
                 </div>
               </button>
@@ -847,7 +889,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-sol-amigo-text-hover
               onClick={() => onNavigate?.('calendario')}
-              className="pt-1 text-xs font-bold"
+              className={`max-w-full truncate pt-1 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
               style={{ color: theme.secondary }}
             >
               Ver calendário completo →
@@ -856,12 +898,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         );
       case 'recent-proposals':
         return recentProposals.length === 0 ? (
-          <div className="flex min-h-[230px] flex-col items-center justify-center text-center">
-            <FileText className="h-9 w-9 text-[var(--muted)]" />
+          <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>
+            <FileText className={`${compact ? 'h-7 w-7' : 'h-9 w-9'} text-[var(--muted)]`} />
             <div className="mt-3 text-sm font-bold">Nenhuma proposta no período</div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
             {recentProposals.map((proposal) => {
               const normalized = normalizeProposalStatus(proposal.status);
               return (
@@ -870,18 +912,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   data-no-override-hover
                   onClick={() => onNavigate?.('propostas', proposal.code)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-opacity hover:opacity-80"
+                  className={`flex min-w-0 w-full rounded-xl border text-left transition-opacity hover:opacity-80 ${
+                    compact ? 'flex-col items-stretch gap-1.5 p-2' : 'items-center justify-between gap-3 p-3'
+                  }`}
                   style={{ borderColor: theme.border, backgroundColor: theme.background }}
                 >
                   <div className="min-w-0">
                     <div className="truncate text-xs font-black text-[var(--text)]">{proposal.clientName}</div>
-                    <div className="mt-0.5 text-[10px] text-[var(--muted)]">{proposal.code} · {number.format(proposal.systemPowerKWp)} kWp</div>
+                    <div className="mt-0.5 max-w-full truncate text-[10px] text-[var(--muted)]" title={`${proposal.code} · ${number.format(proposal.systemPowerKWp)} kWp`}>{proposal.code} · {number.format(proposal.systemPowerKWp)} kWp</div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-xs font-black text-[var(--text)]">{money.format(proposal.totalValue)}</div>
-                    <div className="mt-0.5 inline-flex items-center gap-1 text-[9px] font-bold" style={{ color: statusColor[normalized] }}>
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor[normalized] }} />
-                      {statusLabel[normalized]}
+                  <div className={`min-w-0 shrink-0 ${compact ? 'text-left' : 'text-right'}`}>
+                    <div className={`max-w-full truncate font-black text-[var(--text)] ${compact ? 'text-[11px]' : 'text-xs'}`} title={money.format(proposal.totalValue)}>{money.format(proposal.totalValue)}</div>
+                    <div className="mt-0.5 inline-flex max-w-full min-w-0 items-center gap-1 text-[9px] font-bold" style={{ color: statusColor[normalized] }}>
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: statusColor[normalized] }} />
+                      <span className="truncate" title={statusLabel[normalized]}>{statusLabel[normalized]}</span>
                     </div>
                   </div>
                 </button>
@@ -920,7 +964,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <h1 className="mt-1 text-2xl font-black text-[var(--text)]">Dashboard Sol Amigo Pro</h1>
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
-            Indicadores comerciais, pipeline, clientes e pós-venda em um painel personalizável. Arraste os cards pelo ícone e use − / + para mudar o tamanho.
+            Indicadores comerciais, pipeline, clientes e pós-venda em um painel personalizável. Arraste os cards pelo ícone e use − / + para alternar entre compacto, pequeno, médio e grande.
           </p>
         </div>
 
@@ -980,7 +1024,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid min-w-0 grid-cols-12 gap-4">
         {layout.map((item) => {
           const meta = cardMeta[item.id];
           return (
@@ -996,10 +1040,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onResize={resizeCard}
             >
               {loading ? (
-                <div className="flex min-h-[112px] items-center justify-center">
+                <div className={`flex items-center justify-center ${item.size === 'compact' ? 'min-h-[86px]' : 'min-h-[112px]'}`}>
                   <RefreshCw className="h-5 w-5 animate-spin text-[var(--muted)]" />
                 </div>
-              ) : renderCardContent(item.id)}
+              ) : renderCardContent(item.id, item.size)}
             </CardShell>
           );
         })}
