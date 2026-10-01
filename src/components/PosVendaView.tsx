@@ -23,7 +23,9 @@ import {
   estimateMaintenanceVisitsPerYear,
   formatMaintenanceFrequency,
   getMaintenanceAnnualSalePrice,
+  getMaintenanceFrequencyMax,
   getMaintenancePricingMode,
+  normalizeMaintenanceInterval,
 } from '../utils/maintenance';
 
 interface PosVendaViewProps {
@@ -158,7 +160,7 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
   };
 
   const updateFrequency = (interval: number, unit: MaintenanceFrequencyUnit) => {
-    const safeInterval = Math.max(1, Math.floor(Number(interval) || 1));
+    const safeInterval = normalizeMaintenanceInterval(interval, unit);
     setEditing((current) => ({
       ...current,
       frequencyInterval: safeInterval,
@@ -384,7 +386,7 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                   <input
                     type="number"
                     min="1"
-                    max="365"
+                    max={getMaintenanceFrequencyMax(editing.frequencyUnit || 'months')}
                     value={editing.frequencyInterval || editing.frequencyMonths || 1}
                     onChange={(e) => updateFrequency(Number(e.target.value), editing.frequencyUnit || 'months')}
                     className="w-full rounded-lg border px-3 py-2 text-sm"
