@@ -15,14 +15,27 @@ const UNIT_LABELS: Record<MaintenanceFrequencyUnit, { singular: string; plural: 
   months: { singular: 'mês', plural: 'meses' },
 };
 
+export function getMaintenanceFrequencyMax(unit: MaintenanceFrequencyUnit): number {
+  if (unit === 'days') return 365;
+  if (unit === 'weeks') return 52;
+  return 36;
+}
+
+export function normalizeMaintenanceInterval(
+  intervalInput: number,
+  unit: MaintenanceFrequencyUnit
+): number {
+  return Math.max(1, Math.min(getMaintenanceFrequencyMax(unit), Math.floor(Number(intervalInput) || 1)));
+}
+
 export function getMaintenanceFrequency(
   plan: Pick<MaintenancePlanSelection, 'frequencyInterval' | 'frequencyUnit' | 'frequencyMonths'>
 ): MaintenanceFrequency {
   const unit = plan.frequencyUnit || 'months';
   const fallbackMonths = Math.max(1, Number(plan.frequencyMonths) || 1);
-  const interval = Math.max(
-    1,
-    Math.floor(Number(plan.frequencyInterval) || (unit === 'months' ? fallbackMonths : 1))
+  const interval = normalizeMaintenanceInterval(
+    Number(plan.frequencyInterval) || (unit === 'months' ? fallbackMonths : 1),
+    unit
   );
   return { interval, unit };
 }
@@ -31,14 +44,14 @@ export function estimateMaintenanceVisitsPerYear(
   intervalInput: number,
   unit: MaintenanceFrequencyUnit
 ): number {
-  const interval = Math.max(1, Math.floor(Number(intervalInput) || 1));
+  const interval = normalizeMaintenanceInterval(intervalInput, unit);
   if (unit === 'days') return Math.max(1, Math.round(365 / interval));
   if (unit === 'weeks') return Math.max(1, Math.round(52 / interval));
   return Math.max(1, Math.round(12 / interval));
 }
 
 export function frequencyToLegacyMonths(intervalInput: number, unit: MaintenanceFrequencyUnit): number {
-  const interval = Math.max(1, Number(intervalInput) || 1);
+  const interval = normalizeMaintenanceInterval(intervalInput, unit);
   if (unit === 'months') return Math.max(1, Math.round(interval));
   if (unit === 'weeks') return Math.max(1, Math.round((interval * 7) / 30.4375));
   return Math.max(1, Math.round(interval / 30.4375));
