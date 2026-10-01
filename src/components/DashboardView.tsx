@@ -13,7 +13,6 @@ import {
   RefreshCw,
   RotateCcw,
   Target,
-  TrendingUp,
   UserCheck,
   Users,
   WalletCards,
