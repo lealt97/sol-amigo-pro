@@ -8,6 +8,7 @@ import {
   ThemeConfig,
 } from '../types';
 import { calculateCommercialPricing } from '../utils/commercialPricing';
+import { getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
 interface ProposalWizardStep4CommercialProps {
   theme: ThemeConfig;
@@ -101,7 +102,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
       additionalDirectCost: maintenancePlan.enabled
         ? maintenancePlan.internalCostPerVisit * maintenancePlan.visitsPerYear
         : 0,
-      additionalSaleValue: maintenancePlan.enabled ? maintenancePlan.annualPrice : 0,
+      additionalSaleValue: maintenancePlan.enabled ? getMaintenanceAnnualSalePrice(maintenancePlan) : 0,
     });
 
     return {
