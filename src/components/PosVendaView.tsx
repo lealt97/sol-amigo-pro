@@ -11,7 +11,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { MaintenancePlanSelection, PageKey, ThemeConfig } from '../types';
+import { MaintenanceFrequencyUnit, MaintenancePlanSelection, PageKey, ThemeConfig } from '../types';
 import {
   addMaintenancePlan,
   deleteMaintenancePlan,
@@ -19,6 +19,14 @@ import {
   restoreDefaultMaintenancePlans,
   updateMaintenancePlan,
 } from '../data/maintenancePlans';
+import {
+  estimateMaintenanceVisitsPerYear,
+  formatMaintenanceFrequency,
+  getMaintenanceAnnualSalePrice,
+  getMaintenanceFrequencyMax,
+  getMaintenancePricingMode,
+  normalizeMaintenanceInterval,
+} from '../utils/maintenance';
 
 interface PosVendaViewProps {
   theme: ThemeConfig;
@@ -45,9 +53,13 @@ const blankPlan = (): MaintenancePlanSelection => ({
   planType: 'Preventiva',
   name: '',
   code: '',
+  frequencyInterval: 6,
+  frequencyUnit: 'months',
   frequencyMonths: 6,
   visitsPerYear: 2,
   internalCostPerVisit: 0,
+  pricingMode: 'annual_package',
+  pricePerVisit: 0,
   annualPrice: 0,
   includedServices: [
     'Limpeza técnica dos módulos',
@@ -100,17 +112,25 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
   const handleSave = (event: React.FormEvent) => {
     event.preventDefault();
     if (!editing.name.trim()) return;
+    const frequencyUnit = editing.frequencyUnit || 'months';
+    const frequencyInterval = Math.max(1, Math.floor(Number(editing.frequencyInterval) || Number(editing.frequencyMonths) || 1));
+    const visitsPerYear = estimateMaintenanceVisitsPerYear(frequencyInterval, frequencyUnit);
     const payload: MaintenancePlanSelection = {
       ...editing,
       enabled: true,
       active: editing.active !== false,
       name: editing.name.trim(),
       code: editing.code?.trim() || undefined,
-      frequencyMonths: Math.max(1, Number(editing.frequencyMonths) || 1),
-      visitsPerYear: Math.max(1, Number(editing.visitsPerYear) || 1),
+      frequencyInterval,
+      frequencyUnit,
+      frequencyMonths: frequencyUnit === 'months' ? frequencyInterval : Math.max(1, Number(editing.frequencyMonths) || 1),
+      visitsPerYear,
       internalCostPerVisit: Math.max(0, Number(editing.internalCostPerVisit) || 0),
+      pricingMode: editing.pricingMode || 'annual_package',
+      pricePerVisit: Math.max(0, Number(editing.pricePerVisit) || 0),
       annualPrice: Math.max(0, Number(editing.annualPrice) || 0),
     };
+    payload.annualPrice = getMaintenanceAnnualSalePrice(payload);
 
     if (payload.id) updateMaintenancePlan(payload);
     else addMaintenancePlan(payload);
@@ -138,6 +158,18 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
         : [...current.includedServices, service],
     }));
   };
+
+  const updateFrequency = (interval: number, unit: MaintenanceFrequencyUnit) => {
+    const safeInterval = normalizeMaintenanceInterval(interval, unit);
+    setEditing((current) => ({
+      ...current,
+      frequencyInterval: safeInterval,
+      frequencyUnit: unit,
+      frequencyMonths: unit === 'months' ? safeInterval : current.frequencyMonths,
+      visitsPerYear: estimateMaintenanceVisitsPerYear(safeInterval, unit),
+    }));
+  };
+
 
   return (
     <div id="pos-venda-page" className="space-y-6">
@@ -262,7 +294,7 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                   <div className="rounded-xl border p-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
                     <div className="text-[10px] uppercase text-[var(--muted)]">Periodicidade</div>
-                    <div className="mt-1 font-bold">A cada {plan.frequencyMonths} meses</div>
+                    <div className="mt-1 font-bold capitalize">{formatMaintenanceFrequency(plan)}</div>
                   </div>
                   <div className="rounded-xl border p-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
                     <div className="text-[10px] uppercase text-[var(--muted)]">Visitas / ano</div>
@@ -273,8 +305,15 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                     <div className="mt-1 font-bold">{money.format(annualCost)}</div>
                   </div>
                   <div className="rounded-xl border p-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
-                    <div className="text-[10px] uppercase text-[var(--muted)]">Preço anual</div>
-                    <div className="mt-1 font-black text-emerald-500">{money.format(plan.annualPrice)}</div>
+                    <div className="text-[10px] uppercase text-[var(--muted)]">{getMaintenancePricingMode(plan) === 'per_visit' ? 'Preço / visita' : 'Preço anual'}</div>
+                    <div className="mt-1 font-black text-emerald-500">
+                      {getMaintenancePricingMode(plan) === 'per_visit'
+                        ? money.format(plan.pricePerVisit || 0)
+                        : money.format(plan.annualPrice)}
+                    </div>
+                    {getMaintenancePricingMode(plan) === 'per_visit' && (
+                      <div className="mt-0.5 text-[9px] text-[var(--muted)]">{money.format(getMaintenanceAnnualSalePrice(plan))}/ano estimado</div>
+                    )}
                   </div>
                 </div>
 
@@ -335,33 +374,91 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
                 </label>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="space-y-1">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <label className="space-y-1 sm:col-span-1">
                   <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Tipo</span>
                   <select value={editing.planType || 'Preventiva'} onChange={(e) => setEditing({ ...editing, planType: e.target.value as MaintenancePlanSelection['planType'] })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}>
                     {['Limpeza', 'Preventiva', 'Inspeção', 'Completa', 'Personalizada'].map((item) => <option key={item}>{item}</option>)}
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Periodicidade (meses)</span>
-                  <input type="number" min="1" max="36" value={editing.frequencyMonths} onChange={(e) => setEditing({ ...editing, frequencyMonths: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">A cada</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={getMaintenanceFrequencyMax(editing.frequencyUnit || 'months')}
+                    value={editing.frequencyInterval || editing.frequencyMonths || 1}
+                    onChange={(e) => updateFrequency(Number(e.target.value), editing.frequencyUnit || 'months')}
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                  />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Visitas por ano</span>
-                  <input type="number" min="1" max="12" value={editing.visitsPerYear} onChange={(e) => setEditing({ ...editing, visitsPerYear: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Unidade</span>
+                  <select
+                    value={editing.frequencyUnit || 'months'}
+                    onChange={(e) => updateFrequency(editing.frequencyInterval || editing.frequencyMonths || 1, e.target.value as MaintenanceFrequencyUnit)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                  >
+                    <option value="days">Dias</option>
+                    <option value="weeks">Semanas</option>
+                    <option value="months">Meses</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Visitas / ano</span>
+                  <input
+                    type="number"
+                    readOnly
+                    value={estimateMaintenanceVisitsPerYear(editing.frequencyInterval || editing.frequencyMonths || 1, editing.frequencyUnit || 'months')}
+                    className="w-full rounded-lg border px-3 py-2 text-sm opacity-80"
+                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                  />
                 </label>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border px-3 py-2 text-[11px] text-[var(--muted)]" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+                Frequência configurada: <strong className="text-[var(--text)] capitalize">{formatMaintenanceFrequency(editing)}</strong>.
+                {' '}O sistema estima <strong className="text-[var(--text)]">{estimateMaintenanceVisitsPerYear(editing.frequencyInterval || editing.frequencyMonths || 1, editing.frequencyUnit || 'months')} visita(s) por ano</strong> e usa esse total nos custos e no calendário.
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
                 <label className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Custo interno por visita</span>
+                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Custo interno / visita</span>
                   <input type="number" min="0" step="10" value={editing.internalCostPerVisit} onChange={(e) => setEditing({ ...editing, internalCostPerVisit: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Preço anual ao cliente</span>
-                  <input type="number" min="0" step="10" value={editing.annualPrice} onChange={(e) => setEditing({ ...editing, annualPrice: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+                  <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Forma de cobrança</span>
+                  <select
+                    value={editing.pricingMode || 'annual_package'}
+                    onChange={(e) => setEditing({ ...editing, pricingMode: e.target.value as MaintenancePlanSelection['pricingMode'] })}
+                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }}
+                  >
+                    <option value="annual_package">Pacote anual</option>
+                    <option value="per_visit">Por visita</option>
+                  </select>
                 </label>
+                {(editing.pricingMode || 'annual_package') === 'per_visit' ? (
+                  <label className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Preço / visita</span>
+                    <input type="number" min="0" step="10" value={editing.pricePerVisit || 0} onChange={(e) => setEditing({ ...editing, pricePerVisit: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+                  </label>
+                ) : (
+                  <label className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Preço anual ao cliente</span>
+                    <input type="number" min="0" step="10" value={editing.annualPrice} onChange={(e) => setEditing({ ...editing, annualPrice: Number(e.target.value) })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
+                  </label>
+                )}
               </div>
+
+              {(editing.pricingMode || 'annual_package') === 'per_visit' && (
+                <div className="rounded-xl border px-3 py-2 text-[11px] text-[var(--muted)]" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+                  Estimativa anual: <strong className="text-emerald-500">{money.format((editing.pricePerVisit || 0) * estimateMaintenanceVisitsPerYear(editing.frequencyInterval || editing.frequencyMonths || 1, editing.frequencyUnit || 'months'))}</strong>.
+                  {' '}Esse valor é levado para Custos & Margem da proposta.
+                </div>
+              )}
 
               <div>
                 <div className="text-[10px] font-bold uppercase text-[var(--muted)]">Serviços incluídos</div>

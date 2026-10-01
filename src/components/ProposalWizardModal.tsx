@@ -42,6 +42,7 @@ import {
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
 import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
 import { BRAZIL_STATE_HSP } from '../data/initialKits';
+import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
 export interface ProposalTargetSelection {
   id: string;
@@ -1740,14 +1741,23 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                       <div className="text-xs font-bold text-[var(--text)]">Plano de Manutenção incluído</div>
                       <div className="mt-1 text-sm font-black" style={{ color: theme.secondary }}>{maintenancePlan.name}</div>
                       <div className="mt-1 text-[11px] text-[var(--muted)]">
-                        {maintenancePlan.visitsPerYear} visita(s)/ano • a cada {maintenancePlan.frequencyMonths} meses • {maintenancePlan.includedServices.length} serviço(s) incluído(s)
+                        {maintenancePlan.visitsPerYear} visita(s)/ano • {formatMaintenanceFrequency(maintenancePlan)} • {maintenancePlan.includedServices.length} serviço(s) incluído(s)
                       </div>
                     </div>
                     <div className="text-left sm:text-right">
-                      <div className="text-[10px] font-bold uppercase text-[var(--muted)]">Valor anual do plano</div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{getMaintenancePricingMode(maintenancePlan) === 'per_visit' ? 'Valor por visita' : 'Valor anual do plano'}</div>
                       <div className="text-lg font-black text-emerald-500">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(maintenancePlan.annualPrice)}
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          getMaintenancePricingMode(maintenancePlan) === 'per_visit'
+                            ? (maintenancePlan.pricePerVisit || 0)
+                            : getMaintenanceAnnualSalePrice(maintenancePlan)
+                        )}
                       </div>
+                      {getMaintenancePricingMode(maintenancePlan) === 'per_visit' && (
+                        <div className="mt-0.5 text-[10px] text-[var(--muted)]">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getMaintenanceAnnualSalePrice(maintenancePlan))}/ano estimado
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

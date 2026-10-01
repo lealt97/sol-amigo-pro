@@ -136,6 +136,9 @@ export interface ProposalRecord {
   };
 }
 
+export type MaintenanceFrequencyUnit = 'days' | 'weeks' | 'months';
+export type MaintenancePricingMode = 'annual_package' | 'per_visit';
+
 export interface MaintenancePlanSelection {
   id?: string;
   code?: string;
@@ -144,9 +147,16 @@ export interface MaintenancePlanSelection {
   type: 'none' | 'annual' | 'semiannual' | 'custom';
   planType?: 'Limpeza' | 'Preventiva' | 'Inspeção' | 'Completa' | 'Personalizada';
   name: string;
+  /** Novo formato flexível. Ex.: 15 + days, 2 + weeks, 6 + months. */
+  frequencyInterval?: number;
+  frequencyUnit?: MaintenanceFrequencyUnit;
+  /** Campo legado mantido para compatibilidade com propostas e planos antigos. */
   frequencyMonths: number;
   visitsPerYear: number;
   internalCostPerVisit: number;
+  pricingMode?: MaintenancePricingMode;
+  pricePerVisit?: number;
+  /** Valor anual efetivo usado no comercial, inclusive quando derivado do preço por visita. */
   annualPrice: number;
   includedServices: string[];
   notes: string;
@@ -786,6 +796,8 @@ export interface CalendarEvent {
   maintenancePlanId?: string;
   maintenancePlanName?: string;
   recurrenceMonths?: number;
+  recurrenceInterval?: number;
+  recurrenceUnit?: MaintenanceFrequencyUnit;
   location?: string;
   description?: string;
   createdAt: string;

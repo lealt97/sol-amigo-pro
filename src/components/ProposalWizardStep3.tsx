@@ -29,6 +29,11 @@ import {
   addCustomKit,
 } from '../data/initialKits';
 import { getStoredMaintenancePlans, MAINTENANCE_PLANS_UPDATED_EVENT } from '../data/maintenancePlans';
+import {
+  formatMaintenanceFrequency,
+  getMaintenanceAnnualSalePrice,
+  getMaintenancePricingMode,
+} from '../utils/maintenance';
 
 interface ProposalWizardStep3Props {
   theme: ThemeConfig;
@@ -1166,15 +1171,17 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                       <div className="mt-1 text-[10px] font-mono text-[var(--muted)]">{plan.code || 'SEM-CÓDIGO'}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-[10px] uppercase text-[var(--muted)]">Preço anual</div>
+                      <div className="text-[10px] uppercase text-[var(--muted)]">{getMaintenancePricingMode(plan) === 'per_visit' ? 'Preço / visita' : 'Preço anual'}</div>
                       <div className="text-sm font-black text-emerald-500">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.annualPrice)}
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          getMaintenancePricingMode(plan) === 'per_visit' ? (plan.pricePerVisit || 0) : getMaintenanceAnnualSalePrice(plan)
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--muted)]">
                     <span>{plan.visitsPerYear} visita(s)/ano</span>
-                    <span>A cada {plan.frequencyMonths} meses</span>
+                    <span className="capitalize">{formatMaintenanceFrequency(plan)}</span>
                     <span>Custo anual: <strong className="text-[var(--text)]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(annualCost)}</strong></span>
                     <span>{plan.includedServices.length} serviço(s)</span>
                   </div>

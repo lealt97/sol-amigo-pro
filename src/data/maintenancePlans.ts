@@ -1,4 +1,10 @@
 import { MaintenancePlanSelection } from '../types';
+import {
+  estimateMaintenanceVisitsPerYear,
+  frequencyToLegacyMonths,
+  getMaintenanceAnnualSalePrice,
+  normalizeMaintenanceInterval,
+} from '../utils/maintenance';
 
 export const MAINTENANCE_PLANS_STORAGE_KEY = 'solamigo.maintenance-plans.v1';
 export const MAINTENANCE_PLANS_UPDATED_EVENT = 'solamigo:maintenance-plans-updated';
@@ -21,9 +27,12 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
     type: 'semiannual',
     planType: 'Preventiva',
     name: 'Preventiva Semestral',
+    frequencyInterval: 6,
+    frequencyUnit: 'months',
     frequencyMonths: 6,
     visitsPerYear: 2,
     internalCostPerVisit: 180,
+    pricingMode: 'annual_package',
     annualPrice: 900,
     includedServices: DEFAULT_SERVICES,
     notes: 'Plano preventivo com duas visitas anuais.',
@@ -36,9 +45,12 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
     type: 'annual',
     planType: 'Preventiva',
     name: 'Preventiva Anual',
+    frequencyInterval: 12,
+    frequencyUnit: 'months',
     frequencyMonths: 12,
     visitsPerYear: 1,
     internalCostPerVisit: 220,
+    pricingMode: 'annual_package',
     annualPrice: 550,
     includedServices: DEFAULT_SERVICES,
     notes: 'Plano preventivo com uma visita anual.',
@@ -51,9 +63,12 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
     type: 'custom',
     planType: 'Completa',
     name: 'O&M Completa Trimestral',
+    frequencyInterval: 3,
+    frequencyUnit: 'months',
     frequencyMonths: 3,
     visitsPerYear: 4,
     internalCostPerVisit: 160,
+    pricingMode: 'annual_package',
     annualPrice: 1600,
     includedServices: [
       ...DEFAULT_SERVICES,
@@ -64,21 +79,41 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
   },
 ];
 
-const normalizePlan = (plan: Partial<MaintenancePlanSelection>, index = 0): MaintenancePlanSelection => ({
-  id: plan.id || `maintenance-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
-  code: plan.code?.trim() || `MAN-${String(index + 1).padStart(3, '0')}`,
-  enabled: true,
-  active: plan.active !== false,
-  type: plan.type || 'custom',
-  planType: plan.planType || 'Personalizada',
-  name: plan.name?.trim() || 'Plano de Manutenção',
-  frequencyMonths: Math.max(1, Number(plan.frequencyMonths) || 12),
-  visitsPerYear: Math.max(1, Number(plan.visitsPerYear) || 1),
-  internalCostPerVisit: Math.max(0, Number(plan.internalCostPerVisit) || 0),
-  annualPrice: Math.max(0, Number(plan.annualPrice) || 0),
-  includedServices: Array.isArray(plan.includedServices) ? plan.includedServices.filter(Boolean) : [],
-  notes: plan.notes?.trim() || '',
-});
+const normalizePlan = (plan: Partial<MaintenancePlanSelection>, index = 0): MaintenancePlanSelection => {
+  const frequencyUnit = plan.frequencyUnit || 'months';
+  const legacyMonths = Math.max(1, Number(plan.frequencyMonths) || 12);
+  const frequencyInterval = normalizeMaintenanceInterval(
+    Number(plan.frequencyInterval) || (frequencyUnit === 'months' ? legacyMonths : 1),
+    frequencyUnit
+  );
+  const visitsPerYear = estimateMaintenanceVisitsPerYear(frequencyInterval, frequencyUnit);
+  const pricingMode = plan.pricingMode || 'annual_package';
+  const pricePerVisit = Math.max(0, Number(plan.pricePerVisit) || 0);
+  const baseAnnualPrice = Math.max(0, Number(plan.annualPrice) || 0);
+
+  const normalized: MaintenancePlanSelection = {
+    id: plan.id || `maintenance-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+    code: plan.code?.trim() || `MAN-${String(index + 1).padStart(3, '0')}`,
+    enabled: true,
+    active: plan.active !== false,
+    type: plan.type || 'custom',
+    planType: plan.planType || 'Personalizada',
+    name: plan.name?.trim() || 'Plano de Manutenção',
+    frequencyInterval,
+    frequencyUnit,
+    frequencyMonths: frequencyToLegacyMonths(frequencyInterval, frequencyUnit),
+    visitsPerYear,
+    internalCostPerVisit: Math.max(0, Number(plan.internalCostPerVisit) || 0),
+    pricingMode,
+    pricePerVisit,
+    annualPrice: baseAnnualPrice,
+    includedServices: Array.isArray(plan.includedServices) ? plan.includedServices.filter(Boolean) : [],
+    notes: plan.notes?.trim() || '',
+  };
+
+  normalized.annualPrice = getMaintenanceAnnualSalePrice(normalized);
+  return normalized;
+};
 
 export function getStoredMaintenancePlans(): MaintenancePlanSelection[] {
   if (typeof window === 'undefined' || !window.localStorage) return DEFAULT_MAINTENANCE_PLANS;

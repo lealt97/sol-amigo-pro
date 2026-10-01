@@ -20,6 +20,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
+import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
 interface ProposalViewerModalProps {
   proposal: SolarProposal | null;
@@ -347,14 +348,22 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
                   <div>
                     <div className="font-bold text-slate-900 text-sm">{proposal.maintenancePlan.name}</div>
                     <div className="mt-1 text-slate-600">
-                      {proposal.maintenancePlan.visitsPerYear} visita(s) por ano • periodicidade de {proposal.maintenancePlan.frequencyMonths} meses
+                      {proposal.maintenancePlan.visitsPerYear} visita(s) por ano • {formatMaintenanceFrequency(proposal.maintenancePlan)}
                     </div>
                   </div>
                   <div className="text-left sm:text-right">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">Valor anual</div>
+                    <div className="text-[10px] font-bold uppercase text-slate-400">{getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit' ? 'Valor por visita' : 'Valor anual'}</div>
                     <div className="text-base font-black text-emerald-700">
-                      R$ {proposal.maintenancePlan.annualPrice.toLocaleString('pt-BR')}
+                      R$ {(getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit'
+                        ? (proposal.maintenancePlan.pricePerVisit || 0)
+                        : getMaintenanceAnnualSalePrice(proposal.maintenancePlan)
+                      ).toLocaleString('pt-BR')}
                     </div>
+                    {getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit' && (
+                      <div className="mt-0.5 text-[10px] text-slate-500">
+                        R$ {getMaintenanceAnnualSalePrice(proposal.maintenancePlan).toLocaleString('pt-BR')}/ano estimado
+                      </div>
+                    )}
                   </div>
                 </div>
                 {proposal.maintenancePlan.includedServices.length > 0 && (
