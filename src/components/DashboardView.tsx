@@ -52,7 +52,7 @@ interface DashboardViewProps {
   onShowToast?: (message: string) => void;
 }
 
-type CardSize = 'small' | 'medium' | 'large';
+type CardSize = 'compact' | 'small' | 'medium' | 'large';
 type CardId =
   | 'revenue'
   | 'proposals'
@@ -76,14 +76,14 @@ interface CardLayoutItem {
 const LAYOUT_STORAGE_KEY = 'solamigo.dashboard.layout.v1';
 
 const DEFAULT_LAYOUT: CardLayoutItem[] = [
-  { id: 'revenue', size: 'small' },
-  { id: 'proposals', size: 'small' },
-  { id: 'conversion', size: 'small' },
-  { id: 'ticket', size: 'small' },
-  { id: 'power', size: 'small' },
-  { id: 'leads', size: 'small' },
-  { id: 'clients', size: 'small' },
-  { id: 'maintenance', size: 'small' },
+  { id: 'revenue', size: 'compact' },
+  { id: 'proposals', size: 'compact' },
+  { id: 'conversion', size: 'compact' },
+  { id: 'ticket', size: 'compact' },
+  { id: 'power', size: 'compact' },
+  { id: 'leads', size: 'compact' },
+  { id: 'clients', size: 'compact' },
+  { id: 'maintenance', size: 'compact' },
   { id: 'sales-chart', size: 'large' },
   { id: 'status-donut', size: 'medium' },
   { id: 'activity-chart', size: 'medium' },
@@ -126,7 +126,7 @@ const readLayout = (): CardLayoutItem[] => {
       .filter((item) => knownIds.has(item?.id))
       .map((item) => ({
         id: item.id as CardId,
-        size: (['small', 'medium', 'large'].includes(item.size) ? item.size : 'medium') as CardSize,
+        size: (['compact', 'small', 'medium', 'large'].includes(item.size) ? item.size : 'medium') as CardSize,
       }));
     const missing = DEFAULT_LAYOUT.filter((item) => !sanitized.some((saved) => saved.id === item.id));
     return [...sanitized, ...missing];
@@ -144,13 +144,14 @@ const saveLayout = (layout: CardLayoutItem[]) => {
 };
 
 const sizeClass: Record<CardSize, string> = {
-  small: 'col-span-12 md:col-span-6 xl:col-span-3',
+  compact: 'col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-2',
+  small: 'col-span-12 sm:col-span-6 xl:col-span-3',
   medium: 'col-span-12 md:col-span-6',
   large: 'col-span-12',
 };
 
 const nextSize = (size: CardSize, direction: 1 | -1): CardSize => {
-  const sizes: CardSize[] = ['small', 'medium', 'large'];
+  const sizes: CardSize[] = ['compact', 'small', 'medium', 'large'];
   const index = sizes.indexOf(size);
   return sizes[Math.max(0, Math.min(sizes.length - 1, index + direction))];
 };
@@ -237,62 +238,76 @@ const CardShell: React.FC<CardShellProps> = ({
   onDrop,
   onResize,
   children,
-}) => (
-  <section
-    onDragOver={(event) => event.preventDefault()}
-    onDrop={() => onDrop(layout.id)}
-    className={`${sizeClass[layout.size]} rounded-2xl border shadow-xs transition-all duration-200 ${
-      draggedId === layout.id ? 'opacity-50 scale-[0.99]' : ''
-    }`}
-    style={{ backgroundColor: theme.primary, borderColor: theme.border }}
-  >
-    <div className="flex min-h-12 items-center justify-between gap-2 border-b px-4 py-2.5" style={{ borderColor: theme.border }}>
-      <div className="min-w-0">
-        <h3 className="truncate text-xs font-black text-[var(--text)]">{title}</h3>
-        {subtitle && <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{subtitle}</p>}
+}) => {
+  const compact = layout.size === 'compact';
+
+  return (
+    <section
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={() => onDrop(layout.id)}
+      data-dashboard-card-size={layout.size}
+      className={`${sizeClass[layout.size]} rounded-2xl border shadow-xs transition-all duration-200 ${
+        draggedId === layout.id ? 'opacity-50 scale-[0.99]' : ''
+      }`}
+      style={{ backgroundColor: theme.primary, borderColor: theme.border }}
+    >
+      <div
+        className={`flex items-center justify-between gap-2 border-b ${
+          compact ? 'min-h-10 px-3 py-2' : 'min-h-12 px-4 py-2.5'
+        }`}
+        style={{ borderColor: theme.border }}
+      >
+        <div className="min-w-0">
+          <h3 className={`truncate font-black text-[var(--text)] ${compact ? 'text-[11px]' : 'text-xs'}`} title={title}>
+            {title}
+          </h3>
+          {!compact && subtitle && <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{subtitle}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            data-no-override-hover
+            onClick={() => onResize(layout.id, -1)}
+            disabled={layout.size === 'compact'}
+            className={`flex items-center justify-center rounded-lg border ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Diminuir card"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            data-no-override-hover
+            onClick={() => onResize(layout.id, 1)}
+            disabled={layout.size === 'large'}
+            className={`flex items-center justify-center rounded-lg border ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Aumentar card"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            draggable
+            data-no-override-hover
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = 'move';
+              onDragStart(layout.id);
+            }}
+            className={`flex cursor-grab items-center justify-center rounded-lg border active:cursor-grabbing ${
+              compact ? 'h-6 w-6' : 'h-7 w-7'
+            }`}
+            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+            title="Clique e arraste para reorganizar"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          data-no-override-hover
-          onClick={() => onResize(layout.id, -1)}
-          disabled={layout.size === 'small'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Diminuir card"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          data-no-override-hover
-          onClick={() => onResize(layout.id, 1)}
-          disabled={layout.size === 'large'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Aumentar card"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          draggable
-          data-no-override-hover
-          onDragStart={(event) => {
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart(layout.id);
-          }}
-          className="flex h-7 w-7 cursor-grab items-center justify-center rounded-lg border active:cursor-grabbing"
-          style={{ borderColor: theme.border, backgroundColor: theme.background }}
-          title="Clique e arraste para reorganizar"
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-    <div className="p-4">{children}</div>
-  </section>
-);
+      <div className={compact ? 'p-3' : 'p-4'}>{children}</div>
+    </section>
+  );
+};
 
 interface KpiProps {
   label: string;
@@ -302,28 +317,29 @@ interface KpiProps {
   theme: ThemeConfig;
   delta?: number | null;
   accent?: string;
+  compact?: boolean;
 }
 
-const KpiContent: React.FC<KpiProps> = ({ label, value, detail, Icon, theme, delta, accent }) => (
-  <div className="flex min-h-[112px] flex-col justify-between">
+const KpiContent: React.FC<KpiProps> = ({ label, value, detail, Icon, theme, delta, accent, compact = false }) => (
+  <div className={`flex flex-col justify-between ${compact ? 'min-h-[86px]' : 'min-h-[112px]'}`}>
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
-        <div className="mt-2 text-2xl font-black tracking-tight text-[var(--text)]">{value}</div>
+        <div className={`font-bold uppercase tracking-[0.12em] text-[var(--muted)] ${compact ? 'text-[9px]' : 'text-[10px]'}`}>{label}</div>
+        <div className={`font-black tracking-tight text-[var(--text)] ${compact ? 'mt-1.5 text-xl' : 'mt-2 text-2xl'}`}>{value}</div>
       </div>
       <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+        className={`flex shrink-0 items-center justify-center rounded-xl border ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
         style={{
           borderColor: theme.border,
           backgroundColor: theme.background,
           color: accent || theme.secondary,
         }}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </div>
     </div>
-    <div className="mt-3 flex items-center justify-between gap-2">
-      <span className="truncate text-[10px] text-[var(--muted)]">{detail}</span>
+    <div className={`flex items-center justify-between gap-2 ${compact ? 'mt-2' : 'mt-3'}`}>
+      <span className={`truncate text-[var(--muted)] ${compact ? 'text-[9px]' : 'text-[10px]'}`}>{detail}</span>
       {delta !== undefined && <DeltaBadge value={delta} />}
     </div>
   </div>
@@ -682,7 +698,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? 'Todo o histórico disponível'
     : `Comparado ao ${getDashboardPeriodLabel(period).toLocaleLowerCase('pt-BR')} anterior`;
 
-  const renderCardContent = (id: CardId) => {
+  const renderCardContent = (id: CardId, size: CardSize) => {
+    const compact = size === 'compact';
     switch (id) {
       case 'revenue':
         return (
@@ -692,6 +709,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`${approvedCount} proposta(s) aprovada(s)`}
             Icon={CircleDollarSign}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentRevenue, previousRevenue)}
             accent="#10b981"
           />
@@ -704,6 +722,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`${approvedCount} aprovada(s) no período`}
             Icon={FileText}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(periodProposals.length, previousProposals.length)}
           />
         );
@@ -715,6 +734,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Aprovadas ÷ propostas"
             Icon={Target}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : (previousProposals.length ? currentConversion - previousConversion : null)}
             accent="#8b5cf6"
           />
@@ -727,6 +747,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Média das propostas aprovadas"
             Icon={WalletCards}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentTicket, previousTicket)}
             accent="#f59e0b"
           />
@@ -739,6 +760,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Somente propostas aprovadas"
             Icon={Zap}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(currentPower, previousPower)}
             accent="#eab308"
           />
@@ -751,6 +773,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={comparisonDetail}
             Icon={Users}
             theme={theme}
+            compact={compact}
             delta={period === 'all' ? undefined : percentageChange(periodLeads.length, previousLeads.length)}
             accent="#3b82f6"
           />
@@ -763,6 +786,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail={`+${periodClients.length} cadastro(s) no período`}
             Icon={UserCheck}
             theme={theme}
+            compact={compact}
             accent="#06b6d4"
           />
         );
@@ -774,6 +798,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             detail="Próximos 30 dias"
             Icon={Wrench}
             theme={theme}
+            compact={compact}
             accent="#10b981"
           />
         );
@@ -920,7 +945,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <h1 className="mt-1 text-2xl font-black text-[var(--text)]">Dashboard Sol Amigo Pro</h1>
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
-            Indicadores comerciais, pipeline, clientes e pós-venda em um painel personalizável. Arraste os cards pelo ícone e use − / + para mudar o tamanho.
+            Indicadores comerciais, pipeline, clientes e pós-venda em um painel personalizável. Arraste os cards pelo ícone e use − / + para alternar entre compacto, pequeno, médio e grande.
           </p>
         </div>
 
@@ -999,7 +1024,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="flex min-h-[112px] items-center justify-center">
                   <RefreshCw className="h-5 w-5 animate-spin text-[var(--muted)]" />
                 </div>
-              ) : renderCardContent(item.id)}
+              ) : renderCardContent(item.id, item.size)}
             </CardShell>
           );
         })}
