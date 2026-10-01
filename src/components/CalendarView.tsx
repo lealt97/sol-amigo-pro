@@ -149,10 +149,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
     });
   }, [cursor, visibleEvents]);
 
-  const upcoming = useMemo(() => {
+  const orderedListEvents = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    return visibleEvents.filter((event) => new Date(event.startAt).getTime() >= start.getTime()).slice(0, 80);
+
+    return visibleEvents
+      .filter((event) => new Date(event.startAt).getTime() >= start.getTime())
+      .sort((a, b) => {
+        const byDate = new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+        if (byDate !== 0) return byDate;
+
+        const priorityRank: Record<CalendarEventPriority, number> = {
+          Alta: 0,
+          Média: 1,
+          Baixa: 2,
+        };
+        return priorityRank[a.priority] - priorityRank[b.priority];
+      })
+      .slice(0, 80);
   }, [visibleEvents]);
 
   const openNew = (date?: Date) => {
@@ -389,13 +403,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {upcoming.length === 0 ? (
+        <div className="flex flex-col gap-3">
+          {orderedListEvents.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-10 text-center" style={{ borderColor: theme.border }}>
               <CalendarDays className="mx-auto h-8 w-8 text-[var(--muted)]" />
               <div className="mt-2 text-sm font-bold">Nenhum compromisso futuro</div>
             </div>
-          ) : upcoming.map((event) => (
+          ) : orderedListEvents.map((event) => (
             <button
               key={event.id}
               type="button"
