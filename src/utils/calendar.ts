@@ -1,4 +1,4 @@
-import { CalendarEvent } from '../types';
+import { CalendarEvent, MaintenanceFrequencyUnit } from '../types';
 
 export type CalendarNotificationStage = 'overdue' | 'today' | 'tomorrow' | 'soon';
 
@@ -97,25 +97,56 @@ export function addMonthsKeepingDay(dateInput: string | Date, months: number): D
   return result;
 }
 
+export interface CalendarRecurrence {
+  interval: number;
+  unit: MaintenanceFrequencyUnit;
+}
+
+export function addCalendarRecurrence(
+  dateInput: string | Date,
+  intervalInput: number,
+  unit: MaintenanceFrequencyUnit
+): Date {
+  const interval = Math.max(1, Math.floor(Number(intervalInput) || 1));
+  if (unit === 'months') return addMonthsKeepingDay(dateInput, interval);
+
+  const result = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput);
+  result.setDate(result.getDate() + interval * (unit === 'weeks' ? 7 : 1));
+  return result;
+}
+
 export function createRecurringCalendarEvents(
   base: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt' | 'seriesId' | 'occurrenceIndex'>,
   occurrences: number,
-  recurrenceMonths: number
+  recurrenceInput: number | CalendarRecurrence
 ): CalendarEvent[] {
-  const safeOccurrences = Math.max(1, Math.min(24, Math.floor(occurrences || 1)));
-  const safeMonths = Math.max(1, Math.min(36, Math.floor(recurrenceMonths || 1)));
+  const safeOccurrences = Math.max(1, Math.min(160, Math.floor(occurrences || 1)));
+  const recurrence: CalendarRecurrence = typeof recurrenceInput === 'number'
+    ? { interval: Math.max(1, Math.min(36, Math.floor(recurrenceInput || 1))), unit: 'months' }
+    : {
+        interval: Math.max(1, Math.min(365, Math.floor(recurrenceInput.interval || 1))),
+        unit: recurrenceInput.unit || 'months',
+      };
   const seriesId = `series-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const nowIso = new Date().toISOString();
 
   return Array.from({ length: safeOccurrences }, (_, index) => {
-    const start = addMonthsKeepingDay(base.startAt, safeMonths * index);
-    const end = base.endAt ? addMonthsKeepingDay(base.endAt, safeMonths * index) : undefined;
+    const offset = recurrence.interval * index;
+    const start = index === 0
+      ? new Date(base.startAt)
+      : addCalendarRecurrence(base.startAt, offset, recurrence.unit);
+    const end = base.endAt
+      ? (index === 0 ? new Date(base.endAt) : addCalendarRecurrence(base.endAt, offset, recurrence.unit))
+      : undefined;
+
     return {
       ...base,
       id: crypto.randomUUID(),
       seriesId,
       occurrenceIndex: index + 1,
-      recurrenceMonths: safeMonths,
+      recurrenceInterval: recurrence.interval,
+      recurrenceUnit: recurrence.unit,
+      recurrenceMonths: recurrence.unit === 'months' ? recurrence.interval : base.recurrenceMonths,
       startAt: start.toISOString(),
       endAt: end?.toISOString(),
       createdAt: nowIso,
