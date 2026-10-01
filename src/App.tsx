@@ -24,6 +24,7 @@ import { PropostasView } from './components/PropostasView';
 import { KitsView } from './components/KitsView';
 import { PosVendaView } from './components/PosVendaView';
 import { CalendarView } from './components/CalendarView';
+import { DashboardView } from './components/DashboardView';
 
 type AuthScreen = 'login' | 'register' | 'mfa';
 
@@ -43,7 +44,7 @@ export default function App() {
   const [mfaError, setMfaError] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
 
-  const [activePage, setActivePage] = useState<PageKey>('leads');
+  const [activePage, setActivePage] = useState<PageKey>('dashboard');
   const [proposalFilterCode, setProposalFilterCode] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -227,7 +228,17 @@ export default function App() {
 
   const renderCurrentView = () => {
     switch (activePage) {
-      case 'dashboard': return <div id="dashboard-view" />;
+      case 'dashboard':
+        return (
+          <DashboardView
+            theme={currentTheme}
+            onShowToast={showToast}
+            onNavigate={(page, filter) => {
+              setProposalFilterCode(filter || '');
+              setActivePage(page);
+            }}
+          />
+        );
       case 'leads':
         return <LeadsView theme={currentTheme} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
       case 'clientes':
