@@ -847,8 +847,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         );
       case 'agenda':
         return upcomingEvents.length === 0 ? (
-          <div className="flex min-h-[230px] flex-col items-center justify-center text-center">
-            <CalendarDays className="h-9 w-9 text-[var(--muted)]" />
+          <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>
+            <CalendarDays className={`${compact ? 'h-7 w-7' : 'h-9 w-9'} text-[var(--muted)]`} />
             <div className="mt-3 text-sm font-bold">Nenhum compromisso futuro</div>
             <button
               type="button"
@@ -889,7 +889,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-sol-amigo-text-hover
               onClick={() => onNavigate?.('calendario')}
-              className="pt-1 text-xs font-bold"
+              className={`max-w-full truncate pt-1 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
               style={{ color: theme.secondary }}
             >
               Ver calendário completo →
@@ -898,8 +898,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         );
       case 'recent-proposals':
         return recentProposals.length === 0 ? (
-          <div className="flex min-h-[230px] flex-col items-center justify-center text-center">
-            <FileText className="h-9 w-9 text-[var(--muted)]" />
+          <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>
+            <FileText className={`${compact ? 'h-7 w-7' : 'h-9 w-9'} text-[var(--muted)]`} />
             <div className="mt-3 text-sm font-bold">Nenhuma proposta no período</div>
           </div>
         ) : (
@@ -919,13 +919,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div className="min-w-0">
                     <div className="truncate text-xs font-black text-[var(--text)]">{proposal.clientName}</div>
-                    <div className="mt-0.5 text-[10px] text-[var(--muted)]">{proposal.code} · {number.format(proposal.systemPowerKWp)} kWp</div>
+                    <div className="mt-0.5 max-w-full truncate text-[10px] text-[var(--muted)]" title={`${proposal.code} · ${number.format(proposal.systemPowerKWp)} kWp`}>{proposal.code} · {number.format(proposal.systemPowerKWp)} kWp</div>
                   </div>
                   <div className={`min-w-0 shrink-0 ${compact ? 'text-left' : 'text-right'}`}>
                     <div className={`max-w-full truncate font-black text-[var(--text)] ${compact ? 'text-[11px]' : 'text-xs'}`} title={money.format(proposal.totalValue)}>{money.format(proposal.totalValue)}</div>
-                    <div className="mt-0.5 inline-flex items-center gap-1 text-[9px] font-bold" style={{ color: statusColor[normalized] }}>
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor[normalized] }} />
-                      {statusLabel[normalized]}
+                    <div className="mt-0.5 inline-flex max-w-full min-w-0 items-center gap-1 text-[9px] font-bold" style={{ color: statusColor[normalized] }}>
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: statusColor[normalized] }} />
+                      <span className="truncate" title={statusLabel[normalized]}>{statusLabel[normalized]}</span>
                     </div>
                   </div>
                 </button>
