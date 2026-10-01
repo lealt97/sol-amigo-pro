@@ -3,6 +3,7 @@ import {
   estimateMaintenanceVisitsPerYear,
   frequencyToLegacyMonths,
   getMaintenanceAnnualSalePrice,
+  normalizeMaintenanceInterval,
 } from '../utils/maintenance';
 
 export const MAINTENANCE_PLANS_STORAGE_KEY = 'solamigo.maintenance-plans.v1';
@@ -81,9 +82,9 @@ export const DEFAULT_MAINTENANCE_PLANS: MaintenancePlanSelection[] = [
 const normalizePlan = (plan: Partial<MaintenancePlanSelection>, index = 0): MaintenancePlanSelection => {
   const frequencyUnit = plan.frequencyUnit || 'months';
   const legacyMonths = Math.max(1, Number(plan.frequencyMonths) || 12);
-  const frequencyInterval = Math.max(
-    1,
-    Math.floor(Number(plan.frequencyInterval) || (frequencyUnit === 'months' ? legacyMonths : 1))
+  const frequencyInterval = normalizeMaintenanceInterval(
+    Number(plan.frequencyInterval) || (frequencyUnit === 'months' ? legacyMonths : 1),
+    frequencyUnit
   );
   const visitsPerYear = estimateMaintenanceVisitsPerYear(frequencyInterval, frequencyUnit);
   const pricingMode = plan.pricingMode || 'annual_package';
