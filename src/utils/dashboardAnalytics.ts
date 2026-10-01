@@ -134,13 +134,13 @@ export function percentageChange(current: number, previous: number): number | nu
 export function buildDashboardBuckets(period: DashboardPeriod, now = new Date(), oldestDate?: Date): DashboardBucket[] {
   if (period === '30d') {
     const end = endOfDay(now);
-    const firstStart = startOfDay(addDays(now, -27));
-    return Array.from({ length: 4 }, (_, index) => {
-      const start = startOfDay(addDays(firstStart, index * 7));
-      const bucketEnd = index === 3 ? end : endOfDay(addDays(start, 6));
+    const firstStart = startOfDay(addDays(now, -29));
+    return Array.from({ length: 5 }, (_, index) => {
+      const start = startOfDay(addDays(firstStart, index * 6));
+      const bucketEnd = index === 4 ? end : endOfDay(addDays(start, 5));
       return {
-        key: `week-${index}`,
-        label: `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`,
+        key: `period-${index}`,
+        label: start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         start,
         end: bucketEnd,
       };
