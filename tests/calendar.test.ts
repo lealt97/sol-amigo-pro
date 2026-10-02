@@ -4,6 +4,7 @@ import { CalendarEvent } from '../src/types';
 import {
   addMonthsKeepingDay,
   buildCalendarNotifications,
+  compareCalendarEvents,
   createRecurringCalendarEvents,
 } from '../src/utils/calendar';
 
@@ -87,4 +88,82 @@ test('série quinzenal cria visitas a cada 15 dias', () => {
     '2026-10-31',
     '2026-11-15',
   ]);
+});
+
+
+test('mesma data e mesma prioridade preserva a ordem de criação', () => {
+  const events: CalendarEvent[] = [
+    {
+      ...baseEvent,
+      id: 'created-later',
+      startAt: '2026-10-10T09:00:00.000Z',
+      priority: 'Média',
+      createdAt: '2026-10-02T12:00:00.000Z',
+    },
+    {
+      ...baseEvent,
+      id: 'created-first',
+      startAt: '2026-10-10T16:00:00.000Z',
+      priority: 'Média',
+      createdAt: '2026-10-01T12:00:00.000Z',
+    },
+  ];
+
+  const sorted = [...events].sort(compareCalendarEvents);
+  assert.deepEqual(sorted.map((event) => event.id), ['created-first', 'created-later']);
+});
+
+test('na mesma data a prioridade vem antes da ordem de criação', () => {
+  const events: CalendarEvent[] = [
+    {
+      ...baseEvent,
+      id: 'low-created-first',
+      startAt: '2026-10-10T08:00:00.000Z',
+      priority: 'Baixa',
+      createdAt: '2026-09-20T12:00:00.000Z',
+    },
+    {
+      ...baseEvent,
+      id: 'high-created-later',
+      startAt: '2026-10-10T18:00:00.000Z',
+      priority: 'Alta',
+      createdAt: '2026-10-02T12:00:00.000Z',
+    },
+    {
+      ...baseEvent,
+      id: 'medium',
+      startAt: '2026-10-10T10:00:00.000Z',
+      priority: 'Média',
+      createdAt: '2026-10-01T12:00:00.000Z',
+    },
+  ];
+
+  const sorted = [...events].sort(compareCalendarEvents);
+  assert.deepEqual(sorted.map((event) => event.id), [
+    'high-created-later',
+    'medium',
+    'low-created-first',
+  ]);
+});
+
+test('datas diferentes continuam em ordem cronológica por dia', () => {
+  const events: CalendarEvent[] = [
+    {
+      ...baseEvent,
+      id: 'tomorrow-high',
+      startAt: '2026-10-11T08:00:00.000Z',
+      priority: 'Alta',
+      createdAt: '2026-09-01T12:00:00.000Z',
+    },
+    {
+      ...baseEvent,
+      id: 'today-low',
+      startAt: '2026-10-10T18:00:00.000Z',
+      priority: 'Baixa',
+      createdAt: '2026-10-02T12:00:00.000Z',
+    },
+  ];
+
+  const sorted = [...events].sort(compareCalendarEvents);
+  assert.deepEqual(sorted.map((event) => event.id), ['today-low', 'tomorrow-high']);
 });
