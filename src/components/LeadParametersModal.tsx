@@ -298,7 +298,6 @@ export function LeadParametersModal({
 
   // Excluir proposta
   const handleDeleteProposal = async (proposalId: string, code: string) => {
-    if (!window.confirm(`Tem certeza que deseja excluir a proposta ${code}?`)) return;
     setDeletingProposalId(proposalId);
     try {
       await deleteLeadProposal(proposalId);

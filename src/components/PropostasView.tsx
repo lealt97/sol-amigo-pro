@@ -102,12 +102,13 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   }, []);
 
   const handleDeleteProposal = (p: ClientProposal) => {
-    if (!window.confirm(`Tem certeza que deseja excluir a proposta ${p.code} (${p.clientName})?`)) {
-      return;
+    try {
+      const updated = deleteClientProposal(p.id);
+      setProposals(updated);
+      onShowToast(`Proposta ${p.code} excluída.`);
+    } catch {
+      onShowToast(`Erro ao excluir proposta ${p.code}.`);
     }
-    const updated = deleteClientProposal(p.id);
-    setProposals(updated);
-    onShowToast(`Proposta ${p.code} excluída.`);
   };
 
   // Atualiza busca se initialFilterCode mudar

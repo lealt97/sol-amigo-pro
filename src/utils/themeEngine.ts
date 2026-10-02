@@ -386,6 +386,21 @@ export function loadSavedPdfSettings(): PdfSettingsConfig {
   return { ...DEFAULT_PDF_SETTINGS };
 }
 
+export function createScrollbarArrowSvg(color: string, direction: 'up' | 'down' | 'left' | 'right'): string {
+  const encoded = encodeURIComponent(color);
+  let svg = '';
+  if (direction === 'up') {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'><polygon points='4,0 8,6 0,6' fill='${encoded}'/></svg>`;
+  } else if (direction === 'down') {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'><polygon points='4,6 8,0 0,0' fill='${encoded}'/></svg>`;
+  } else if (direction === 'left') {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' width='6' height='8' viewBox='0 0 6 8'><polygon points='0,4 6,8 6,0' fill='${encoded}'/></svg>`;
+  } else {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' width='6' height='8' viewBox='0 0 6 8'><polygon points='6,4 0,8 0,0' fill='${encoded}'/></svg>`;
+  }
+  return `url("data:image/svg+xml,${svg}")`;
+}
+
 export function applyThemeToDOM(theme: ThemeConfig) {
   const root = document.documentElement;
 
@@ -411,6 +426,12 @@ export function applyThemeToDOM(theme: ThemeConfig) {
   root.style.setProperty('--button-filled-hover-fg', getContrastFg(theme.secondary));
   root.style.setProperty('--button-outline-hover-bg', theme.secondary);
   root.style.setProperty('--button-outline-hover-fg', getContrastFg(theme.secondary));
+
+  // Barras de rolagem personalizadas sincronizadas com o motor de cores
+  root.style.setProperty('--scrollbar-arrow-up', createScrollbarArrowSvg(theme.secondary, 'up'));
+  root.style.setProperty('--scrollbar-arrow-down', createScrollbarArrowSvg(theme.secondary, 'down'));
+  root.style.setProperty('--scrollbar-arrow-left', createScrollbarArrowSvg(theme.secondary, 'left'));
+  root.style.setProperty('--scrollbar-arrow-right', createScrollbarArrowSvg(theme.secondary, 'right'));
 
   // Aliases mantidos para compatibilidade com componentes existentes.
   root.style.setProperty('--bg', theme.background);

@@ -886,14 +886,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   ? `${compact ? 'max-h-[155px]' : 'max-h-[148px]'} overflow-y-auto pr-1.5`
                   : ''
               }`}
-              style={
-                hasScroll
-                  ? {
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: `color-mix(in srgb, ${theme.secondary} 45%, transparent) transparent`,
-                    }
-                  : undefined
-              }
             >
               {upcomingEvents.map((event) => (
                 <button

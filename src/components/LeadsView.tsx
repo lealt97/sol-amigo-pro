@@ -19,7 +19,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { supabase, validateCurrentPassword } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Lead, LeadStage, PageKey, ThemeConfig } from '../types';
 import {
   addLeadToClients,
@@ -70,7 +70,6 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   const [notesLead, setNotesLead] = useState<Lead | null>(null);
   const [paramsLead, setParamsLead] = useState<Lead | null>(null);
   const [systemType, setSystemType] = useState<ProposalSystemType>('On-Grid');
-  const [password, setPassword] = useState('');
   const [modalError, setModalError] = useState('');
   const menuRef = useRef<HTMLDivElement | null>(null);
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
@@ -296,19 +295,14 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   };
 
   const handleDelete = async () => {
-    if (!deleteLead || !password) return;
+    if (!deleteLead) return;
     setWorkingId(deleteLead.id);
     setModalError('');
     try {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user?.email) throw new Error('Não foi possível identificar o e-mail da conta.');
-      const passwordError = await validateCurrentPassword(data.user.email, password);
-      if (passwordError) throw new Error('Senha incorreta. O lead não foi excluído.');
       await deleteOwnedLead(deleteLead.id);
       setLeads((current) => current.filter((item) => item.id !== deleteLead.id));
       onShowToast(`Lead ${deleteLead.name} excluído.`);
       setDeleteLead(null);
-      setPassword('');
     } catch (err: any) {
       setModalError(err?.message || 'Não foi possível excluir o lead.');
     } finally {
@@ -318,7 +312,6 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
 
   const openDelete = (lead: Lead) => {
     setOpenMenuId(null);
-    setPassword('');
     setModalError('');
     setDeleteLead(lead);
   };
@@ -379,7 +372,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
         </div>
 
         {/* Barra de Filtro Rápido com Cores Semânticas de Cada Status */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs pt-0.5 no-scrollbar">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 text-xs pt-0.5">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
@@ -712,13 +705,51 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
       )}
 
       {deleteLead && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--neutral) 78%, transparent)' }}>
-          <div className="w-full max-w-md rounded-xl border p-5" style={{ backgroundColor: theme.primary, borderColor: 'color-mix(in srgb, var(--danger) 40%, transparent)', color: theme.text, boxShadow: `0 18px 45px ${theme.secondary}2e` }}>
-            <div className="flex items-start justify-between"><div><h2 className="text-lg font-bold">Excluir lead</h2><p className="mt-1 text-sm text-[var(--muted)]">Esta ação removerá definitivamente <strong>{deleteLead.name}</strong>.</p></div><button onClick={() => setDeleteLead(null)} className="p-1 text-[var(--dim)]"><X className="h-5 w-5" /></button></div>
-            <label htmlFor="lead-delete-password" className="mt-5 block text-xs font-semibold">Digite sua senha para confirmar</label>
-            <input id="lead-delete-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void handleDelete(); }} className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--neutral)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--danger)]" />
-            {modalError && <p className="mt-3 text-xs text-[var(--danger)]">{modalError}</p>}
-            <div className="mt-6 flex justify-end gap-3"><button onClick={() => setDeleteLead(null)} data-cancel-outline="true" className="btn-outline-cancel rounded-lg px-4 py-2 text-sm cursor-pointer">Cancelar</button><button onClick={() => void handleDelete()} disabled={!password || workingId === deleteLead.id} data-delete-btn="true" className="btn-danger-solid rounded-lg px-4 py-2 text-sm font-bold cursor-pointer">{workingId === deleteLead.id ? 'Excluindo...' : 'Excluir definitivamente'}</button></div>
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border p-6 shadow-2xl space-y-4"
+            style={{
+              backgroundColor: theme.primary,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Excluir Lead</h3>
+                <p className="text-xs text-[var(--muted)]">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text)]">
+              Tem certeza que deseja remover o lead <strong>{deleteLead.name}</strong> da sua base?
+            </p>
+            {modalError && <p className="text-xs text-[var(--danger)]">{modalError}</p>}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteLead(null)}
+                data-cancel-outline="true"
+                className="rounded-lg border px-4 py-2 text-xs font-semibold cursor-pointer"
+                style={{ borderColor: theme.border, backgroundColor: theme.background }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                disabled={workingId === deleteLead.id}
+                data-delete-btn="true"
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 cursor-pointer"
+              >
+                {workingId === deleteLead.id ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </button>
+            </div>
           </div>
         </div>
       )}

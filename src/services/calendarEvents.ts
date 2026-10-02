@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { CalendarEvent } from '../types';
 
 export const CALENDAR_EVENTS_UPDATED_EVENT = 'solamigo:calendar-events-updated';
+const STORAGE_KEY = 'solamigo.calendar-events.v1';
 const STORAGE_PREFIX = 'solamigo.calendar-events.v1';
 
 const normalizeEvent = (value: Partial<CalendarEvent>): CalendarEvent => {
@@ -33,38 +34,71 @@ const normalizeEvent = (value: Partial<CalendarEvent>): CalendarEvent => {
   };
 };
 
-async function getStorageKey(): Promise<string> {
-  try {
-    const { data } = await supabase.auth.getUser();
-    return `${STORAGE_PREFIX}:${data.user?.id || 'anonymous'}`;
-  } catch {
-    return `${STORAGE_PREFIX}:anonymous`;
-  }
-}
-
-async function getLocalEvents(): Promise<CalendarEvent[]> {
+export function getLocalEvents(): CalendarEvent[] {
   if (typeof window === 'undefined') return [];
   try {
-    const key = await getStorageKey();
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(normalizeEvent) : [];
+    const map = new Map<string, CalendarEvent>();
+
+    // 1. Read main storage key
+    const rawMain = localStorage.getItem(STORAGE_KEY);
+    if (rawMain) {
+      try {
+        const parsed = JSON.parse(rawMain);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            const ev = normalizeEvent(item);
+            if (ev.id) map.set(ev.id, ev);
+          });
+        }
+      } catch {}
+    }
+
+    // 2. Also check any legacy partitioned keys (e.g. solamigo.calendar-events.v1:anonymous, etc.)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`${STORAGE_PREFIX}:`)) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item) => {
+                const ev = normalizeEvent(item);
+                if (ev.id && !map.has(ev.id)) map.set(ev.id, ev);
+              });
+            }
+          }
+        } catch {}
+      }
+    }
+
+    return Array.from(map.values());
   } catch {
     return [];
   }
 }
 
-async function saveLocalEvents(events: CalendarEvent[], emitEvent = true): Promise<void> {
+export function saveLocalEvents(events: CalendarEvent[], emitEvent = true): void {
   if (typeof window === 'undefined') return;
   try {
-    const key = await getStorageKey();
-    localStorage.setItem(key, JSON.stringify(events.map(normalizeEvent)));
+    const normalized = events.map(normalizeEvent);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+
+    // Clean up fragmented legacy keys to avoid resurrection
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`${STORAGE_PREFIX}:`)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+
     if (emitEvent) {
-      window.dispatchEvent(new CustomEvent(CALENDAR_EVENTS_UPDATED_EVENT, { detail: events }));
+      window.dispatchEvent(new CustomEvent(CALENDAR_EVENTS_UPDATED_EVENT, { detail: normalized }));
     }
   } catch {
-    // local persistence is only a fallback
+    // local persistence fallback
   }
 }
 
@@ -119,7 +153,7 @@ const toRow = (event: CalendarEvent, userId: string) => ({
 });
 
 export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
-  const local = await getLocalEvents();
+  const local = getLocalEvents();
   try {
     const { data, error } = await supabase
       .from('calendar_events')
@@ -129,7 +163,7 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     if (error || !Array.isArray(data)) return local;
 
     const remote = data.map(mapRow);
-    await saveLocalEvents(remote, false);
+    saveLocalEvents(remote, false);
     return remote;
   } catch {
     return local;
@@ -138,11 +172,11 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
 
 export async function saveCalendarEvent(event: CalendarEvent): Promise<CalendarEvent> {
   const normalized = normalizeEvent({ ...event, updatedAt: new Date().toISOString() });
-  const local = await getLocalEvents();
+  const local = getLocalEvents();
   const next = local.some((item) => item.id === normalized.id)
     ? local.map((item) => item.id === normalized.id ? normalized : item)
     : [...local, normalized];
-  await saveLocalEvents(next);
+  saveLocalEvents(next);
 
   try {
     const { data: authData } = await supabase.auth.getUser();
@@ -157,7 +191,7 @@ export async function saveCalendarEvent(event: CalendarEvent): Promise<CalendarE
     if (!error && data) {
       const saved = mapRow(data);
       const refreshed = next.map((item) => item.id === saved.id ? saved : item);
-      await saveLocalEvents(refreshed);
+      saveLocalEvents(refreshed);
       return saved;
     }
   } catch {
@@ -174,19 +208,19 @@ export async function saveCalendarEvents(events: CalendarEvent[]): Promise<Calen
 }
 
 export async function deleteCalendarEvent(eventId: string, deleteSeries = false): Promise<void> {
-  const local = await getLocalEvents();
+  const local = getLocalEvents();
   const target = local.find((item) => item.id === eventId);
   const ids = deleteSeries && target?.seriesId
     ? local.filter((item) => item.seriesId === target.seriesId).map((item) => item.id)
     : [eventId];
   const next = local.filter((item) => !ids.includes(item.id));
-  await saveLocalEvents(next);
+  saveLocalEvents(next);
 
   try {
     let query = supabase.from('calendar_events').delete();
     if (deleteSeries && target?.seriesId) query = query.eq('series_id', target.seriesId);
     else query = query.eq('id', eventId);
-    await query;
+    void query.then();
   } catch {
     // local fallback already applied
   }

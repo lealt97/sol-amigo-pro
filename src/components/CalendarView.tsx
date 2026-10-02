@@ -376,13 +376,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!isExisting) return;
-    const deleteSeries = Boolean(editing.seriesId)
-      && window.confirm('Este evento faz parte de uma série. OK para excluir toda a série ou Cancelar para excluir somente esta ocorrência?');
-    await deleteCalendarEvent(editing.id, deleteSeries);
-    setEditorOpen(false);
-    onShowToast?.(deleteSeries ? 'Série removida do calendário.' : 'Evento removido.');
-    await reload();
+    if (!isExisting || !editing.id) return;
+    const targetId = editing.id;
+    const seriesId = editing.seriesId;
+    try {
+      setEvents((prev) =>
+        seriesId
+          ? prev.filter((item) => item.seriesId !== seriesId)
+          : prev.filter((item) => item.id !== targetId)
+      );
+      setEditorOpen(false);
+      await deleteCalendarEvent(targetId, Boolean(seriesId));
+      onShowToast?.(seriesId ? 'Série removida do calendário.' : 'Evento excluído.');
+      void reload();
+    } catch {
+      onShowToast?.('Erro ao excluir evento.');
+      void reload();
+    }
   };
 
   const monthTitle = cursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -728,18 +738,46 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenDropdownDateKey(null);
-                                    openEdit(event);
-                                  }}
-                                  className="rounded-lg p-1 text-[var(--muted)] hover:text-[var(--text)] shrink-0 cursor-pointer"
-                                  title="Editar evento"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownDateKey(null);
+                                      openEdit(event);
+                                    }}
+                                    className="rounded-lg p-1 text-[var(--muted)] hover:text-[var(--text)] cursor-pointer transition-colors"
+                                    title="Editar evento"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const eventId = event.id;
+                                      const title = event.title;
+                                      // Optimistically remove from state
+                                      setEvents((prev) => prev.filter((item) => item.id !== eventId));
+                                      // If this was the only event for this day, close popover
+                                      if (dayEvents.length <= 1) {
+                                        setOpenDropdownDateKey(null);
+                                      }
+                                      try {
+                                        await deleteCalendarEvent(eventId, false);
+                                        onShowToast?.(`Evento "${title}" excluído.`);
+                                        void reload();
+                                      } catch {
+                                        onShowToast?.('Erro ao excluir evento.');
+                                        void reload();
+                                      }
+                                    }}
+                                    className="rounded-lg p-1 text-[var(--muted)] hover:text-red-400 cursor-pointer transition-colors"
+                                    title="Excluir evento"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             );
                           })
@@ -821,19 +859,44 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     <div className="text-xs font-black">{new Date(event.startAt).toLocaleDateString('pt-BR')}</div>
                     <div className="mt-1 text-[11px] text-[var(--muted)]">{event.allDay ? 'Dia inteiro' : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(event);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all hover:bg-white/10 cursor-pointer shadow-2xs"
-                    style={{ borderColor: theme.border, color: theme.text }}
-                    title="Editar evento"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Editar</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(event);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all hover:bg-white/10 cursor-pointer shadow-2xs"
+                      style={{ borderColor: theme.border, color: theme.text }}
+                      title="Editar evento"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const eventId = event.id;
+                        const title = event.title;
+                        setEvents((prev) => prev.filter((item) => item.id !== eventId));
+                        try {
+                          await deleteCalendarEvent(eventId, false);
+                          onShowToast?.(`Evento "${title}" excluído.`);
+                          void reload();
+                        } catch {
+                          onShowToast?.('Erro ao excluir evento.');
+                          void reload();
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40 cursor-pointer shadow-2xs"
+                      style={{ borderColor: theme.border, color: theme.text }}
+                      title="Excluir evento"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Excluir</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

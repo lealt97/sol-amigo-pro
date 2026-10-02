@@ -724,27 +724,119 @@ main > #area-risco-page {
   display: none !important;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+:root {
+  --scrollbar-arrow-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpolygon points='4,0 8,6 0,6' fill='%230076DD'/%3E%3C/svg%3E");
+  --scrollbar-arrow-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpolygon points='4,6 8,0 0,0' fill='%230076DD'/%3E%3C/svg%3E");
+  --scrollbar-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='8' viewBox='0 0 6 8'%3E%3Cpolygon points='0,4 6,8 6,0' fill='%230076DD'/%3E%3C/svg%3E");
+  --scrollbar-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='8' viewBox='0 0 6 8'%3E%3Cpolygon points='6,4 0,8 0,0' fill='%230076DD'/%3E%3C/svg%3E");
 }
-::-webkit-scrollbar-track {
-  background: var(--neutral);
+
+/* Configuração global de barras de rolagem com o estilo e cores do sistema */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--primary) 35%, var(--neutral));
-  border-radius: 4px;
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--primary) 55%, var(--neutral));
+
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  min-height: 28px;
+  min-width: 28px;
+}
+
+::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--secondary) 85%, #ffffff);
+}
+
+::-webkit-scrollbar-thumb:active,
+*::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--secondary) 75%, #000000);
+}
+
+/* Setas de rolagem superior e inferior (vertical) */
+::-webkit-scrollbar-button:vertical:start:decrement,
+*::-webkit-scrollbar-button:vertical:start:decrement {
+  display: block;
+  height: 12px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 7px 5px;
+  background-image: var(--scrollbar-arrow-up);
+}
+
+::-webkit-scrollbar-button:vertical:end:increment,
+*::-webkit-scrollbar-button:vertical:end:increment {
+  display: block;
+  height: 12px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 7px 5px;
+  background-image: var(--scrollbar-arrow-down);
+}
+
+/* Setas de rolagem esquerda e direita (horizontal) */
+::-webkit-scrollbar-button:horizontal:start:decrement,
+*::-webkit-scrollbar-button:horizontal:start:decrement {
+  display: block;
+  width: 12px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 5px 7px;
+  background-image: var(--scrollbar-arrow-left);
+}
+
+::-webkit-scrollbar-button:horizontal:end:increment,
+*::-webkit-scrollbar-button:horizontal:end:increment {
+  display: block;
+  width: 12px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 5px 7px;
+  background-image: var(--scrollbar-arrow-right);
+}
+
+/* Ocultar botões adicionais no meio da barra */
+::-webkit-scrollbar-button:vertical:start:increment,
+::-webkit-scrollbar-button:vertical:end:decrement,
+::-webkit-scrollbar-button:horizontal:start:increment,
+::-webkit-scrollbar-button:horizontal:end:decrement,
+*::-webkit-scrollbar-button:vertical:start:increment,
+*::-webkit-scrollbar-button:vertical:end:decrement,
+*::-webkit-scrollbar-button:horizontal:start:increment,
+*::-webkit-scrollbar-button:horizontal:end:decrement {
+  display: none;
 }
 
 .no-scrollbar {
   -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: none !important;
 }
 .no-scrollbar::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
 }
 
 /* Tag de proposta em anotações: link sem preenchimento forte de hover, mantendo estilo sutil */

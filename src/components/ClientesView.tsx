@@ -455,11 +455,16 @@ export function ClientesView({
   // Excluir cliente
   const handleDeleteClient = async () => {
     if (!deleteClientTarget) return;
-    setWorkingId(deleteClientTarget.id);
+    const target = deleteClientTarget;
+    setWorkingId(target.id);
     try {
-      await deleteClient(deleteClientTarget.id);
-      setClients((prev) => prev.filter((c) => c.id !== deleteClientTarget.id));
-      onShowToast(`Cliente ${deleteClientTarget.name} excluído.`);
+      setClients((prev) =>
+        prev.filter(
+          (c) => c.id !== target.id && (!target.sourceLeadId || c.sourceLeadId !== target.sourceLeadId)
+        )
+      );
+      await deleteClient(target.id, target.sourceLeadId);
+      onShowToast(`Cliente ${target.name} excluído.`);
       setDeleteClientTarget(null);
     } catch (err: any) {
       setError(err?.message || 'Erro ao excluir cliente.');
@@ -599,7 +604,7 @@ export function ClientesView({
         </div>
 
         {/* Chips de filtro por tipo de imóvel */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs pt-0.5 no-scrollbar">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 text-xs pt-0.5">
           <button
             type="button"
             onClick={() => setTypeFilter('all')}

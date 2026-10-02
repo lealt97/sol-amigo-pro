@@ -6,7 +6,29 @@ import { supabase } from '../lib/supabase';
 import { updateLeadNotes } from './leads';
 
 const CLIENTS_STORAGE_KEY = 'solamigo.clients.v2';
+const DELETED_CLIENTS_KEY = 'solamigo.deleted-clients.v1';
 export const CLIENTS_UPDATED_EVENT = 'solamigo:clients-updated';
+
+export function getDeletedClientIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_CLIENTS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markClientAsDeleted(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const set = getDeletedClientIds();
+    set.add(id);
+    localStorage.setItem(DELETED_CLIENTS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
 
 const LEGACY_MOCK_CLIENT_IDS = new Set([
   'cli-1',
@@ -35,8 +57,13 @@ export function fetchClientsLocal(): Client[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
+      const deletedIds = getDeletedClientIds();
       const clean = parsed.filter(
-        (c: any) => c && !LEGACY_MOCK_CLIENT_IDS.has(c.id)
+        (c: any) =>
+          c &&
+          !LEGACY_MOCK_CLIENT_IDS.has(c.id) &&
+          !deletedIds.has(c.id) &&
+          (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
       );
       if (clean.length !== parsed.length) {
         localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clean));
@@ -116,20 +143,30 @@ export async function fetchClients(): Promise<Client[]> {
         }
       });
 
-      saveClientsLocal(combined, false);
-      return combined;
+      const deletedIds = getDeletedClientIds();
+      const finalCombined = combined.filter(
+        (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+      );
+
+      saveClientsLocal(finalCombined, false);
+      return finalCombined;
     }
   } catch (err) {
     console.warn('Erro ao carregar clientes do Supabase:', err);
   }
 
-  localClients.forEach((c) => {
+  const deletedIds = getDeletedClientIds();
+  const finalLocal = localClients.filter(
+    (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+  );
+
+  finalLocal.forEach((c) => {
     const storedNotes = getStoredLeadNotes(c.id) || (c.sourceLeadId ? getStoredLeadNotes(c.sourceLeadId) : undefined);
     if (storedNotes !== undefined) {
       c.notes = storedNotes;
     }
   });
-  return localClients;
+  return finalLocal;
 }
 
 export function syncLeadAsClient(
@@ -172,10 +209,21 @@ export function syncLeadAsClient(
 }
 
 export function mergeClientsWithLeads(clientsList: Client[], leadsList: Lead[]): Client[] {
-  const merged = [...clientsList];
+  const deletedIds = getDeletedClientIds();
+  const merged = clientsList.filter(
+    (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+  );
+
   leadsList.forEach((lead) => {
+    if (deletedIds.has(lead.id) || (lead.clientId && deletedIds.has(lead.clientId))) {
+      return;
+    }
+
     if (lead.clientId || (lead.status as string) === 'Cliente' || lead.status === 'ganho') {
       const clientId = lead.clientId || `lead-cli-${lead.id}`;
+      if (deletedIds.has(clientId)) {
+        return;
+      }
       const existing = merged.find(
         (c) => c.id === clientId || c.id === lead.id || c.sourceLeadId === lead.id
       );
@@ -321,14 +369,50 @@ export async function addClient(newClientData: Partial<Client>): Promise<Client>
   return newClient;
 }
 
-export async function deleteClient(clientId: string): Promise<void> {
-  const current = fetchClientsLocal();
-  const updated = current.filter((c) => c.id !== clientId);
-  saveClientsLocal(updated);
+export async function deleteClient(clientId: string, sourceLeadId?: string): Promise<void> {
+  markClientAsDeleted(clientId);
+  if (sourceLeadId) {
+    markClientAsDeleted(sourceLeadId);
+  }
+
+  // Also remove or unlink from stored manual leads so it does not resurrect
   try {
-    await supabase.from('clients').delete().eq('id', clientId);
-  } catch (err) {
-    console.warn('Erro ao excluir cliente no Supabase:', err);
+    const rawLeads = localStorage.getItem('solamigo.manual-leads.v1');
+    if (rawLeads) {
+      const leads = JSON.parse(rawLeads);
+      if (Array.isArray(leads)) {
+        let changed = false;
+        const updatedLeads = leads.map((l: any) => {
+          if (l.id === clientId || l.id === sourceLeadId || l.clientId === clientId) {
+            changed = true;
+            return {
+              ...l,
+              clientId: undefined,
+              status: l.status === 'Cliente' || l.status === 'ganho' ? 'novo' : l.status,
+            };
+          }
+          return l;
+        });
+        if (changed) {
+          localStorage.setItem('solamigo.manual-leads.v1', JSON.stringify(updatedLeads));
+        }
+      }
+    }
+  } catch {}
+
+  const current = fetchClientsLocal();
+  const updated = current.filter(
+    (c) => c.id !== clientId && (!sourceLeadId || c.sourceLeadId !== sourceLeadId)
+  );
+  saveClientsLocal(updated);
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId);
+  if (isUuid) {
+    try {
+      await supabase.from('clients').delete().eq('id', clientId);
+    } catch (err) {
+      console.warn('Erro ao excluir cliente no Supabase:', err);
+    }
   }
 }
 

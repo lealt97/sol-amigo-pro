@@ -193,10 +193,13 @@ export const KitsView: React.FC<KitsViewProps> = ({ theme, onShowToast }) => {
   };
 
   const removeKit = (id: string) => {
-    if (!window.confirm('Excluir este kit do catálogo?')) return;
-    deleteCustomKit(id);
-    persist(kits.filter((kit) => kit.id !== id));
-    onShowToast?.('Kit removido do catálogo.');
+    try {
+      deleteCustomKit(id);
+      persist(kits.filter((kit) => kit.id !== id));
+      onShowToast?.('Kit removido do catálogo.');
+    } catch {
+      onShowToast?.('Erro ao remover kit.');
+    }
   };
 
   const inputStyle = {
