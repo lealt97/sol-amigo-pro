@@ -27,6 +27,52 @@ export function daysUntil(dateInput: string | Date, now = new Date()): number {
   return Math.round((target.getTime() - base.getTime()) / 86400000);
 }
 
+const CALENDAR_PRIORITY_RANK: Record<CalendarEvent['priority'], number> = {
+  Alta: 0,
+  Média: 1,
+  Baixa: 2,
+};
+
+const calendarDayKey = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+};
+
+/**
+ * Ordena eventos por dia. Dentro do mesmo dia:
+ * 1) prioridade (Alta, Média, Baixa);
+ * 2) data de criação, do mais antigo para o mais novo;
+ * 3) horário do evento e ID apenas como desempates finais.
+ */
+export function compareCalendarEvents(a: CalendarEvent, b: CalendarEvent): number {
+  const dayA = calendarDayKey(a.startAt);
+  const dayB = calendarDayKey(b.startAt);
+
+  if (dayA !== dayB) return dayA.localeCompare(dayB);
+
+  const priorityDiff = CALENDAR_PRIORITY_RANK[a.priority] - CALENDAR_PRIORITY_RANK[b.priority];
+  if (priorityDiff !== 0) return priorityDiff;
+
+  const createdA = new Date(a.createdAt).getTime();
+  const createdB = new Date(b.createdAt).getTime();
+  const safeCreatedA = Number.isNaN(createdA) ? Number.MAX_SAFE_INTEGER : createdA;
+  const safeCreatedB = Number.isNaN(createdB) ? Number.MAX_SAFE_INTEGER : createdB;
+  if (safeCreatedA !== safeCreatedB) return safeCreatedA - safeCreatedB;
+
+  const startA = new Date(a.startAt).getTime();
+  const startB = new Date(b.startAt).getTime();
+  const safeStartA = Number.isNaN(startA) ? Number.MAX_SAFE_INTEGER : startA;
+  const safeStartB = Number.isNaN(startB) ? Number.MAX_SAFE_INTEGER : startB;
+  if (safeStartA !== safeStartB) return safeStartA - safeStartB;
+
+  return a.id.localeCompare(b.id);
+}
+
 export function getNotificationStage(event: CalendarEvent, now = new Date()): CalendarNotificationStage | null {
   if (event.status === 'Concluído' || event.status === 'Cancelado') return null;
   const diff = daysUntil(event.startAt, now);
