@@ -349,47 +349,94 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
             {monthCells.map(({ day, events: dayEvents, currentMonth }) => {
               const isToday = day.toDateString() === today.toDateString();
               return (
-                <button
+                <div
                   key={day.toISOString()}
-                  type="button"
-                  onDoubleClick={() => openNew(day)}
-                  className="min-h-[112px] border-b border-r p-2 text-left align-top transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_5%,transparent)]"
+                  onClick={() => openNew(day)}
+                  data-no-override-hover="true"
+                  className="min-h-[116px] border-b border-r p-2 text-left align-top transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/cell select-none"
                   style={{ borderColor: theme.border, opacity: currentMonth ? 1 : 0.45 }}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className="flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold"
+                      className="flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold transition-transform group-hover/cell:scale-105"
                       style={isToday ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' } : {}}
                     >
                       {day.getDate()}
                     </span>
-                    {dayEvents.length > 3 && <span className="text-[9px] text-[var(--muted)]">+{dayEvents.length - 3}</span>}
+                    {dayEvents.length > 3 && (
+                      <span
+                        className="rounded-full px-1.5 py-0.5 text-[9px] font-bold border"
+                        style={{
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                          color: 'var(--muted)',
+                        }}
+                      >
+                        +{dayEvents.length - 3}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1.5 space-y-1">
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <div
-                        key={event.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={(clickEvent) => {
-                          clickEvent.stopPropagation();
-                          openEdit(event);
-                        }}
-                        className="truncate rounded-md border-l-2 px-1.5 py-1 text-[9px] font-bold"
-                        style={{ borderLeftColor: eventAccent(event.type), backgroundColor: theme.background }}
-                        title={`${event.title} — ${new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-                      >
-                        {event.allDay ? '' : `${new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} `}
-                        {event.title}
-                      </div>
-                    ))}
+                    {dayEvents.slice(0, 3).map((event) => {
+                      const accent = eventAccent(event.type);
+                      const timeStr = event.allDay
+                        ? ''
+                        : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                      return (
+                        <div
+                          key={event.id}
+                          role="button"
+                          tabIndex={0}
+                          data-no-override-hover="true"
+                          data-calendar-event="true"
+                          onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            openEdit(event);
+                          }}
+                          onKeyDown={(keyEvent) => {
+                            if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+                              keyEvent.preventDefault();
+                              keyEvent.stopPropagation();
+                              openEdit(event);
+                            }
+                          }}
+                          className="calendar-event-pill group/event relative flex items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[9.5px] font-medium leading-tight cursor-pointer border shadow-2xs select-none"
+                          style={{
+                            backgroundColor: `color-mix(in srgb, ${accent} 12%, ${theme.background})`,
+                            borderColor: `color-mix(in srgb, ${accent} 35%, transparent)`,
+                            borderLeftWidth: '3.5px',
+                            borderLeftColor: accent,
+                            color: theme.text,
+                            '--event-accent': accent,
+                            '--event-bg-hover': `color-mix(in srgb, ${accent} 24%, ${theme.background})`,
+                            '--event-border-hover': accent,
+                            '--event-glow': `color-mix(in srgb, ${accent} 40%, transparent)`,
+                          } as React.CSSProperties}
+                          title={`${event.title} • ${event.type}${event.allDay ? ' (Dia inteiro)' : ` (${timeStr})`} • Status: ${event.status || 'Agendado'}${event.clientName ? ` • Cliente: ${event.clientName}` : ''}`}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 group-hover/event:scale-125"
+                            style={{ backgroundColor: accent }}
+                          />
+                          <span className="truncate font-semibold flex items-center gap-1 min-w-0">
+                            {timeStr && (
+                              <span className="font-mono font-bold tracking-tight text-[9px] shrink-0 opacity-90">
+                                {timeStr}
+                              </span>
+                            )}
+                            <span className="truncate">{event.title}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
           <div className="border-t px-4 py-2 text-[10px] text-[var(--muted)]" style={{ borderColor: theme.border }}>
-            Dica: dê duplo clique em um dia para criar um evento naquela data.
+            Dica: clique em um dia para criar um novo evento naquela data.
           </div>
         </div>
       ) : (
@@ -403,16 +450,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
             <button
               key={event.id}
               type="button"
+              data-no-override-hover="true"
               onClick={() => openEdit(event)}
-              className="flex w-full flex-col gap-3 rounded-2xl border p-4 text-left sm:flex-row sm:items-center sm:justify-between"
+              className="group flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all duration-200 hover:shadow-md hover:border-[var(--secondary)]/40 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)] sm:flex-row sm:items-center sm:justify-between cursor-pointer"
               style={{ backgroundColor: theme.primary, borderColor: theme.border }}
             >
               <div className="flex min-w-0 items-start gap-3">
-                <div className="mt-1 h-10 w-1 shrink-0 rounded-full" style={{ backgroundColor: eventAccent(event.type) }} />
+                <div
+                  className="mt-1 h-10 w-1.5 shrink-0 rounded-full transition-all duration-200 group-hover:scale-y-110"
+                  style={{ backgroundColor: eventAccent(event.type), boxShadow: `0 0 10px ${eventAccent(event.type)}40` }}
+                />
                 <div className="min-w-0">
-                  <div className="text-sm font-black text-[var(--text)]">{event.title}</div>
+                  <div className="text-sm font-black text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors">{event.title}</div>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--muted)]">
-                    <span>{event.type}</span>
+                    <span className="font-semibold" style={{ color: eventAccent(event.type) }}>{event.type}</span>
                     {event.clientName && <span>{event.clientName}</span>}
                     {event.proposalCode && <span>{event.proposalCode}</span>}
                     {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{event.location}</span>}
