@@ -635,7 +635,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .filter((event) => event.status !== 'Concluído' && event.status !== 'Cancelado')
       .filter((event) => new Date(event.startAt).getTime() >= now.getTime())
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-      .slice(0, 6),
+      .slice(0, 15),
     [events]
   );
 
@@ -862,7 +862,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             size={size}
           />
         );
-      case 'agenda':
+      case 'agenda': {
+        const hasScroll = upcomingEvents.length >= 3;
         return upcomingEvents.length === 0 ? (
           <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>
             <CalendarDays className={`${compact ? 'h-7 w-7' : 'h-9 w-9'} text-[var(--muted)]`} />
@@ -878,47 +879,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
-            {upcomingEvents.map((event) => (
-              <button
-                key={event.id}
-                type="button"
-                data-no-override-hover
-                onClick={() =>
-                  onNavigate?.(
-                    'calendario',
-                    JSON.stringify({ date: event.startAt, eventId: event.id, ts: Date.now() })
-                  )
-                }
-                className={`flex min-w-0 w-full rounded-xl border text-left transition-all hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/event-card ${
-                  compact ? 'flex-col items-stretch gap-1.5 p-2' : 'items-center gap-3 p-3'
-                }`}
-                style={{ borderColor: theme.border, backgroundColor: theme.background }}
-                title={`Ver no calendário: ${event.title} (${formatDateTime(event.startAt, event.allDay)})`}
-              >
-                <span className={`shrink-0 rounded-full transition-transform group-hover/event-card:scale-110 ${compact ? 'h-1 w-full' : 'h-9 w-1'}`} style={{ backgroundColor: eventColor(event.type) }} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-black text-[var(--text)] group-hover/event-card:text-[var(--secondary)] transition-colors">{event.title}</div>
-                  <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
-                    {event.clientName || event.type}
+          <div className="min-w-0 max-w-full flex flex-col gap-2">
+            <div
+              className={`min-w-0 max-w-full space-y-2 ${
+                hasScroll
+                  ? `${compact ? 'max-h-[155px]' : 'max-h-[148px]'} overflow-y-auto pr-1.5`
+                  : ''
+              }`}
+              style={
+                hasScroll
+                  ? {
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: `color-mix(in srgb, ${theme.secondary} 45%, transparent) transparent`,
+                    }
+                  : undefined
+              }
+            >
+              {upcomingEvents.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  data-no-override-hover
+                  onClick={() =>
+                    onNavigate?.(
+                      'calendario',
+                      JSON.stringify({ date: event.startAt, eventId: event.id, ts: Date.now() })
+                    )
+                  }
+                  className={`flex min-w-0 w-full rounded-xl border text-left transition-all hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/event-card ${
+                    compact ? 'flex-col items-stretch gap-1.5 p-2' : 'items-center gap-3 p-3'
+                  }`}
+                  style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                  title={`Ver no calendário: ${event.title} (${formatDateTime(event.startAt, event.allDay)})`}
+                >
+                  <span className={`shrink-0 rounded-full transition-transform group-hover/event-card:scale-110 ${compact ? 'h-1 w-full' : 'h-9 w-1'}`} style={{ backgroundColor: eventColor(event.type) }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-black text-[var(--text)] group-hover/event-card:text-[var(--secondary)] transition-colors">{event.title}</div>
+                    <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
+                      {event.clientName || event.type}
+                    </div>
                   </div>
-                </div>
-                <div className={`max-w-full shrink-0 truncate font-bold text-[var(--muted)] ${compact ? 'text-left text-[9px]' : 'text-right text-[10px]'}`} title={formatDateTime(event.startAt, event.allDay)}>
-                  {formatDateTime(event.startAt, event.allDay)}
-                </div>
-              </button>
-            ))}
+                  <div className={`max-w-full shrink-0 truncate font-bold text-[var(--muted)] ${compact ? 'text-left text-[9px]' : 'text-right text-[10px]'}`} title={formatDateTime(event.startAt, event.allDay)}>
+                    {formatDateTime(event.startAt, event.allDay)}
+                  </div>
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               data-sol-amigo-text-hover
               onClick={() => onNavigate?.('calendario')}
-              className={`max-w-full truncate pt-1 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
+              className={`max-w-full truncate pt-0.5 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
               style={{ color: theme.secondary }}
             >
               Ver calendário completo →
             </button>
           </div>
         );
+      }
       case 'recent-proposals':
         return recentProposals.length === 0 ? (
           <div className={`flex flex-col items-center justify-center overflow-hidden text-center ${compact ? 'min-h-[150px]' : 'min-h-[230px]'}`}>

@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   Clock3,
   MapPin,
+  Pencil,
+  Pin,
   Plus,
   Search,
   Trash2,
@@ -74,6 +76,12 @@ const eventAccent = (type: CalendarEventType) => {
   }
 };
 
+const getTexturaDataUri = (color: string, opacity = 0.25) => {
+  const cleanColor = color || '#10b981';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10"><path d="M-2.5,2.5 L2.5,-2.5 M0,10 L10,0 M7.5,12.5 L12.5,7.5" stroke="${cleanColor}" stroke-opacity="${opacity}" stroke-width="2.5" stroke-linecap="square"/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+};
+
 const newDraft = (): CalendarEvent => {
   const start = new Date();
   start.setMinutes(0, 0, 0);
@@ -115,6 +123,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   });
 
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(() => targetEventIdStr);
+  const [openDropdownDateKey, setOpenDropdownDateKey] = useState<string | null>(() => {
+    if (targetDateStr) {
+      const d = new Date(targetDateStr);
+      if (!Number.isNaN(d.getTime())) {
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+    }
+    return null;
+  });
 
   const [cursor, setCursor] = useState(() => {
     if (targetDateStr) {
@@ -132,6 +149,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [isExisting, setIsExisting] = useState(false);
   const [repeatPlan, setRepeatPlan] = useState(true);
 
+  // Close dropdown on click outside or Escape
+  useEffect(() => {
+    if (!openDropdownDateKey) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const targetEl = e.target as Element | null;
+      if (!targetEl || typeof targetEl.closest !== 'function') return;
+      if (
+        !targetEl.closest(`[data-dropdown-for="${openDropdownDateKey}"]`) &&
+        !targetEl.closest(`[data-pin-for="${openDropdownDateKey}"]`) &&
+        !targetEl.closest(`#calendar-day-${openDropdownDateKey}`)
+      ) {
+        setOpenDropdownDateKey(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenDropdownDateKey(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openDropdownDateKey]);
+
   // Sync when navigating from another tab (e.g. Dashboard) with target date
   useEffect(() => {
     if (!targetDateStr) return;
@@ -144,9 +188,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     if (targetEventIdStr) {
       setHighlightedEventId(targetEventIdStr);
     }
+    const dateKey = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
+    setOpenDropdownDateKey(dateKey);
 
     const timer = setTimeout(() => {
-      const dateKey = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
       const el = document.getElementById(`calendar-day-${dateKey}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -241,6 +286,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     setIsExisting(true);
     setRepeatPlan(false);
     setEditorOpen(true);
+  };
+
+  const navigateToEventDay = (event: CalendarEvent) => {
+    const eventDate = new Date(event.startAt);
+    if (!Number.isNaN(eventDate.getTime())) {
+      setCursor(new Date(eventDate.getFullYear(), eventDate.getMonth(), 1));
+      setSelectedDay(eventDate);
+      setHighlightedEventId(event.id);
+      setMode('month');
+      const dateKey = `${eventDate.getFullYear()}-${pad(eventDate.getMonth() + 1)}-${pad(eventDate.getDate())}`;
+      setOpenDropdownDateKey(dateKey);
+
+      setTimeout(() => {
+        const el = document.getElementById(`calendar-day-${dateKey}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    }
   };
 
   const applyProposal = (code: string) => {
@@ -344,7 +408,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             className="inline-flex h-10 w-auto shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
             style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
           >
-            <Plus className="h-4 w-4" /> Novo evento
+            <Plus className="h-4 w-4" /> Novo Evento
           </button>
         </div>
       </div>
@@ -458,22 +522,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       {mode === 'month' ? (
-        <div className="overflow-hidden rounded-2xl border" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
+        <div className="relative rounded-2xl border" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
           <div className="grid grid-cols-7 border-b text-center text-[10px] font-bold uppercase text-[var(--muted)]" style={{ borderColor: theme.border }}>
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => <div key={day} className="p-2">{day}</div>)}
           </div>
           <div className="grid grid-cols-7">
-            {monthCells.map(({ day, events: dayEvents, currentMonth }) => {
+            {monthCells.map(({ day, events: dayEvents, currentMonth }, cellIndex) => {
               const isToday = day.toDateString() === today.toDateString();
               const isSelected = selectedDay ? day.toDateString() === selectedDay.toDateString() : false;
               const dateKey = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
-
-              const sortedDayEvents = highlightedEventId && dayEvents.some((e) => e.id === highlightedEventId)
-                ? [
-                    ...dayEvents.filter((e) => e.id === highlightedEventId),
-                    ...dayEvents.filter((e) => e.id !== highlightedEventId),
-                  ]
-                : dayEvents;
+              const isDropdownOpen = openDropdownDateKey === dateKey;
+              const hasEvents = dayEvents.length > 0;
 
               return (
                 <div
@@ -481,128 +540,228 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   id={`calendar-day-${dateKey}`}
                   onClick={() => {
                     setSelectedDay(day);
-                    openNew(day);
+                    if (hasEvents) {
+                      setOpenDropdownDateKey((prev) => (prev === dateKey ? null : dateKey));
+                    } else {
+                      openNew(day);
+                    }
                   }}
                   data-no-override-hover="true"
                   className={`min-h-[116px] border-b border-r p-2 text-left align-top transition-all hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/cell select-none relative ${
+                    isDropdownOpen ? 'z-25' : isSelected ? 'z-10' : 'z-0'
+                  } ${
                     isSelected
                       ? 'ring-2 ring-inset ring-[var(--secondary)] bg-[color-mix(in_srgb,var(--secondary)_9%,transparent)]'
                       : ''
                   }`}
                   style={{ borderColor: theme.border, opacity: currentMonth ? 1 : 0.45 }}
                 >
-                  <div className="flex items-center justify-between">
+                  {/* Textura SVG com background-repeat 10px simbolizando eventos no dia */}
+                  {hasEvents && (
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 pointer-events-none transition-opacity duration-200 overflow-hidden"
+                      style={{
+                        backgroundImage: `${getTexturaDataUri(theme.secondary, isDropdownOpen ? 0.35 : isSelected ? 0.28 : 0.18)}, url('/textura.svg')`,
+                        backgroundRepeat: 'repeat',
+                        backgroundSize: '10px 10px',
+                        maskImage: "url('/textura.svg')",
+                        WebkitMaskImage: "url('/textura.svg')",
+                        maskRepeat: 'repeat',
+                        WebkitMaskRepeat: 'repeat',
+                        maskSize: '10px 10px',
+                        WebkitMaskSize: '10px 10px',
+                        backgroundColor: theme.secondary,
+                        opacity: isDropdownOpen ? 0.4 : isSelected ? 0.32 : 0.2,
+                      }}
+                    />
+                  )}
+
+                  <div className="relative z-10 flex items-center justify-between">
                     <span
                       className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold transition-transform group-hover/cell:scale-105 ${
-                        isSelected && !isToday ? 'ring-2 ring-[var(--secondary)] font-black' : ''
+                        isToday
+                          ? ''
+                          : isSelected
+                          ? 'font-black ring-1 ring-[var(--secondary)]'
+                          : ''
                       }`}
                       style={
                         isToday
                           ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }
                           : isSelected
-                          ? { backgroundColor: `color-mix(in srgb, ${theme.secondary} 25%, transparent)`, color: theme.secondary }
+                          ? { backgroundColor: `color-mix(in srgb, ${theme.secondary} 22%, transparent)`, color: theme.secondary }
                           : {}
                       }
                     >
                       {day.getDate()}
                     </span>
-                    {isSelected && !isToday && (
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-[var(--secondary)] border"
-                        style={{
-                          borderColor: `color-mix(in srgb, ${theme.secondary} 40%, transparent)`,
-                          backgroundColor: `color-mix(in srgb, ${theme.secondary} 10%, transparent)`,
-                        }}
-                      >
-                        Selecionado
-                      </span>
-                    )}
-                    {dayEvents.length > 3 && (
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[9px] font-bold border"
-                        style={{
-                          backgroundColor: theme.background,
-                          borderColor: theme.border,
-                          color: 'var(--muted)',
-                        }}
-                      >
-                        +{dayEvents.length - 3}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1.5 space-y-1">
-                    {sortedDayEvents.slice(0, 3).map((event) => {
-                      const accent = eventAccent(event.type);
-                      const isHighlighted = highlightedEventId === event.id;
-                      const timeStr = event.allDay
-                        ? ''
-                        : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-                      return (
-                        <div
-                          key={event.id}
-                          role="button"
-                          tabIndex={0}
-                          data-no-override-hover="true"
-                          data-calendar-event="true"
-                          onClick={(clickEvent) => {
-                            clickEvent.stopPropagation();
-                            setSelectedDay(day);
-                            setHighlightedEventId(event.id);
-                            openEdit(event);
-                          }}
-                          onKeyDown={(keyEvent) => {
-                            if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-                              keyEvent.preventDefault();
-                              keyEvent.stopPropagation();
-                              setSelectedDay(day);
-                              setHighlightedEventId(event.id);
-                              openEdit(event);
-                            }
-                          }}
-                          className={`calendar-event-pill group/event relative flex items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[9.5px] font-medium leading-tight cursor-pointer border shadow-2xs select-none transition-all ${
-                            isHighlighted
-                              ? 'ring-2 ring-[var(--secondary)] ring-offset-1 shadow-md scale-[1.02] z-10 font-bold'
-                              : ''
-                          }`}
-                          style={{
-                            backgroundColor: isHighlighted
-                              ? `color-mix(in srgb, ${accent} 26%, ${theme.background})`
-                              : `color-mix(in srgb, ${accent} 12%, ${theme.background})`,
-                            borderColor: isHighlighted
-                              ? theme.secondary
-                              : `color-mix(in srgb, ${accent} 35%, transparent)`,
-                            borderLeftWidth: '3.5px',
-                            borderLeftColor: accent,
-                            color: theme.text,
-                            '--event-accent': accent,
-                            '--event-bg-hover': `color-mix(in srgb, ${accent} 24%, ${theme.background})`,
-                            '--event-border-hover': accent,
-                            '--event-glow': `color-mix(in srgb, ${accent} 40%, transparent)`,
-                          } as React.CSSProperties}
-                          title={`${event.title} • ${event.type}${event.allDay ? ' (Dia inteiro)' : ` (${timeStr})`} • Status: ${event.status || 'Agendado'}${event.clientName ? ` • Cliente: ${event.clientName}` : ''}${isHighlighted ? ' (Evento selecionado do dashboard)' : ''}`}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 group-hover/event:scale-125"
-                            style={{ backgroundColor: accent }}
-                          />
-                          <span className="truncate font-semibold flex items-center gap-1 min-w-0">
-                            {timeStr && (
-                              <span className="font-mono font-bold tracking-tight text-[9px] shrink-0 opacity-90">
-                                {timeStr}
-                              </span>
-                            )}
-                            <span className="truncate">{event.title}</span>
-                          </span>
-                          {isHighlighted && (
-                            <span className="ml-auto shrink-0 text-[10px] text-[var(--secondary)]" title="Evento selecionado">
-                              ★
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {hasEvents && (
+                      <button
+                        type="button"
+                        data-pin-for={dateKey}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDay(day);
+                          setOpenDropdownDateKey((prev) => (prev === dateKey ? null : dateKey));
+                        }}
+                        className={`flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${
+                          isDropdownOpen
+                            ? 'shadow-md text-[var(--secondary-fg)] ring-2 ring-[var(--secondary)]'
+                            : isSelected
+                            ? 'text-[var(--secondary)] ring-1 ring-[var(--secondary)]'
+                            : 'text-[var(--text)] hover:text-[var(--secondary)]'
+                        }`}
+                        style={{
+                          backgroundColor: isDropdownOpen
+                            ? theme.secondary
+                            : isSelected
+                            ? `color-mix(in srgb, ${theme.secondary} 24%, transparent)`
+                            : `color-mix(in srgb, ${theme.secondary} 14%, transparent)`,
+                          borderColor: isDropdownOpen || isSelected ? theme.secondary : `color-mix(in srgb, ${theme.secondary} 35%, transparent)`,
+                          borderWidth: 1,
+                        }}
+                        title={`Ver ${dayEvents.length} compromisso${dayEvents.length > 1 ? 's' : ''}`}
+                      >
+                        <Pin className={`h-3.5 w-3.5 rotate-45 transition-transform ${isDropdownOpen ? 'scale-110' : ''}`} />
+                        <span className="font-mono text-[11px] font-black">{dayEvents.length}</span>
+                      </button>
+                    )}
                   </div>
+
+                  {/* Dropdown Popover Menu */}
+                  {isDropdownOpen && (
+                    <div
+                      data-dropdown-for={dateKey}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute z-30 w-72 sm:w-80 rounded-2xl border p-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 ${
+                        cellIndex % 7 >= 4 ? 'right-0' : 'left-0'
+                      } ${
+                        cellIndex >= 28 ? 'bottom-full mb-2' : 'top-full mt-2'
+                      }`}
+                      style={{
+                        backgroundColor: theme.primary,
+                        borderColor: theme.secondary,
+                        boxShadow: '0 20px 40px -10px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: theme.border }}>
+                        <div className="flex items-center gap-2">
+                          <Pin className="h-4 w-4 rotate-45 text-[var(--secondary)]" />
+                          <div>
+                            <div className="text-xs font-black capitalize text-[var(--text)]">
+                              {day.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long' })}
+                            </div>
+                            <div className="text-[10px] text-[var(--muted)]">
+                              {dayEvents.length === 0
+                                ? 'Nenhum compromisso'
+                                : `${dayEvents.length} compromisso${dayEvents.length > 1 ? 's' : ''}`}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdownDateKey(null)}
+                          className="rounded-lg p-1 text-[var(--muted)] hover:bg-white/10 hover:text-[var(--text)] cursor-pointer"
+                          title="Fechar menu"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="mt-2.5 max-h-60 space-y-2 overflow-y-auto pr-1">
+                        {dayEvents.length === 0 ? (
+                          <div className="py-4 text-center text-xs text-[var(--muted)]">
+                            Nenhum evento neste dia.
+                          </div>
+                        ) : (
+                          dayEvents.map((event) => {
+                            const accent = eventAccent(event.type);
+                            const isTarget = highlightedEventId === event.id;
+                            const timeStr = event.allDay
+                               ? 'Dia inteiro'
+                              : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                            return (
+                              <div
+                                key={event.id}
+                                onClick={() => {
+                                  setOpenDropdownDateKey(null);
+                                  openEdit(event);
+                                }}
+                                className={`group flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all cursor-pointer hover:bg-white/5 ${
+                                  isTarget ? 'ring-1 ring-[var(--secondary)]' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: isTarget
+                                    ? `color-mix(in srgb, ${theme.secondary} 12%, ${theme.background})`
+                                    : theme.background,
+                                  borderColor: isTarget ? theme.secondary : theme.border,
+                                }}
+                              >
+                                <div
+                                  className="h-full min-h-[30px] w-1 shrink-0 rounded-full"
+                                  style={{ backgroundColor: accent }}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="truncate text-xs font-bold text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors">
+                                      {event.title}
+                                    </span>
+                                    <span className="font-mono text-[10px] font-bold shrink-0 text-[var(--muted)]">
+                                      {timeStr}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--muted)]">
+                                    <span className="font-semibold" style={{ color: accent }}>
+                                      {event.type}
+                                    </span>
+                                    {event.clientName && <span className="truncate max-w-[130px]">· {event.clientName}</span>}
+                                    {event.status && (
+                                      <span
+                                        className="rounded px-1.5 py-0.2 text-[8.5px] font-semibold border"
+                                        style={{ borderColor: theme.border }}
+                                      >
+                                        {event.status}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownDateKey(null);
+                                    openEdit(event);
+                                  }}
+                                  className="rounded-lg p-1 text-[var(--muted)] hover:text-[var(--text)] shrink-0 cursor-pointer"
+                                  title="Editar evento"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      <div className="mt-3 border-t pt-2.5 flex items-center justify-between gap-2" style={{ borderColor: theme.border }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenDropdownDateKey(null);
+                            openNew(day);
+                          }}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all shadow-xs cursor-pointer hover:brightness-110 active:scale-[0.98]"
+                          style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Novo Evento
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -621,19 +780,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           ) : orderedListEvents.map((event) => {
             const isHighlighted = highlightedEventId === event.id;
             return (
-              <button
+              <div
                 key={event.id}
                 id={`calendar-list-event-${event.id}`}
-                type="button"
+                role="button"
+                tabIndex={0}
                 data-no-override-hover="true"
-                onClick={() => {
-                  setHighlightedEventId(event.id);
-                  openEdit(event);
+                onClick={() => navigateToEventDay(event)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigateToEventDay(event);
+                  }
                 }}
-                className={`group flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all duration-200 hover:shadow-md hover:border-[var(--secondary)]/40 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)] sm:flex-row sm:items-center sm:justify-between cursor-pointer ${
+                className={`group flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all duration-200 hover:shadow-md hover:border-[var(--secondary)]/50 hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] sm:flex-row sm:items-center sm:justify-between cursor-pointer select-none ${
                   isHighlighted ? 'ring-2 ring-[var(--secondary)] shadow-md bg-[color-mix(in_srgb,var(--secondary)_6%,transparent)]' : ''
                 }`}
                 style={{ backgroundColor: theme.primary, borderColor: isHighlighted ? theme.secondary : theme.border }}
+                title={`Ver no calendário no dia ${new Date(event.startAt).toLocaleDateString('pt-BR')}`}
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <div
@@ -641,13 +805,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     style={{ backgroundColor: eventAccent(event.type), boxShadow: `0 0 10px ${eventAccent(event.type)}40` }}
                   />
                   <div className="min-w-0">
-                    <div className="text-sm font-black text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors flex items-center gap-2">
-                      <span>{event.title}</span>
-                      {isHighlighted && (
-                        <span className="rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-[var(--secondary)] border" style={{ borderColor: `color-mix(in srgb, ${theme.secondary} 40%, transparent)` }}>
-                          Selecionado
-                        </span>
-                      )}
+                    <div className="text-sm font-black text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors">
+                      {event.title}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--muted)]">
                       <span className="font-semibold" style={{ color: eventAccent(event.type) }}>{event.type}</span>
@@ -657,11 +816,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="shrink-0 text-left sm:text-right">
-                  <div className="text-xs font-black">{new Date(event.startAt).toLocaleDateString('pt-BR')}</div>
-                  <div className="mt-1 text-[11px] text-[var(--muted)]">{event.allDay ? 'Dia inteiro' : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
+                  <div className="text-left sm:text-right">
+                    <div className="text-xs font-black">{new Date(event.startAt).toLocaleDateString('pt-BR')}</div>
+                    <div className="mt-1 text-[11px] text-[var(--muted)]">{event.allDay ? 'Dia inteiro' : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(event);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all hover:bg-white/10 cursor-pointer shadow-2xs"
+                    style={{ borderColor: theme.border, color: theme.text }}
+                    title="Editar evento"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Editar</span>
+                  </button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

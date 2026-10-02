@@ -1090,8 +1090,11 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
   };
 
   return (
-    <div id="integracoes-page" className="mx-auto w-full max-w-[1480px] space-y-3">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div id="integracoes-page" className="mx-auto w-full max-w-[1480px] space-y-5">
+      <header
+        className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-center sm:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Globe2 className="h-5 w-5 shrink-0" style={{ color: theme.accent }} />

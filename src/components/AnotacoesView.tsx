@@ -836,7 +836,10 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
   return (
     <section id="anotacoes-page" className="space-y-6 animate-fadeIn pb-12">
       {/* Top Header do Ambiente */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
             Central de Atendimento & CRM

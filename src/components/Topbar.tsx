@@ -133,7 +133,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   return (
     <header
       id="app-topbar"
-      className="h-14 border-b flex items-center justify-between px-4 md:px-6 shrink-0 select-none z-30 sticky top-0 transition-colors"
+      className="h-14 border-b flex items-center justify-between px-4 md:px-6 shrink-0 select-none z-40 sticky top-0 transition-colors"
       style={{
         backgroundColor: topbarBg,
         borderColor,
