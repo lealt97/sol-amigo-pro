@@ -167,3 +167,26 @@ test('datas diferentes continuam em ordem cronológica por dia', () => {
   const sorted = [...events].sort(compareCalendarEvents);
   assert.deepEqual(sorted.map((event) => event.id), ['today-low', 'tomorrow-high']);
 });
+
+
+test('horário agendado não desempata eventos com mesma data prioridade e criação', () => {
+  const events: CalendarEvent[] = [
+    {
+      ...baseEvent,
+      id: 'listed-first',
+      startAt: '2026-10-10T18:00:00.000Z',
+      priority: 'Média',
+      createdAt: '2026-10-01T12:00:00.000Z',
+    },
+    {
+      ...baseEvent,
+      id: 'listed-second',
+      startAt: '2026-10-10T08:00:00.000Z',
+      priority: 'Média',
+      createdAt: '2026-10-01T12:00:00.000Z',
+    },
+  ];
+
+  const sorted = [...events].sort(compareCalendarEvents);
+  assert.deepEqual(sorted.map((event) => event.id), ['listed-first', 'listed-second']);
+});
