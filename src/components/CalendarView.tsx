@@ -20,7 +20,7 @@ import {
   saveCalendarEvents,
 } from '../services/calendarEvents';
 import { ClientProposal, fetchAllClientProposals } from '../services/proposals';
-import { createRecurringCalendarEvents } from '../utils/calendar';
+import { compareCalendarEvents, createRecurringCalendarEvents } from '../utils/calendar';
 import { formatMaintenanceFrequency, getMaintenanceFrequency } from '../utils/maintenance';
 
 interface CalendarViewProps {
@@ -128,7 +128,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
           .filter(Boolean)
           .some((value) => String(value).toLocaleLowerCase('pt-BR').includes(q));
       })
-      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      .sort(compareCalendarEvents);
   }, [events, search]);
 
   const monthCells = useMemo(() => {
@@ -155,17 +155,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
 
     return visibleEvents
       .filter((event) => new Date(event.startAt).getTime() >= start.getTime())
-      .sort((a, b) => {
-        const byDate = new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
-        if (byDate !== 0) return byDate;
-
-        const priorityRank: Record<CalendarEventPriority, number> = {
-          Alta: 0,
-          Média: 1,
-          Baixa: 2,
-        };
-        return priorityRank[a.priority] - priorityRank[b.priority];
-      })
+      .sort(compareCalendarEvents)
       .slice(0, 80);
   }, [visibleEvents]);
 
