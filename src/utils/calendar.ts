@@ -45,9 +45,12 @@ const calendarDayKey = (value: string): string => {
 
 /**
  * Ordena eventos por dia. Dentro do mesmo dia:
- * 1) prioridade (Alta, Média, Baixa);
- * 2) data de criação, do mais antigo para o mais novo;
- * 3) horário do evento e ID apenas como desempates finais.
+ * 1) prioridade (Alta, Média, Baixa), quando forem diferentes;
+ * 2) se a prioridade for igual, vence exclusivamente a ordem de criação:
+ *    o evento criado primeiro aparece primeiro.
+ *
+ * O horário agendado do evento não participa do desempate.
+ * Se até createdAt for idêntico, retorna 0 para preservar a ordem existente.
  */
 export function compareCalendarEvents(a: CalendarEvent, b: CalendarEvent): number {
   const dayA = calendarDayKey(a.startAt);
@@ -62,15 +65,9 @@ export function compareCalendarEvents(a: CalendarEvent, b: CalendarEvent): numbe
   const createdB = new Date(b.createdAt).getTime();
   const safeCreatedA = Number.isNaN(createdA) ? Number.MAX_SAFE_INTEGER : createdA;
   const safeCreatedB = Number.isNaN(createdB) ? Number.MAX_SAFE_INTEGER : createdB;
+
   if (safeCreatedA !== safeCreatedB) return safeCreatedA - safeCreatedB;
-
-  const startA = new Date(a.startAt).getTime();
-  const startB = new Date(b.startAt).getTime();
-  const safeStartA = Number.isNaN(startA) ? Number.MAX_SAFE_INTEGER : startA;
-  const safeStartB = Number.isNaN(startB) ? Number.MAX_SAFE_INTEGER : startB;
-  if (safeStartA !== safeStartB) return safeStartA - safeStartB;
-
-  return a.id.localeCompare(b.id);
+  return 0;
 }
 
 export function getNotificationStage(event: CalendarEvent, now = new Date()): CalendarNotificationStage | null {
