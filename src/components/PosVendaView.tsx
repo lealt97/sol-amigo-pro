@@ -177,20 +177,25 @@ export const PosVendaView: React.FC<PosVendaViewProps> = ({ theme }) => {
       <div className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: theme.border }}>
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--dim)]">Pós-venda</div>
-          <h1 className="mt-1 text-2xl font-black text-[var(--text)]">Planos de Manutenção</h1>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-black text-[var(--text)]">
+            <Wrench className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
+            Planos de Manutenção
+          </h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Cadastre planos reutilizáveis de limpeza e manutenção fotovoltaica. Eles ficam disponíveis junto aos Kits durante o dimensionamento da proposta.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openNew}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm"
-          style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-        >
-          <Plus className="h-4 w-4" />
-          Novo plano
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={openNew}
+            className="inline-flex h-10 w-auto shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+          >
+            <Plus className="h-4 w-4" />
+            Novo plano
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

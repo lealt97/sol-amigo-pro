@@ -46,6 +46,7 @@ export default function App() {
 
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
   const [proposalFilterCode, setProposalFilterCode] = useState<string>('');
+  const [calendarTarget, setCalendarTarget] = useState<{ date: string; eventId?: string; ts: number } | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -226,6 +227,45 @@ export default function App() {
     return <LoginView onLogin={handleLogin} onForgotPassword={handleForgotPassword} onOpenRegister={() => setAuthScreen('register')} />;
   }
 
+  const handleNavigate = (page: PageKey, filter?: string) => {
+    if (page === 'calendario') {
+      if (filter) {
+        try {
+          if (filter.startsWith('{')) {
+            const parsed = JSON.parse(filter);
+            setCalendarTarget({
+              date: parsed.date,
+              eventId: parsed.eventId,
+              ts: parsed.ts || Date.now(),
+            });
+          } else if (filter.includes('::')) {
+            const [dateStr, eventIdStr] = filter.split('::');
+            setCalendarTarget({
+              date: dateStr,
+              eventId: eventIdStr,
+              ts: Date.now(),
+            });
+          } else {
+            setCalendarTarget({
+              date: filter,
+              ts: Date.now(),
+            });
+          }
+        } catch {
+          setCalendarTarget({
+            date: filter,
+            ts: Date.now(),
+          });
+        }
+      } else {
+        setCalendarTarget(null);
+      }
+    } else {
+      setProposalFilterCode(filter || '');
+    }
+    setActivePage(page);
+  };
+
   const renderCurrentView = () => {
     switch (activePage) {
       case 'dashboard':
@@ -233,18 +273,15 @@ export default function App() {
           <DashboardView
             theme={currentTheme}
             onShowToast={showToast}
-            onNavigate={(page, filter) => {
-              setProposalFilterCode(filter || '');
-              setActivePage(page);
-            }}
+            onNavigate={handleNavigate}
           />
         );
       case 'leads':
-        return <LeadsView theme={currentTheme} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
+        return <LeadsView theme={currentTheme} onShowToast={showToast} onNavigate={handleNavigate} />;
       case 'clientes':
-        return <ClientesView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
+        return <ClientesView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} onNavigate={handleNavigate} />;
       case 'propostas':
-        return <PropostasView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} initialFilterCode={proposalFilterCode} onNavigate={(page) => setActivePage(page)} />;
+        return <PropostasView theme={currentTheme} pdfSettings={currentPdfSettings} onShowToast={showToast} initialFilterCode={proposalFilterCode} onNavigate={(page) => handleNavigate(page)} />;
       case 'kits':
       case 'produtos':
         return (
@@ -252,15 +289,24 @@ export default function App() {
             key="kits-catalog-view"
             theme={currentTheme}
             onShowToast={showToast}
-            onNavigate={(page) => setActivePage(page)}
+            onNavigate={(page) => handleNavigate(page)}
           />
         );
       case 'pos-venda':
-        return <PosVendaView theme={currentTheme} onShowToast={showToast} onNavigate={(page, filter) => { setProposalFilterCode(filter || ''); setActivePage(page); }} />;
+        return <PosVendaView theme={currentTheme} onShowToast={showToast} onNavigate={handleNavigate} />;
       case 'calendario':
-        return <CalendarView theme={currentTheme} onShowToast={showToast} />;
+        return (
+          <CalendarView
+            theme={currentTheme}
+            onShowToast={showToast}
+            target={calendarTarget}
+            initialDate={calendarTarget?.date}
+            initialEventId={calendarTarget?.eventId}
+            onClearTarget={() => setCalendarTarget(null)}
+          />
+        );
       case 'anotacoes':
-        return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={(page, propCode) => { setProposalFilterCode(propCode || ''); setActivePage(page); }} />;
+        return <AnotacoesView theme={currentTheme} onShowToast={showToast} onNavigate={handleNavigate} />;
       case 'perfil': return <ProfileView theme={currentTheme} onShowToast={showToast} />;
       case 'personalizacao':
         return <PersonalizacaoView currentTheme={currentTheme} onApplyTheme={setCurrentTheme} onShowToast={showToast} />;
@@ -280,9 +326,9 @@ export default function App() {
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-medium">{toastMessage}</span><button onClick={() => setToastMessage(null)} className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100" style={{ color: getContrastFg(currentTheme.primary) }}>✕</button>
         </div>
       )}
-      <Sidebar activePage={activePage} onNavigate={(page) => setActivePage(page)} onSelectPage={(page) => setActivePage(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
+      <Sidebar activePage={activePage} onNavigate={(page) => handleNavigate(page)} onSelectPage={(page) => handleNavigate(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
-        <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={(page) => setActivePage(page)} />
+        <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={handleNavigate} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
           {renderCurrentView()}
         </main>

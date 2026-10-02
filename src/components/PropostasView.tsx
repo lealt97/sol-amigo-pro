@@ -284,12 +284,16 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   return (
     <div id="propostas-page" className="space-y-6 animate-fadeIn pb-12">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
             Comercial & Vendas FV
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[var(--text)]">
+            <FileText className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
             Propostas Comerciais
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -297,7 +301,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setIsNewProposalModalOpen(true)}

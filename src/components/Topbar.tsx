@@ -21,7 +21,7 @@ interface TopbarProps {
   theme: ThemeConfig;
   onOpenMobileMenu: () => void;
   onOpenHelp?: () => void;
-  onNavigate?: (page: PageKey) => void;
+  onNavigate?: (page: PageKey, filter?: string) => void;
 }
 
 const PAGE_TITLES: Record<PageKey, string> = {
@@ -111,7 +111,10 @@ export const Topbar: React.FC<TopbarProps> = ({
   const handleCalendarNotificationClick = (item: CalendarNotificationItem) => {
     markCalendarNotificationAsRead(item.notificationKey);
     setNotificationsOpen(false);
-    onNavigate?.('calendario');
+    onNavigate?.(
+      'calendario',
+      JSON.stringify({ date: item.startAt, eventId: item.eventId, ts: Date.now() })
+    );
   };
 
   const handleMarkAllRead = () => {

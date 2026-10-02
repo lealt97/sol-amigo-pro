@@ -40,7 +40,8 @@ export const FinanceiroView: React.FC<FinanceiroViewProps> = ({
             <DollarSign className="w-3.5 h-3.5" />
             Controladoria / Financiamento Solar
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <DollarSign className="w-7 h-7 shrink-0" style={{ color: theme.secondary }} />
             Gestão Financeira & Fluxo de Caixa
           </h2>
           <p className="text-slate-500 text-sm mt-1 max-w-2xl">

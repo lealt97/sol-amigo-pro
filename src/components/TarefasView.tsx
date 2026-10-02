@@ -60,7 +60,8 @@ export const TarefasView: React.FC<TarefasViewProps> = ({
             <CheckSquare className="w-3.5 h-3.5" />
             Engenharia / Homologação & Obras
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <CheckSquare className="w-7 h-7 shrink-0" style={{ color: theme.secondary }} />
             Tarefas & Homologação nas Concessionárias
           </h2>
           <p className="text-slate-500 text-sm mt-1 max-w-2xl">

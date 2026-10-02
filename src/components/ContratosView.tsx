@@ -22,7 +22,8 @@ export const ContratosView: React.FC<ContratosViewProps> = ({
             <FileCheck2 className="w-3.5 h-3.5" />
             Jurídico & Contratos FV
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <FileCheck2 className="w-7 h-7 shrink-0" style={{ color: theme.secondary }} />
             Contratos Comerciais & Assinatura Digital
           </h2>
           <p className="text-slate-500 text-sm mt-1 max-w-2xl">

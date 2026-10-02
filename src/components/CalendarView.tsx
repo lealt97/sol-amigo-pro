@@ -23,9 +23,19 @@ import { ClientProposal, fetchAllClientProposals } from '../services/proposals';
 import { compareCalendarEvents, createRecurringCalendarEvents } from '../utils/calendar';
 import { formatMaintenanceFrequency, getMaintenanceFrequency } from '../utils/maintenance';
 
+export interface CalendarTargetPayload {
+  date: string;
+  eventId?: string;
+  ts?: number;
+}
+
 interface CalendarViewProps {
   theme: ThemeConfig;
   onShowToast?: (message: string) => void;
+  target?: CalendarTargetPayload | null;
+  initialDate?: string | null;
+  initialEventId?: string | null;
+  onClearTarget?: () => void;
 }
 
 type CalendarMode = 'month' | 'list';
@@ -81,16 +91,70 @@ const newDraft = (): CalendarEvent => {
   };
 };
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({
+  theme,
+  onShowToast,
+  target,
+  initialDate,
+  initialEventId,
+  onClearTarget,
+}) => {
+  const targetDateStr = target?.date || initialDate || null;
+  const targetEventIdStr = target?.eventId || initialEventId || null;
+
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [proposals, setProposals] = useState<ClientProposal[]>([]);
   const [mode, setMode] = useState<CalendarMode>('month');
-  const [cursor, setCursor] = useState(() => new Date());
+
+  const [selectedDay, setSelectedDay] = useState<Date | null>(() => {
+    if (targetDateStr) {
+      const d = new Date(targetDateStr);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    return null;
+  });
+
+  const [highlightedEventId, setHighlightedEventId] = useState<string | null>(() => targetEventIdStr);
+
+  const [cursor, setCursor] = useState(() => {
+    if (targetDateStr) {
+      const d = new Date(targetDateStr);
+      if (!Number.isNaN(d.getTime())) {
+        return new Date(d.getFullYear(), d.getMonth(), 1);
+      }
+    }
+    return new Date();
+  });
+
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<CalendarEvent>(newDraft());
   const [isExisting, setIsExisting] = useState(false);
   const [repeatPlan, setRepeatPlan] = useState(true);
+
+  // Sync when navigating from another tab (e.g. Dashboard) with target date
+  useEffect(() => {
+    if (!targetDateStr) return;
+    const dateObj = new Date(targetDateStr);
+    if (Number.isNaN(dateObj.getTime())) return;
+
+    setCursor(new Date(dateObj.getFullYear(), dateObj.getMonth(), 1));
+    setSelectedDay(dateObj);
+    setMode('month');
+    if (targetEventIdStr) {
+      setHighlightedEventId(targetEventIdStr);
+    }
+
+    const timer = setTimeout(() => {
+      const dateKey = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
+      const el = document.getElementById(`calendar-day-${dateKey}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [targetDateStr, targetEventIdStr, target?.ts]);
 
   const reload = async () => {
     const [eventList, proposalList] = await Promise.all([
@@ -262,25 +326,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
 
   return (
     <div id="calendario-page" className="space-y-5">
-      <div className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-end lg:justify-between" style={{ borderColor: theme.border }}>
+      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between" style={{ borderColor: theme.border }}>
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--dim)]">Agenda operacional</div>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-black text-[var(--text)]">
-            <CalendarDays className="h-6 w-6" style={{ color: theme.secondary }} />
+            <CalendarDays className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
             Calendário
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
             Manutenções, instalações, vistorias, homologações, visitas e compromissos comerciais em uma única agenda. Eventos próximos também aparecem no sino de notificações.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openNew()}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm"
-          style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
-        >
-          <Plus className="h-4 w-4" /> Novo evento
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => openNew()}
+            className="inline-flex h-10 w-auto shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
+          >
+            <Plus className="h-4 w-4" /> Novo evento
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -305,11 +371,62 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
 
       <div className="rounded-2xl border p-4" style={{ backgroundColor: theme.primary, borderColor: theme.border }}>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="rounded-lg border p-2" style={{ borderColor: theme.border }}><ChevronLeft className="h-4 w-4" /></button>
-            <button type="button" onClick={() => setCursor(new Date())} className="rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: theme.border }}>Hoje</button>
-            <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="rounded-lg border p-2" style={{ borderColor: theme.border }}><ChevronRight className="h-4 w-4" /></button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              className="rounded-lg border p-2 cursor-pointer hover:bg-[color-mix(in_srgb,var(--secondary)_10%,transparent)] transition-colors"
+              style={{ borderColor: theme.border }}
+              title="Mês anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                setCursor(now);
+                setSelectedDay(now);
+              }}
+              className="rounded-lg border px-3 py-2 text-xs font-bold cursor-pointer hover:bg-[color-mix(in_srgb,var(--secondary)_10%,transparent)] transition-colors"
+              style={{ borderColor: theme.border }}
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              className="rounded-lg border p-2 cursor-pointer hover:bg-[color-mix(in_srgb,var(--secondary)_10%,transparent)] transition-colors"
+              style={{ borderColor: theme.border }}
+              title="Próximo mês"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
             <span className="ml-1 text-sm font-black capitalize text-[var(--text)]">{monthTitle}</span>
+            {selectedDay && (
+              <div
+                className="ml-2 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold animate-in fade-in"
+                style={{
+                  borderColor: `color-mix(in srgb, ${theme.secondary} 40%, transparent)`,
+                  backgroundColor: `color-mix(in srgb, ${theme.secondary} 12%, transparent)`,
+                  color: theme.secondary,
+                }}
+              >
+                <span>Dia {selectedDay.toLocaleDateString('pt-BR')}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDay(null);
+                    setHighlightedEventId(null);
+                    onClearTarget?.();
+                  }}
+                  className="rounded-full p-0.5 hover:bg-black/20 cursor-pointer"
+                  title="Limpar dia selecionado"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -329,7 +446,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                   key={item}
                   type="button"
                   onClick={() => setMode(item)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-bold"
+                  className="rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer"
                   style={mode === item ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' } : {}}
                 >
                   {item === 'month' ? 'Mês' : 'Lista'}
@@ -348,21 +465,58 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
           <div className="grid grid-cols-7">
             {monthCells.map(({ day, events: dayEvents, currentMonth }) => {
               const isToday = day.toDateString() === today.toDateString();
+              const isSelected = selectedDay ? day.toDateString() === selectedDay.toDateString() : false;
+              const dateKey = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+
+              const sortedDayEvents = highlightedEventId && dayEvents.some((e) => e.id === highlightedEventId)
+                ? [
+                    ...dayEvents.filter((e) => e.id === highlightedEventId),
+                    ...dayEvents.filter((e) => e.id !== highlightedEventId),
+                  ]
+                : dayEvents;
+
               return (
                 <div
                   key={day.toISOString()}
-                  onClick={() => openNew(day)}
+                  id={`calendar-day-${dateKey}`}
+                  onClick={() => {
+                    setSelectedDay(day);
+                    openNew(day);
+                  }}
                   data-no-override-hover="true"
-                  className="min-h-[116px] border-b border-r p-2 text-left align-top transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/cell select-none"
+                  className={`min-h-[116px] border-b border-r p-2 text-left align-top transition-all hover:bg-[color-mix(in_srgb,var(--secondary)_4%,transparent)] cursor-pointer group/cell select-none relative ${
+                    isSelected
+                      ? 'ring-2 ring-inset ring-[var(--secondary)] bg-[color-mix(in_srgb,var(--secondary)_9%,transparent)]'
+                      : ''
+                  }`}
                   style={{ borderColor: theme.border, opacity: currentMonth ? 1 : 0.45 }}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className="flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold transition-transform group-hover/cell:scale-105"
-                      style={isToday ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' } : {}}
+                      className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-bold transition-transform group-hover/cell:scale-105 ${
+                        isSelected && !isToday ? 'ring-2 ring-[var(--secondary)] font-black' : ''
+                      }`}
+                      style={
+                        isToday
+                          ? { backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }
+                          : isSelected
+                          ? { backgroundColor: `color-mix(in srgb, ${theme.secondary} 25%, transparent)`, color: theme.secondary }
+                          : {}
+                      }
                     >
                       {day.getDate()}
                     </span>
+                    {isSelected && !isToday && (
+                      <span
+                        className="rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-[var(--secondary)] border"
+                        style={{
+                          borderColor: `color-mix(in srgb, ${theme.secondary} 40%, transparent)`,
+                          backgroundColor: `color-mix(in srgb, ${theme.secondary} 10%, transparent)`,
+                        }}
+                      >
+                        Selecionado
+                      </span>
+                    )}
                     {dayEvents.length > 3 && (
                       <span
                         className="rounded-full px-1.5 py-0.5 text-[9px] font-bold border"
@@ -377,8 +531,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                     )}
                   </div>
                   <div className="mt-1.5 space-y-1">
-                    {dayEvents.slice(0, 3).map((event) => {
+                    {sortedDayEvents.slice(0, 3).map((event) => {
                       const accent = eventAccent(event.type);
+                      const isHighlighted = highlightedEventId === event.id;
                       const timeStr = event.allDay
                         ? ''
                         : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -392,19 +547,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                           data-calendar-event="true"
                           onClick={(clickEvent) => {
                             clickEvent.stopPropagation();
+                            setSelectedDay(day);
+                            setHighlightedEventId(event.id);
                             openEdit(event);
                           }}
                           onKeyDown={(keyEvent) => {
                             if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
                               keyEvent.preventDefault();
                               keyEvent.stopPropagation();
+                              setSelectedDay(day);
+                              setHighlightedEventId(event.id);
                               openEdit(event);
                             }
                           }}
-                          className="calendar-event-pill group/event relative flex items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[9.5px] font-medium leading-tight cursor-pointer border shadow-2xs select-none"
+                          className={`calendar-event-pill group/event relative flex items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[9.5px] font-medium leading-tight cursor-pointer border shadow-2xs select-none transition-all ${
+                            isHighlighted
+                              ? 'ring-2 ring-[var(--secondary)] ring-offset-1 shadow-md scale-[1.02] z-10 font-bold'
+                              : ''
+                          }`}
                           style={{
-                            backgroundColor: `color-mix(in srgb, ${accent} 12%, ${theme.background})`,
-                            borderColor: `color-mix(in srgb, ${accent} 35%, transparent)`,
+                            backgroundColor: isHighlighted
+                              ? `color-mix(in srgb, ${accent} 26%, ${theme.background})`
+                              : `color-mix(in srgb, ${accent} 12%, ${theme.background})`,
+                            borderColor: isHighlighted
+                              ? theme.secondary
+                              : `color-mix(in srgb, ${accent} 35%, transparent)`,
                             borderLeftWidth: '3.5px',
                             borderLeftColor: accent,
                             color: theme.text,
@@ -413,7 +580,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                             '--event-border-hover': accent,
                             '--event-glow': `color-mix(in srgb, ${accent} 40%, transparent)`,
                           } as React.CSSProperties}
-                          title={`${event.title} • ${event.type}${event.allDay ? ' (Dia inteiro)' : ` (${timeStr})`} • Status: ${event.status || 'Agendado'}${event.clientName ? ` • Cliente: ${event.clientName}` : ''}`}
+                          title={`${event.title} • ${event.type}${event.allDay ? ' (Dia inteiro)' : ` (${timeStr})`} • Status: ${event.status || 'Agendado'}${event.clientName ? ` • Cliente: ${event.clientName}` : ''}${isHighlighted ? ' (Evento selecionado do dashboard)' : ''}`}
                         >
                           <span
                             className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 group-hover/event:scale-125"
@@ -427,6 +594,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
                             )}
                             <span className="truncate">{event.title}</span>
                           </span>
+                          {isHighlighted && (
+                            <span className="ml-auto shrink-0 text-[10px] text-[var(--secondary)]" title="Evento selecionado">
+                              ★
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -446,36 +618,52 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ theme, onShowToast }
               <CalendarDays className="mx-auto h-8 w-8 text-[var(--muted)]" />
               <div className="mt-2 text-sm font-bold">Nenhum compromisso futuro</div>
             </div>
-          ) : orderedListEvents.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              data-no-override-hover="true"
-              onClick={() => openEdit(event)}
-              className="group flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all duration-200 hover:shadow-md hover:border-[var(--secondary)]/40 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)] sm:flex-row sm:items-center sm:justify-between cursor-pointer"
-              style={{ backgroundColor: theme.primary, borderColor: theme.border }}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <div
-                  className="mt-1 h-10 w-1.5 shrink-0 rounded-full transition-all duration-200 group-hover:scale-y-110"
-                  style={{ backgroundColor: eventAccent(event.type), boxShadow: `0 0 10px ${eventAccent(event.type)}40` }}
-                />
-                <div className="min-w-0">
-                  <div className="text-sm font-black text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors">{event.title}</div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--muted)]">
-                    <span className="font-semibold" style={{ color: eventAccent(event.type) }}>{event.type}</span>
-                    {event.clientName && <span>{event.clientName}</span>}
-                    {event.proposalCode && <span>{event.proposalCode}</span>}
-                    {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{event.location}</span>}
+          ) : orderedListEvents.map((event) => {
+            const isHighlighted = highlightedEventId === event.id;
+            return (
+              <button
+                key={event.id}
+                id={`calendar-list-event-${event.id}`}
+                type="button"
+                data-no-override-hover="true"
+                onClick={() => {
+                  setHighlightedEventId(event.id);
+                  openEdit(event);
+                }}
+                className={`group flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all duration-200 hover:shadow-md hover:border-[var(--secondary)]/40 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)] sm:flex-row sm:items-center sm:justify-between cursor-pointer ${
+                  isHighlighted ? 'ring-2 ring-[var(--secondary)] shadow-md bg-[color-mix(in_srgb,var(--secondary)_6%,transparent)]' : ''
+                }`}
+                style={{ backgroundColor: theme.primary, borderColor: isHighlighted ? theme.secondary : theme.border }}
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className="mt-1 h-10 w-1.5 shrink-0 rounded-full transition-all duration-200 group-hover:scale-y-110"
+                    style={{ backgroundColor: eventAccent(event.type), boxShadow: `0 0 10px ${eventAccent(event.type)}40` }}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm font-black text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors flex items-center gap-2">
+                      <span>{event.title}</span>
+                      {isHighlighted && (
+                        <span className="rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-[var(--secondary)] border" style={{ borderColor: `color-mix(in srgb, ${theme.secondary} 40%, transparent)` }}>
+                          Selecionado
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--muted)]">
+                      <span className="font-semibold" style={{ color: eventAccent(event.type) }}>{event.type}</span>
+                      {event.clientName && <span>{event.clientName}</span>}
+                      {event.proposalCode && <span>{event.proposalCode}</span>}
+                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{event.location}</span>}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="shrink-0 text-left sm:text-right">
-                <div className="text-xs font-black">{new Date(event.startAt).toLocaleDateString('pt-BR')}</div>
-                <div className="mt-1 text-[11px] text-[var(--muted)]">{event.allDay ? 'Dia inteiro' : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-              </div>
-            </button>
-          ))}
+                <div className="shrink-0 text-left sm:text-right">
+                  <div className="text-xs font-black">{new Date(event.startAt).toLocaleDateString('pt-BR')}</div>
+                  <div className="mt-1 text-[11px] text-[var(--muted)]">{event.allDay ? 'Dia inteiro' : new Date(event.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 

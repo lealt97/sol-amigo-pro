@@ -542,17 +542,23 @@ export function ClientesView({
   return (
     <section id="clientes-page" className="space-y-5">
       {/* Header com Ações e Título */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
             Gestão comercial
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Clientes</h1>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[var(--text)]">
+            <UserCheck className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
+            Clientes
+          </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Clientes ativos e convertidos com acesso rápido a propostas e histórico.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             onClick={() => void loadData()}
             disabled={loading}

@@ -208,17 +208,23 @@ export const KitsView: React.FC<KitsViewProps> = ({ theme, onShowToast }) => {
   return (
     <section className="space-y-6" id="kits-page">
       {/* CABEÇALHO */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
             Catálogo técnico e comercial
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Kits Fotovoltaicos</h1>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[var(--text)]">
+            <Package className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
+            Kits Fotovoltaicos
+          </h1>
           <p className="mt-1 text-sm font-normal text-[var(--muted)]">
             Os kits desta tela são os mesmos utilizados na etapa de dimensionamento do Wizard.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             type="button"
             onClick={handleOpenCreateModal}

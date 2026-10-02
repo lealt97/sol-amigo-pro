@@ -338,13 +338,19 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
 
   return (
     <section id="leads-page" className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between"
+        style={{ borderColor: theme.border }}
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">Captação comercial</p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Leads</h1>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[var(--text)]">
+            <UserPlus className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
+            Leads
+          </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">Interessados captados pelo site ou cadastrados manualmente.</p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             onClick={() => setIsNewLeadModalOpen(true)}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"

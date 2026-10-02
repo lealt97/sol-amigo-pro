@@ -841,7 +841,8 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
             Central de Atendimento & CRM
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text)]">
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[var(--text)]">
+            <NotepadText className="h-6 w-6 shrink-0" style={{ color: theme.secondary }} />
             Anotações
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -849,7 +850,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             id="btn-gerar-anotacao"
             type="button"
