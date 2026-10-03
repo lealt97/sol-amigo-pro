@@ -109,7 +109,8 @@ export const getSafePhotoScale = (
     cos + widthRatio * sin,
     cos + heightRatio * sin
   );
-  return Math.max(1, requestedScale, rotationCoverage + 0.04);
+  const safetyMargin = sin > 0.0001 ? 0.04 : 0;
+  return Math.max(1, requestedScale, rotationCoverage + safetyMargin);
 };
 
 export const getPhotoPanLimits = (
