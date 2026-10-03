@@ -533,49 +533,224 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
 
           <div className="max-h-[calc(100vh-230px)] min-h-[560px] overflow-y-auto p-4">
             {activeTab === 'templates' && (
-              <div>
-                <div className="mb-3">
-                  <h2 className="text-sm font-black">Galeria de capas</h2>
-                  <p className="mt-1 text-xs opacity-55">Clique em uma capa para abrir no editor.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {PDF_COVER_TEMPLATES.map((item, index) => {
-                    const selected = item.id === draft.template;
-                    return (
+              <div className="space-y-6">
+                <section>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-black">Capas disponíveis</h2>
+                      <p className="mt-1 text-xs opacity-55">Modelos originais protegidos. Adicione uma cópia para personalizar.</p>
+                    </div>
+                    <div className="flex gap-1">
                       <button
-                        key={item.id}
                         type="button"
-                        onClick={() => selectTemplate(item.id)}
-                        className="group relative overflow-hidden rounded-xl border p-2 text-left"
-                        style={{
-                          borderColor: selected ? currentTheme.secondary : currentTheme.border,
-                          boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
-                        }}
+                        onClick={() => scrollSlider(originalsSliderRef, -1)}
+                        className="rounded-lg border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                        aria-label="Capas anteriores"
                       >
-                        <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
-                          <img
-                            src={getPdfCoverAssetUrl(item.file)}
-                            alt={item.name}
-                            className="h-full w-full object-contain"
-                            draggable={false}
-                          />
-                        </div>
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-bold">{item.name}</span>
-                          <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
-                        </div>
-                        {selected && (
-                          <span
-                            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full"
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollSlider(originalsSliderRef, 1)}
+                        className="rounded-lg border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                        aria-label="Próximas capas"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    ref={originalsSliderRef}
+                    className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
+                    style={{ scrollbarWidth: 'none' }}
+                  >
+                    {PDF_COVER_TEMPLATES.map((item, index) => {
+                      const selected = !activeModelId && item.id === draft.template;
+                      return (
+                        <article
+                          key={item.id}
+                          className="w-[158px] shrink-0 snap-start rounded-xl border p-2"
+                          style={{
+                            borderColor: selected ? currentTheme.secondary : currentTheme.border,
+                            boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => selectTemplate(item.id)}
+                            className="relative block w-full text-left"
+                          >
+                            <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
+                              <img
+                                src={getPdfCoverAssetUrl(item.file)}
+                                alt={item.name}
+                                className="h-full w-full object-contain"
+                                draggable={false}
+                              />
+                            </div>
+                            {selected && (
+                              <span
+                                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
+                                style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </span>
+                            )}
+                          </button>
+
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <span className="truncate text-[11px] font-bold">{item.name}</span>
+                            <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void addTemplateAsModel(item.id)}
+                            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-black"
                             style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
                           >
-                            <Check className="h-3.5 w-3.5" />
-                          </span>
-                        )}
+                            <Plus className="h-3.5 w-3.5" />
+                            Adicionar modelo
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="border-t pt-5" style={{ borderColor: currentTheme.border }}>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-black">Meus Modelos</h2>
+                      <p className="mt-1 text-xs opacity-55">Cada modelo e cada duplicação possuem edição totalmente independente.</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => scrollSlider(modelsSliderRef, -1)}
+                        className="rounded-lg border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                        aria-label="Modelos anteriores"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
                       </button>
-                    );
-                  })}
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => scrollSlider(modelsSliderRef, 1)}
+                        className="rounded-lg border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                        aria-label="Próximos modelos"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {modelsLoading ? (
+                    <div className="flex min-h-44 items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin opacity-60" />
+                    </div>
+                  ) : models.length === 0 ? (
+                    <div className="rounded-xl border border-dashed p-5 text-center" style={{ borderColor: currentTheme.border }}>
+                      <ImageIcon className="mx-auto h-7 w-7 opacity-35" />
+                      <div className="mt-2 text-xs font-bold">Nenhum modelo adicionado</div>
+                      <p className="mt-1 text-[10px] opacity-50">
+                        Use “Adicionar modelo” em uma das capas acima para criar sua primeira versão editável.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      ref={modelsSliderRef}
+                      className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {models.map((model) => {
+                        const selected = activeModelId === model.id;
+                        const source = getPdfCoverTemplate(model.sourceTemplateId);
+                        const menuOpen = modelMenuId === model.id;
+                        return (
+                          <article
+                            key={model.id}
+                            className="w-[168px] shrink-0 snap-start rounded-xl border p-2"
+                            style={{
+                              borderColor: selected ? currentTheme.secondary : currentTheme.border,
+                              boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => editModel(model)}
+                              className="relative block w-full text-left"
+                            >
+                              <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
+                                <ModelThumbnail model={model} />
+                              </div>
+                              {selected && (
+                                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
+                                  <Check className="h-3.5 w-3.5" />
+                                </span>
+                              )}
+                            </button>
+
+                            <div className="mt-2 flex min-w-0 items-start gap-2">
+                              <button type="button" onClick={() => editModel(model)} className="min-w-0 flex-1 text-left">
+                                <div className="truncate text-[11px] font-bold" title={model.name}>{model.name}</div>
+                                <div className="mt-0.5 truncate text-[9px] opacity-45">Base: {source.name}</div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setModelMenuId(menuOpen ? null : model.id)}
+                                className="shrink-0 rounded-md border p-1.5"
+                                style={{ borderColor: currentTheme.border }}
+                                aria-label={`Opções de ${model.name}`}
+                                aria-expanded={menuOpen}
+                              >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+
+                            {menuOpen && (
+                              <div
+                                className="mt-2 overflow-hidden rounded-lg border"
+                                style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => editModel(model)}
+                                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void duplicateModel(model)}
+                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
+                                  style={{ borderColor: currentTheme.border }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  Duplicar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteModel(model)}
+                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold text-red-400 hover:opacity-80"
+                                  style={{ borderColor: currentTheme.border }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Excluir
+                                </button>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               </div>
             )}
 
