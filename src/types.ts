@@ -33,6 +33,15 @@ export interface PdfSettingsConfig {
   coverPhotoTransform?: PdfElementTransform;
 }
 
+export interface PdfCoverModel {
+  id: string;
+  name: string;
+  sourceTemplateId: string;
+  settings: PdfSettingsConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type PageKey =
   | 'dashboard'
   | 'leads'
