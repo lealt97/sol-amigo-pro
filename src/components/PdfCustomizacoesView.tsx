@@ -3,16 +3,21 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Image as ImageIcon,
   Loader2,
+  MoreVertical,
   Move,
   Palette,
+  Pencil,
+  Plus,
   RefreshCw,
   RotateCcw,
   Save,
+  Trash2,
   UploadCloud,
 } from 'lucide-react';
-import { PdfElementTransform, PdfSettingsConfig, ThemeConfig } from '../types';
+import { PdfCoverModel, PdfElementTransform, PdfSettingsConfig, ThemeConfig } from '../types';
 import {
   getPdfCoverAssetUrl,
   getPdfCoverTemplate,
@@ -32,6 +37,13 @@ import {
   ProfileBrandLogo,
 } from '../services/websiteFormIntegration';
 import { uploadPdfCoverPhoto } from '../services/pdfCustomization';
+import {
+  createPdfCoverModel,
+  duplicatePdfCoverModel,
+  fetchPdfCoverModels,
+  savePdfCoverModels,
+  updatePdfCoverModelSettings,
+} from '../services/pdfCoverModels';
 
 interface PdfCustomizacoesViewProps {
   currentPdfSettings: PdfSettingsConfig;
