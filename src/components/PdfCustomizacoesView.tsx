@@ -488,7 +488,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
               style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
             >
               <Save className="h-4 w-4" />
-              Salvar personalização
+              {activeModelId ? 'Salvar modelo' : 'Salvar personalização'}
             </button>
           </div>
         </div>
@@ -1024,8 +1024,14 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-black">{template.name}</div>
-                <div className="mt-0.5 text-[10px] opacity-50">A4 · 595 × 842 · SVG vetorial</div>
+                <div className="text-sm font-black">
+                  {activeModelId
+                    ? models.find((model) => model.id === activeModelId)?.name || template.name
+                    : template.name}
+                </div>
+                <div className="mt-0.5 text-[10px] opacity-50">
+                  {activeModelId ? `Meu Modelo · base ${template.name}` : 'Modelo original'} · A4 · 595 × 842 · SVG vetorial
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1110,6 +1116,69 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
         </section>
       </div>
     </div>
+  );
+};
+
+const ModelThumbnail: React.FC<{ model: PdfCoverModel }> = ({ model }) => {
+  const [svg, setSvg] = useState('');
+  const template = getPdfCoverTemplate(model.sourceTemplateId);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(getPdfCoverAssetUrl(template.file))
+      .then((response) => response.ok ? response.text() : Promise.reject())
+      .then((content) => {
+        if (mounted) setSvg(content);
+      })
+      .catch(() => {
+        if (mounted) setSvg('');
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [template.file]);
+
+  const rendered = useMemo(() => {
+    if (!svg) return '';
+    return buildCoverSvg(svg, {
+      colorOverrides: model.settings.coverColors,
+      photoUrl: model.settings.showCoverPhoto ? model.settings.customCoverUrl : undefined,
+      photoTransform: model.settings.coverPhotoTransform,
+      logoUrl: model.settings.showLogo ? model.settings.customLogoUrl : undefined,
+      logoTransform: model.settings.coverLogoTransform,
+      logoSlot: template.logoSlot,
+      logoPlaceholder: template.logoPlaceholder,
+    });
+  }, [
+    svg,
+    model.settings.coverColors,
+    model.settings.customCoverUrl,
+    model.settings.customLogoUrl,
+    model.settings.coverLogoTransform,
+    model.settings.coverPhotoTransform,
+    model.settings.showCoverPhoto,
+    model.settings.showLogo,
+    template.logoSlot,
+    template.logoPlaceholder,
+  ]);
+
+  if (!rendered) {
+    return (
+      <img
+        src={getPdfCoverAssetUrl(template.file)}
+        alt={model.name}
+        className="h-full w-full object-contain"
+        draggable={false}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="h-full w-full"
+      dangerouslySetInnerHTML={{ __html: rendered }}
+    />
   );
 };
 
