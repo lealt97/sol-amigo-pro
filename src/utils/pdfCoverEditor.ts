@@ -160,6 +160,7 @@ export interface BuildCoverSvgOptions {
   logoUrl?: string;
   logoTransform?: Partial<PdfElementTransform>;
   logoSlot?: CoverLogoSlot;
+  logoPlaceholder?: CoverLogoSlot;
 }
 
 export const buildCoverSvg = (svgText: string, options: BuildCoverSvgOptions): string => {
@@ -244,18 +245,21 @@ export const buildCoverSvg = (svgText: string, options: BuildCoverSvgOptions): s
 
   if (options.logoUrl && options.logoSlot) {
     const slot = options.logoSlot;
+    const placeholder = options.logoPlaceholder ?? slot;
     const transform = normalizeTransform(options.logoTransform, 'logo');
     const cx = slot.x + slot.width / 2;
     const cy = slot.y + slot.height / 2;
 
+    // O placeholder faz parte do SVG original como curvas vetoriais.
+    // Ao inserir uma logo real, cobrimos toda a área reservada antes de desenhar
+    // a nova imagem, para que "Seu logo aqui" nunca permaneça visível.
     const patch = createSvgElement(doc, 'rect');
-    patch.setAttribute('x', String(slot.x - 3));
-    patch.setAttribute('y', String(slot.y - 3));
-    patch.setAttribute('width', String(slot.width + 6));
-    patch.setAttribute('height', String(slot.height + 6));
-    patch.setAttribute('rx', '2');
-    patch.setAttribute('fill', slot.background);
-    patch.setAttribute('data-solamigo-logo-patch', 'true');
+    patch.setAttribute('x', String(placeholder.x));
+    patch.setAttribute('y', String(placeholder.y));
+    patch.setAttribute('width', String(placeholder.width));
+    patch.setAttribute('height', String(placeholder.height));
+    patch.setAttribute('fill', placeholder.background);
+    patch.setAttribute('data-solamigo-logo-placeholder-cover', 'true');
     svg.appendChild(patch);
 
     const logo = createSvgElement(doc, 'image');
