@@ -62,6 +62,21 @@ const cloneSettings = (settings: PdfSettingsConfig): PdfSettingsConfig => ({
   coverPhotoTransform: { ...normalizeTransform(settings.coverPhotoTransform, 'photo') },
 });
 
+const createPristineTemplateSettings = (
+  base: PdfSettingsConfig,
+  templateId: string
+): PdfSettingsConfig => ({
+  ...cloneSettings(base),
+  template: templateId,
+  coverColors: {},
+  customLogoUrl: undefined,
+  customCoverUrl: undefined,
+  showLogo: true,
+  showCoverPhoto: true,
+  coverLogoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
+  coverPhotoTransform: { offsetX: 0, offsetY: 0, scale: 1.15, rotation: 0 },
+});
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const formatRotation = (value: number) => `${Math.round(value)}°`;
@@ -82,7 +97,13 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
   const [logosLoading, setLogosLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState('');
+  const [models, setModels] = useState<PdfCoverModel[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [activeModelId, setActiveModelId] = useState<string | null>(null);
+  const [modelMenuId, setModelMenuId] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const originalsSliderRef = useRef<HTMLDivElement>(null);
+  const modelsSliderRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     layer: EditableLayer;
     pointerId: number;
@@ -121,6 +142,25 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
       mounted = false;
     };
   }, [template.file]);
+
+  useEffect(() => {
+    let mounted = true;
+    setModelsLoading(true);
+    fetchPdfCoverModels()
+      .then((items) => {
+        if (mounted) setModels(items);
+      })
+      .catch(() => {
+        if (mounted) setModels([]);
+      })
+      .finally(() => {
+        if (mounted) setModelsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
