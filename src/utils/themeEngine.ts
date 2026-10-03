@@ -181,7 +181,7 @@ export const THEME_PRESETS: ThemePreset[] = [
 ];
 
 export const DEFAULT_PDF_SETTINGS: PdfSettingsConfig = {
-  template: 'Modelo 01',
+  template: 'a4-01',
   useAccountColors: true,
   primary: '#183956',
   secondary: '#0076DD',
@@ -192,6 +192,9 @@ export const DEFAULT_PDF_SETTINGS: PdfSettingsConfig = {
   showEquipment: true,
   showEnvironmental: true,
   showFooter: true,
+  coverColors: {},
+  coverLogoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
+  coverPhotoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
 };
 
 export function getContrastFg(hex: string): string {
@@ -378,12 +381,30 @@ export function loadSavedPdfSettings(): PdfSettingsConfig {
       return {
         ...DEFAULT_PDF_SETTINGS,
         ...parsed,
+        template: /^a4-\d{2}$/.test(String(parsed.template || ''))
+          ? parsed.template
+          : parsed.template === 'Modelo 01'
+            ? 'a4-01'
+            : DEFAULT_PDF_SETTINGS.template,
+        coverColors: parsed.coverColors && typeof parsed.coverColors === 'object' ? parsed.coverColors : {},
+        coverLogoTransform: {
+          ...DEFAULT_PDF_SETTINGS.coverLogoTransform!,
+          ...(parsed.coverLogoTransform || {}),
+        },
+        coverPhotoTransform: {
+          ...DEFAULT_PDF_SETTINGS.coverPhotoTransform!,
+          ...(parsed.coverPhotoTransform || {}),
+        },
       };
     }
   } catch (e) {
     console.error('Failed to load PDF settings from localStorage', e);
   }
   return { ...DEFAULT_PDF_SETTINGS };
+}
+
+export function savePdfSettings(settings: PdfSettingsConfig) {
+  localStorage.setItem('solamigo.pdf', JSON.stringify(settings));
 }
 
 export function createScrollbarArrowSvg(color: string, direction: 'up' | 'down' | 'left' | 'right'): string {
