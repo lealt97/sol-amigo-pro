@@ -7,6 +7,13 @@ export interface ThemeConfig {
   text: string;
 }
 
+export interface PdfElementTransform {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+  rotation: number;
+}
+
 export interface PdfSettingsConfig {
   template: string;
   useAccountColors: boolean;
@@ -21,6 +28,9 @@ export interface PdfSettingsConfig {
   showFooter: boolean;
   customLogoUrl?: string;
   customCoverUrl?: string;
+  coverColors?: Record<string, string>;
+  coverLogoTransform?: PdfElementTransform;
+  coverPhotoTransform?: PdfElementTransform;
 }
 
 export type PageKey =
