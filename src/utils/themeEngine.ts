@@ -194,7 +194,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettingsConfig = {
   showFooter: true,
   coverColors: {},
   coverLogoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
-  coverPhotoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
+  coverPhotoTransform: { offsetX: 0, offsetY: 0, scale: 1.15, rotation: 0 },
 };
 
 export function getContrastFg(hex: string): string {
