@@ -5,7 +5,7 @@ import {
   createPdfCoverModel,
   duplicatePdfCoverModel,
   updatePdfCoverModelSettings,
-} from '../src/services/pdfCoverModels';
+} from '../src/utils/pdfCoverModels';
 
 const baseSettings: PdfSettingsConfig = {
   template: 'a4-01',
