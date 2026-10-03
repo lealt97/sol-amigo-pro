@@ -469,26 +469,28 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={restoreSaved}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold"
-              style={{ borderColor: currentTheme.border }}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Descartar
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-black"
-              style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-            >
-              <Save className="h-4 w-4" />
-              {activeModelId ? 'Salvar modelo' : 'Salvar personalização'}
-            </button>
-          </div>
+          {activeModelId && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={restoreSaved}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold"
+                style={{ borderColor: currentTheme.border }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-black"
+                style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
+              >
+                <Save className="h-4 w-4" />
+                Salvar modelo
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -511,13 +513,15 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                 <button
                   key={tab.id}
                   type="button"
+                  disabled={tab.id !== 'templates' && !activeModelId}
                   onClick={() => {
+                    if (tab.id !== 'templates' && !activeModelId) return;
                     setActiveTab(tab.id);
                     if (tab.id === 'logo') setActiveLayer('logo');
                     else if (tab.id === 'photo') setActiveLayer('photo');
                     else setActiveLayer(null);
                   }}
-                  className="flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2 text-[10px] font-bold"
+                  className="flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-35"
                   style={selected
                     ? { backgroundColor: currentTheme.secondary, color: '#fff' }
                     : { color: currentTheme.text }}
