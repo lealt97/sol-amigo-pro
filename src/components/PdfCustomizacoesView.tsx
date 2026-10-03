@@ -200,6 +200,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
       logoUrl: draft.showLogo ? draft.customLogoUrl : undefined,
       logoTransform: draft.coverLogoTransform,
       logoSlot: template.logoSlot,
+      logoPlaceholder: template.logoPlaceholder,
     });
   }, [
     rawSvg,
@@ -211,6 +212,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     draft.showCoverPhoto,
     draft.showLogo,
     template.logoSlot,
+    template.logoPlaceholder,
   ]);
 
   const setTransform = (layer: EditableLayer, patch: Partial<PdfElementTransform>) => {
@@ -232,14 +234,75 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
   };
 
   const selectTemplate = (templateId: string) => {
-    setDraft((current) => ({
-      ...current,
-      template: templateId,
-      coverColors: {},
-      coverLogoTransform: { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 },
-      coverPhotoTransform: { offsetX: 0, offsetY: 0, scale: 1.15, rotation: 0 },
-    }));
+    setActiveModelId(null);
+    setModelMenuId(null);
+    setDraft(createPristineTemplateSettings(currentPdfSettings, templateId));
     setActiveLayer(null);
+  };
+
+  const scrollSlider = (ref: React.RefObject<HTMLDivElement | null>, direction: -1 | 1) => {
+    ref.current?.scrollBy({ left: direction * 420, behavior: 'smooth' });
+  };
+
+  const persistModels = async (next: PdfCoverModel[]) => {
+    setModels(next);
+    try {
+      await savePdfCoverModels(next);
+    } catch {
+      setError('Não foi possível salvar sua biblioteca de modelos.');
+    }
+  };
+
+  const addTemplateAsModel = async (templateId: string) => {
+    const source = getPdfCoverTemplate(templateId);
+    const sameSourceCount = models.filter((model) => model.sourceTemplateId === templateId).length;
+    const name = sameSourceCount
+      ? `${source.name} personalizada ${sameSourceCount + 1}`
+      : `${source.name} personalizada`;
+    const model = createPdfCoverModel(
+      templateId,
+      createPristineTemplateSettings(currentPdfSettings, templateId),
+      name
+    );
+    const next = [...models, model];
+    await persistModels(next);
+    setActiveModelId(model.id);
+    setDraft(cloneSettings(model.settings));
+    setActiveLayer(null);
+    setModelMenuId(null);
+    onShowToast(`Modelo "${model.name}" adicionado em Meus Modelos.`);
+  };
+
+  const editModel = (model: PdfCoverModel) => {
+    setActiveModelId(model.id);
+    setDraft(cloneSettings(model.settings));
+    setActiveLayer(null);
+    setActiveTab('colors');
+    setModelMenuId(null);
+  };
+
+  const duplicateModel = async (model: PdfCoverModel) => {
+    const copy = duplicatePdfCoverModel(model, models.map((item) => item.name));
+    const next = [...models, copy];
+    await persistModels(next);
+    setModelMenuId(null);
+    onShowToast(`"${copy.name}" criado como cópia independente.`);
+  };
+
+  const deleteModel = async (model: PdfCoverModel) => {
+    if (!window.confirm(`Excluir o modelo "${model.name}"? Essa ação não altera a capa original.`)) return;
+    const next = models.filter((item) => item.id !== model.id);
+    await persistModels(next);
+    setModelMenuId(null);
+
+    if (activeModelId === model.id) {
+      setActiveModelId(null);
+      setDraft(createPristineTemplateSettings(currentPdfSettings, model.sourceTemplateId));
+      setActiveLayer(null);
+      setActiveTab('templates');
+    }
+
+    onShowToast('Modelo excluído.');
   };
 
   const setColorOverride = (source: string, value: string) => {
@@ -348,14 +411,33 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     dragRef.current = null;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const normalized = cloneSettings(draft);
+
+    if (activeModelId) {
+      const currentModel = models.find((model) => model.id === activeModelId);
+      if (currentModel) {
+        const updated = updatePdfCoverModelSettings(currentModel, normalized);
+        await persistModels(models.map((model) => model.id === updated.id ? updated : model));
+      }
+    }
+
     savePdfSettings(normalized);
     onSavePdfSettings(normalized);
-    onShowToast('Personalização da capa salva.');
+    onShowToast(activeModelId ? 'Modelo atualizado e aplicado.' : 'Personalização da capa salva.');
   };
 
   const restoreSaved = () => {
+    if (activeModelId) {
+      const currentModel = models.find((model) => model.id === activeModelId);
+      if (currentModel) {
+        setDraft(cloneSettings(currentModel.settings));
+        setActiveLayer(null);
+        onShowToast('Alterações do modelo descartadas.');
+        return;
+      }
+    }
+
     setDraft(cloneSettings(currentPdfSettings));
     setActiveLayer(null);
     onShowToast('Alterações não salvas descartadas.');
