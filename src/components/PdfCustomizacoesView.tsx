@@ -200,7 +200,6 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
       logoUrl: draft.showLogo ? draft.customLogoUrl : undefined,
       logoTransform: draft.coverLogoTransform,
       logoSlot: template.logoSlot,
-      logoPlaceholder: template.logoPlaceholder,
     });
   }, [
     rawSvg,
@@ -212,7 +211,6 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     draft.showCoverPhoto,
     draft.showLogo,
     template.logoSlot,
-    template.logoPlaceholder,
   ]);
 
   const setTransform = (layer: EditableLayer, patch: Partial<PdfElementTransform>) => {
@@ -1148,7 +1146,6 @@ const ModelThumbnail: React.FC<{ model: PdfCoverModel }> = ({ model }) => {
       logoUrl: model.settings.showLogo ? model.settings.customLogoUrl : undefined,
       logoTransform: model.settings.coverLogoTransform,
       logoSlot: template.logoSlot,
-      logoPlaceholder: template.logoPlaceholder,
     });
   }, [
     svg,
@@ -1160,7 +1157,6 @@ const ModelThumbnail: React.FC<{ model: PdfCoverModel }> = ({ model }) => {
     model.settings.showCoverPhoto,
     model.settings.showLogo,
     template.logoSlot,
-    template.logoPlaceholder,
   ]);
 
   if (!rendered) {
