@@ -233,13 +233,6 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     });
   };
 
-  const selectTemplate = (templateId: string) => {
-    setActiveModelId(null);
-    setModelMenuId(null);
-    setDraft(createPristineTemplateSettings(currentPdfSettings, templateId));
-    setActiveLayer(null);
-  };
-
   const scrollSlider = (ref: React.RefObject<HTMLDivElement | null>, direction: -1 | 1) => {
     ref.current?.scrollBy({ left: direction * 420, behavior: 'smooth' });
   };
@@ -266,11 +259,16 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     );
     const next = [...models, model];
     await persistModels(next);
-    setActiveModelId(model.id);
-    setDraft(cloneSettings(model.settings));
-    setActiveLayer(null);
     setModelMenuId(null);
+    setActiveTab('templates');
+    setActiveLayer(null);
     onShowToast(`Modelo "${model.name}" adicionado em Meus Modelos.`);
+    requestAnimationFrame(() => {
+      modelsSliderRef.current?.scrollTo({
+        left: modelsSliderRef.current.scrollWidth,
+        behavior: 'smooth',
+      });
+    });
   };
 
   const editModel = (model: PdfCoverModel) => {
@@ -467,30 +465,32 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
             </div>
             <h1 className="mt-1 text-2xl font-black">Personalização da capa PDF</h1>
             <p className="mt-1 max-w-3xl text-sm opacity-65">
-              Escolha uma das 12 capas A4, edite cada cor disponível individualmente, aplique logos já cadastrados e enquadre a foto sem deformação.
+              As 12 capas originais ficam protegidas. Adicione uma delas em Meus Modelos para editar cores, logo e foto sem alterar o arquivo de origem.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={restoreSaved}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold"
-              style={{ borderColor: currentTheme.border }}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Descartar
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-black"
-              style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-            >
-              <Save className="h-4 w-4" />
-              {activeModelId ? 'Salvar modelo' : 'Salvar personalização'}
-            </button>
-          </div>
+          {activeModelId && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={restoreSaved}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold"
+                style={{ borderColor: currentTheme.border }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-black"
+                style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
+              >
+                <Save className="h-4 w-4" />
+                Salvar modelo
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -513,13 +513,15 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                 <button
                   key={tab.id}
                   type="button"
+                  disabled={tab.id !== 'templates' && !activeModelId}
                   onClick={() => {
+                    if (tab.id !== 'templates' && !activeModelId) return;
                     setActiveTab(tab.id);
                     if (tab.id === 'logo') setActiveLayer('logo');
                     else if (tab.id === 'photo') setActiveLayer('photo');
                     else setActiveLayer(null);
                   }}
-                  className="flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2 text-[10px] font-bold"
+                  className="flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-35"
                   style={selected
                     ? { backgroundColor: currentTheme.secondary, color: '#fff' }
                     : { color: currentTheme.text }}
@@ -567,57 +569,37 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                     className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
                     style={{ scrollbarWidth: 'none' }}
                   >
-                    {PDF_COVER_TEMPLATES.map((item, index) => {
-                      const selected = !activeModelId && item.id === draft.template;
-                      return (
-                        <article
-                          key={item.id}
-                          className="w-[158px] shrink-0 snap-start rounded-xl border p-2"
-                          style={{
-                            borderColor: selected ? currentTheme.secondary : currentTheme.border,
-                            boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
-                          }}
+                    {PDF_COVER_TEMPLATES.map((item, index) => (
+                      <article
+                        key={item.id}
+                        className="w-[158px] shrink-0 snap-start rounded-xl border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                      >
+                        <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
+                          <img
+                            src={getPdfCoverAssetUrl(item.file)}
+                            alt={item.name}
+                            className="h-full w-full object-contain"
+                            draggable={false}
+                          />
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="truncate text-[11px] font-bold">{item.name}</span>
+                          <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void addTemplateAsModel(item.id)}
+                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-black"
+                          style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
                         >
-                          <button
-                            type="button"
-                            onClick={() => selectTemplate(item.id)}
-                            className="relative block w-full text-left"
-                          >
-                            <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
-                              <img
-                                src={getPdfCoverAssetUrl(item.file)}
-                                alt={item.name}
-                                className="h-full w-full object-contain"
-                                draggable={false}
-                              />
-                            </div>
-                            {selected && (
-                              <span
-                                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
-                                style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </span>
-                            )}
-                          </button>
-
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <span className="truncate text-[11px] font-bold">{item.name}</span>
-                            <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => void addTemplateAsModel(item.id)}
-                            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-black"
-                            style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Adicionar modelo
-                          </button>
-                        </article>
-                      );
-                    })}
+                          <Plus className="h-3.5 w-3.5" />
+                          Adicionar modelo
+                        </button>
+                      </article>
+                    ))}
                   </div>
                 </section>
 
@@ -680,11 +662,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                               boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => editModel(model)}
-                              className="relative block w-full text-left"
-                            >
+                            <div className="relative block w-full">
                               <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
                                 <ModelThumbnail model={model} />
                               </div>
@@ -693,13 +671,13 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                                   <Check className="h-3.5 w-3.5" />
                                 </span>
                               )}
-                            </button>
+                            </div>
 
                             <div className="mt-2 flex min-w-0 items-start gap-2">
-                              <button type="button" onClick={() => editModel(model)} className="min-w-0 flex-1 text-left">
+                              <div className="min-w-0 flex-1">
                                 <div className="truncate text-[11px] font-bold" title={model.name}>{model.name}</div>
                                 <div className="mt-0.5 truncate text-[9px] opacity-45">Base: {source.name}</div>
-                              </button>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setModelMenuId(menuOpen ? null : model.id)}
@@ -1018,101 +996,123 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
         </aside>
 
         <section className="min-w-0">
-          <div
-            className="sticky top-4 rounded-2xl border p-4 md:p-5"
-            style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
-          >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-black">
-                  {activeModelId
-                    ? models.find((model) => model.id === activeModelId)?.name || template.name
-                    : template.name}
+          {activeModelId ? (
+            <div
+              className="sticky top-4 rounded-2xl border p-4 md:p-5"
+              style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black">
+                    {models.find((model) => model.id === activeModelId)?.name || template.name}
+                  </div>
+                  <div className="mt-0.5 text-[10px] opacity-50">
+                    Meu Modelo · base {template.name} · A4 · 595 × 842 · SVG vetorial
+                  </div>
                 </div>
-                <div className="mt-0.5 text-[10px] opacity-50">
-                  {activeModelId ? `Meu Modelo · base ${template.name}` : 'Modelo original'} · A4 · 595 × 842 · SVG vetorial
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {(draft.customLogoUrl || draft.customCoverUrl) && (
+                    <div className="inline-flex rounded-xl border p-1" style={{ borderColor: currentTheme.border }}>
+                      {draft.customLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('logo');
+                            setActiveLayer('logo');
+                          }}
+                          className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                          style={activeLayer === 'logo'
+                            ? { backgroundColor: currentTheme.secondary, color: '#fff' }
+                            : undefined}
+                        >
+                          Mover logo
+                        </button>
+                      )}
+                      {draft.customCoverUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('photo');
+                            setActiveLayer('photo');
+                          }}
+                          className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                          style={activeLayer === 'photo'
+                            ? { backgroundColor: currentTheme.secondary, color: '#fff' }
+                            : undefined}
+                        >
+                          Mover foto
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="rounded-full border px-3 py-1.5 text-[10px] font-bold" style={{ borderColor: currentTheme.border }}>
+                    {activeLayer ? `Arrastando: ${activeLayer === 'logo' ? 'logo' : 'foto'}` : 'Editando modelo'}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {(draft.customLogoUrl || draft.customCoverUrl) && (
-                  <div className="inline-flex rounded-xl border p-1" style={{ borderColor: currentTheme.border }}>
-                    {draft.customLogoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('logo');
-                          setActiveLayer('logo');
-                        }}
-                        className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
-                        style={activeLayer === 'logo'
-                          ? { backgroundColor: currentTheme.secondary, color: '#fff' }
-                          : undefined}
-                      >
-                        Mover logo
-                      </button>
-                    )}
-                    {draft.customCoverUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('photo');
-                          setActiveLayer('photo');
-                        }}
-                        className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
-                        style={activeLayer === 'photo'
-                          ? { backgroundColor: currentTheme.secondary, color: '#fff' }
-                          : undefined}
-                      >
-                        Mover foto
-                      </button>
-                    )}
-                  </div>
-                )}
+              <div className="flex min-h-[620px] items-start justify-center overflow-auto rounded-xl border p-3 md:p-6" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}>
+                <div
+                  ref={previewRef}
+                  onPointerDown={beginDrag}
+                  onPointerMove={moveDrag}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
+                  className={`relative aspect-[595/842] w-full max-w-[595px] select-none overflow-hidden bg-white shadow-2xl ${
+                    activeLayer ? 'cursor-move' : 'cursor-default'
+                  }`}
+                  style={{ touchAction: activeLayer ? 'none' : 'auto' }}
+                  title={activeLayer ? 'Clique e arraste para reposicionar o elemento selecionado' : undefined}
+                >
+                  {svgLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white text-slate-600">
+                      <Loader2 className="h-7 w-7 animate-spin" />
+                    </div>
+                  ) : previewSvg ? (
+                    <div
+                      className="absolute inset-0 h-full w-full"
+                      dangerouslySetInnerHTML={{ __html: previewSvg }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white text-sm font-bold text-slate-500">
+                      Capa indisponível
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                <span className="rounded-full border px-3 py-1.5 text-[10px] font-bold" style={{ borderColor: currentTheme.border }}>
-                  {activeLayer ? `Arrastando: ${activeLayer === 'logo' ? 'logo' : 'foto'}` : 'Visualização'}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] opacity-55">
+                <span>
+                  A foto usa <strong>preserveAspectRatio</strong> e escala uniforme: nunca há esticamento horizontal ou vertical.
                 </span>
+                <span>Alterações só ficam permanentes após salvar o modelo.</span>
               </div>
             </div>
-
-            <div className="flex min-h-[620px] items-start justify-center overflow-auto rounded-xl border p-3 md:p-6" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}>
-              <div
-                ref={previewRef}
-                onPointerDown={beginDrag}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                className={`relative aspect-[595/842] w-full max-w-[595px] select-none overflow-hidden bg-white shadow-2xl ${
-                  activeLayer ? 'cursor-move' : 'cursor-default'
-                }`}
-                style={{ touchAction: activeLayer ? 'none' : 'auto' }}
-                title={activeLayer ? 'Clique e arraste para reposicionar o elemento selecionado' : undefined}
-              >
-                {svgLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white text-slate-600">
-                    <Loader2 className="h-7 w-7 animate-spin" />
-                  </div>
-                ) : previewSvg ? (
-                  <div
-                    className="absolute inset-0 h-full w-full"
-                    dangerouslySetInnerHTML={{ __html: previewSvg }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white text-sm font-bold text-slate-500">
-                    Capa indisponível
-                  </div>
-                )}
+          ) : (
+            <div
+              className="sticky top-4 flex min-h-[680px] items-center justify-center rounded-2xl border p-6"
+              style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
+            >
+              <div className="max-w-md text-center">
+                <div
+                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: `${currentTheme.secondary}22`, color: currentTheme.secondary }}
+                >
+                  <Pencil className="h-6 w-6" />
+                </div>
+                <h2 className="mt-4 text-lg font-black">Nenhum modelo em edição</h2>
+                <p className="mt-2 text-sm leading-relaxed opacity-60">
+                  As capas originais agora servem apenas como base. Clique em <strong>Adicionar modelo</strong> e depois,
+                  em <strong>Meus Modelos</strong>, abra o menu de três pontos e escolha <strong>Editar</strong>.
+                </p>
+                <div className="mt-5 rounded-xl border p-4 text-left text-xs leading-relaxed opacity-65" style={{ borderColor: currentTheme.border }}>
+                  Assim, o modelo original nunca é alterado e cada cópia permanece independente das demais.
+                </div>
               </div>
             </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] opacity-55">
-              <span>
-                A foto usa <strong>preserveAspectRatio</strong> e escala uniforme: nunca há esticamento horizontal ou vertical.
-              </span>
-              <span>Alterações só ficam permanentes após salvar.</span>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </div>
