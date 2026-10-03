@@ -465,7 +465,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
             </div>
             <h1 className="mt-1 text-2xl font-black">Personalização da capa PDF</h1>
             <p className="mt-1 max-w-3xl text-sm opacity-65">
-              Escolha uma das 12 capas A4, edite cada cor disponível individualmente, aplique logos já cadastrados e enquadre a foto sem deformação.
+              As 12 capas originais ficam protegidas. Adicione uma delas em Meus Modelos para editar cores, logo e foto sem alterar o arquivo de origem.
             </p>
           </div>
 
