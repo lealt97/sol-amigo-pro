@@ -996,101 +996,123 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
         </aside>
 
         <section className="min-w-0">
-          <div
-            className="sticky top-4 rounded-2xl border p-4 md:p-5"
-            style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
-          >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-black">
-                  {activeModelId
-                    ? models.find((model) => model.id === activeModelId)?.name || template.name
-                    : template.name}
+          {activeModelId ? (
+            <div
+              className="sticky top-4 rounded-2xl border p-4 md:p-5"
+              style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black">
+                    {models.find((model) => model.id === activeModelId)?.name || template.name}
+                  </div>
+                  <div className="mt-0.5 text-[10px] opacity-50">
+                    Meu Modelo · base {template.name} · A4 · 595 × 842 · SVG vetorial
+                  </div>
                 </div>
-                <div className="mt-0.5 text-[10px] opacity-50">
-                  {activeModelId ? `Meu Modelo · base ${template.name}` : 'Modelo original'} · A4 · 595 × 842 · SVG vetorial
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {(draft.customLogoUrl || draft.customCoverUrl) && (
+                    <div className="inline-flex rounded-xl border p-1" style={{ borderColor: currentTheme.border }}>
+                      {draft.customLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('logo');
+                            setActiveLayer('logo');
+                          }}
+                          className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                          style={activeLayer === 'logo'
+                            ? { backgroundColor: currentTheme.secondary, color: '#fff' }
+                            : undefined}
+                        >
+                          Mover logo
+                        </button>
+                      )}
+                      {draft.customCoverUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('photo');
+                            setActiveLayer('photo');
+                          }}
+                          className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
+                          style={activeLayer === 'photo'
+                            ? { backgroundColor: currentTheme.secondary, color: '#fff' }
+                            : undefined}
+                        >
+                          Mover foto
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="rounded-full border px-3 py-1.5 text-[10px] font-bold" style={{ borderColor: currentTheme.border }}>
+                    {activeLayer ? `Arrastando: ${activeLayer === 'logo' ? 'logo' : 'foto'}` : 'Editando modelo'}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {(draft.customLogoUrl || draft.customCoverUrl) && (
-                  <div className="inline-flex rounded-xl border p-1" style={{ borderColor: currentTheme.border }}>
-                    {draft.customLogoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('logo');
-                          setActiveLayer('logo');
-                        }}
-                        className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
-                        style={activeLayer === 'logo'
-                          ? { backgroundColor: currentTheme.secondary, color: '#fff' }
-                          : undefined}
-                      >
-                        Mover logo
-                      </button>
-                    )}
-                    {draft.customCoverUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('photo');
-                          setActiveLayer('photo');
-                        }}
-                        className="rounded-lg px-3 py-1.5 text-[10px] font-bold"
-                        style={activeLayer === 'photo'
-                          ? { backgroundColor: currentTheme.secondary, color: '#fff' }
-                          : undefined}
-                      >
-                        Mover foto
-                      </button>
-                    )}
-                  </div>
-                )}
+              <div className="flex min-h-[620px] items-start justify-center overflow-auto rounded-xl border p-3 md:p-6" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}>
+                <div
+                  ref={previewRef}
+                  onPointerDown={beginDrag}
+                  onPointerMove={moveDrag}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
+                  className={`relative aspect-[595/842] w-full max-w-[595px] select-none overflow-hidden bg-white shadow-2xl ${
+                    activeLayer ? 'cursor-move' : 'cursor-default'
+                  }`}
+                  style={{ touchAction: activeLayer ? 'none' : 'auto' }}
+                  title={activeLayer ? 'Clique e arraste para reposicionar o elemento selecionado' : undefined}
+                >
+                  {svgLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white text-slate-600">
+                      <Loader2 className="h-7 w-7 animate-spin" />
+                    </div>
+                  ) : previewSvg ? (
+                    <div
+                      className="absolute inset-0 h-full w-full"
+                      dangerouslySetInnerHTML={{ __html: previewSvg }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white text-sm font-bold text-slate-500">
+                      Capa indisponível
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                <span className="rounded-full border px-3 py-1.5 text-[10px] font-bold" style={{ borderColor: currentTheme.border }}>
-                  {activeLayer ? `Arrastando: ${activeLayer === 'logo' ? 'logo' : 'foto'}` : 'Visualização'}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] opacity-55">
+                <span>
+                  A foto usa <strong>preserveAspectRatio</strong> e escala uniforme: nunca há esticamento horizontal ou vertical.
                 </span>
+                <span>Alterações só ficam permanentes após salvar o modelo.</span>
               </div>
             </div>
-
-            <div className="flex min-h-[620px] items-start justify-center overflow-auto rounded-xl border p-3 md:p-6" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}>
-              <div
-                ref={previewRef}
-                onPointerDown={beginDrag}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                className={`relative aspect-[595/842] w-full max-w-[595px] select-none overflow-hidden bg-white shadow-2xl ${
-                  activeLayer ? 'cursor-move' : 'cursor-default'
-                }`}
-                style={{ touchAction: activeLayer ? 'none' : 'auto' }}
-                title={activeLayer ? 'Clique e arraste para reposicionar o elemento selecionado' : undefined}
-              >
-                {svgLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white text-slate-600">
-                    <Loader2 className="h-7 w-7 animate-spin" />
-                  </div>
-                ) : previewSvg ? (
-                  <div
-                    className="absolute inset-0 h-full w-full"
-                    dangerouslySetInnerHTML={{ __html: previewSvg }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white text-sm font-bold text-slate-500">
-                    Capa indisponível
-                  </div>
-                )}
+          ) : (
+            <div
+              className="sticky top-4 flex min-h-[680px] items-center justify-center rounded-2xl border p-6"
+              style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
+            >
+              <div className="max-w-md text-center">
+                <div
+                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: `${currentTheme.secondary}22`, color: currentTheme.secondary }}
+                >
+                  <Pencil className="h-6 w-6" />
+                </div>
+                <h2 className="mt-4 text-lg font-black">Nenhum modelo em edição</h2>
+                <p className="mt-2 text-sm leading-relaxed opacity-60">
+                  As capas originais agora servem apenas como base. Clique em <strong>Adicionar modelo</strong> e depois,
+                  em <strong>Meus Modelos</strong>, abra o menu de três pontos e escolha <strong>Editar</strong>.
+                </p>
+                <div className="mt-5 rounded-xl border p-4 text-left text-xs leading-relaxed opacity-65" style={{ borderColor: currentTheme.border }}>
+                  Assim, o modelo original nunca é alterado e cada cópia permanece independente das demais.
+                </div>
               </div>
             </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] opacity-55">
-              <span>
-                A foto usa <strong>preserveAspectRatio</strong> e escala uniforme: nunca há esticamento horizontal ou vertical.
-              </span>
-              <span>Alterações só ficam permanentes após salvar.</span>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </div>
