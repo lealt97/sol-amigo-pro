@@ -27,10 +27,12 @@ import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig, Lead, L
 import {
   fetchClients,
   fetchClientsLocal,
+  saveClientsLocal,
   deleteClient,
   updateClient,
   updateClientNotes,
   mergeClientsWithLeads,
+  isClientMarkedDeleted,
   CLIENTS_UPDATED_EVENT,
 } from '../services/clients';
 import { fetchLeads, updateLeadStatus } from '../services/leads';
@@ -159,9 +161,11 @@ export function ClientesView({
     const handleClientsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<Client[]>;
       if (customEvent.detail) {
-        setClients(customEvent.detail);
+        setClients(customEvent.detail.filter((c) => !isClientMarkedDeleted(c.id, c.sourceLeadId)));
       } else {
-        void fetchClients().then(setClients);
+        void fetchClients().then((data) =>
+          setClients(data.filter((c) => !isClientMarkedDeleted(c.id, c.sourceLeadId)))
+        );
       }
     };
 
@@ -458,13 +462,20 @@ export function ClientesView({
     const target = deleteClientTarget;
     setWorkingId(target.id);
     try {
-      setClients((prev) =>
-        prev.filter(
-          (c) => c.id !== target.id && (!target.sourceLeadId || c.sourceLeadId !== target.sourceLeadId)
-        )
+      // 1. Atualização otimista imediata na interface
+      const remaining = clients.filter(
+        (c) =>
+          c.id !== target.id &&
+          (!target.sourceLeadId || c.sourceLeadId !== target.sourceLeadId) &&
+          (!c.sourceLeadId || c.sourceLeadId !== target.id) &&
+          !isClientMarkedDeleted(c.id, c.sourceLeadId)
       );
+      setClients(remaining);
+      saveClientsLocal(remaining, false);
+
+      // 2. Persiste a exclusão no serviço e backend
       await deleteClient(target.id, target.sourceLeadId);
-      onShowToast(`Cliente ${target.name} excluído.`);
+      onShowToast(`Cliente ${target.name} excluído com sucesso.`);
       setDeleteClientTarget(null);
     } catch (err: any) {
       setError(err?.message || 'Erro ao excluir cliente.');
@@ -881,25 +892,47 @@ export function ClientesView({
                       </p>
                     </div>
 
-                    {/* Menu de 3 Pontos com Propostas substituindo "Já é cliente" */}
-                    <div
-                      ref={openMenuId === client.id ? menuRef : undefined}
-                      className="relative shrink-0"
-                    >
+                    {/* Ações do Card: Botão de exclusão direto + Menu de 3 Pontos */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
-                        aria-label={`Ações de ${client.name}`}
-                        onClick={() =>
-                          setOpenMenuId((current) => (current === client.id ? null : client.id))
-                        }
-                        className="lead-actions-button flex h-9 w-9 items-center justify-center rounded-lg border"
+                        type="button"
+                        data-delete-btn="true"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          setDeleteClientTarget(client);
+                        }}
+                        className="btn-delete flex h-9 w-9 items-center justify-center rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-all cursor-pointer"
                         style={{
                           backgroundColor: theme.background,
-                          borderColor: theme.border,
-                          color: theme.text,
+                          borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)',
                         }}
+                        title={`Excluir cliente ${client.name}`}
+                        aria-label={`Excluir cliente ${client.name}`}
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
+
+                      {/* Menu de 3 Pontos com Propostas */}
+                      <div
+                        ref={openMenuId === client.id ? menuRef : undefined}
+                        className="relative shrink-0"
+                      >
+                        <button
+                          aria-label={`Mais opções de ${client.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId((current) => (current === client.id ? null : client.id));
+                          }}
+                          className="lead-actions-button flex h-9 w-9 items-center justify-center rounded-lg border"
+                          style={{
+                            backgroundColor: theme.background,
+                            borderColor: theme.border,
+                            color: theme.text,
+                          }}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
 
                       {openMenuId === client.id && (
                         <div
@@ -972,6 +1005,7 @@ export function ClientesView({
                       )}
                     </div>
                   </div>
+                </div>
 
                   {/* Informações de Contato e Local */}
                   <dl className="mt-5 space-y-2.5 text-sm">
@@ -1242,6 +1276,11 @@ export function ClientesView({
           statusLabels={LEAD_STAGE_LABELS}
           targetType="client"
           onClose={() => setParamsModalClient(null)}
+          onDelete={() => {
+            const clientToDelete = paramsModalClient;
+            setParamsModalClient(null);
+            setDeleteClientTarget(clientToDelete);
+          }}
           onLeadUpdated={handleClientLeadUpdated}
           onShowToast={onShowToast}
         />

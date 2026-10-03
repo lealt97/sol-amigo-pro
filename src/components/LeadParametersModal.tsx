@@ -55,6 +55,7 @@ interface LeadParametersModalProps {
   initialTab?: TabKey;
   targetType?: 'lead' | 'client';
   onClose: () => void;
+  onDelete?: (lead: Lead) => void;
   onLeadUpdated: (updatedLead: Lead) => void;
   onShowToast: (message: string) => void;
 }
@@ -68,6 +69,7 @@ export function LeadParametersModal({
   initialTab = 'parametros',
   targetType,
   onClose,
+  onDelete,
   onLeadUpdated,
   onShowToast,
 }: LeadParametersModalProps) {
@@ -507,6 +509,19 @@ export function LeadParametersModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {onDelete && (
+              <button
+                type="button"
+                data-delete-btn="true"
+                onClick={() => onDelete(lead)}
+                className="btn-delete flex h-9 items-center gap-1.5 px-3 rounded-lg border text-xs font-semibold text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-all cursor-pointer"
+                style={{ borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
+                title={isClient ? 'Excluir cliente' : 'Excluir lead'}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="flex h-9 w-9 items-center justify-center rounded-lg border hover:border-[var(--secondary)] hover:text-[var(--secondary)] hover:bg-[color-mix(in_srgb,var(--secondary)_14%,transparent)] transition-colors text-[var(--dim)]"

@@ -329,7 +329,7 @@ export default function App() {
       <Sidebar activePage={activePage} onNavigate={(page) => handleNavigate(page)} onSelectPage={(page) => handleNavigate(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
         <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={handleNavigate} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
+        <main id="app-main-content" className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
           {renderCurrentView()}
         </main>
       </div>

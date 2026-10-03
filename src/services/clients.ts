@@ -26,8 +26,36 @@ export function markClientAsDeleted(id: string): void {
   try {
     const set = getDeletedClientIds();
     set.add(id);
+    const bare = id.replace(/^(lead-cli-|cli-|lead-)/, '');
+    if (bare) {
+      set.add(bare);
+      set.add(`lead-cli-${bare}`);
+      set.add(`cli-${bare}`);
+      set.add(`lead-${bare}`);
+    }
     localStorage.setItem(DELETED_CLIENTS_KEY, JSON.stringify(Array.from(set)));
   } catch {}
+}
+
+export function isClientMarkedDeleted(id?: string, sourceLeadId?: string): boolean {
+  if (!id && !sourceLeadId) return false;
+  const deletedIds = getDeletedClientIds();
+  const check = (val?: string) => {
+    if (!val) return false;
+    if (deletedIds.has(val)) return true;
+    const bare = val.replace(/^(lead-cli-|cli-|lead-)/, '');
+    if (
+      bare &&
+      (deletedIds.has(bare) ||
+        deletedIds.has(`lead-cli-${bare}`) ||
+        deletedIds.has(`cli-${bare}`) ||
+        deletedIds.has(`lead-${bare}`))
+    ) {
+      return true;
+    }
+    return false;
+  };
+  return check(id) || check(sourceLeadId);
 }
 
 const LEGACY_MOCK_CLIENT_IDS = new Set([
@@ -57,13 +85,11 @@ export function fetchClientsLocal(): Client[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      const deletedIds = getDeletedClientIds();
       const clean = parsed.filter(
         (c: any) =>
           c &&
           !LEGACY_MOCK_CLIENT_IDS.has(c.id) &&
-          !deletedIds.has(c.id) &&
-          (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+          !isClientMarkedDeleted(c.id, c.sourceLeadId)
       );
       if (clean.length !== parsed.length) {
         localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clean));
@@ -143,9 +169,8 @@ export async function fetchClients(): Promise<Client[]> {
         }
       });
 
-      const deletedIds = getDeletedClientIds();
       const finalCombined = combined.filter(
-        (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+        (c) => !isClientMarkedDeleted(c.id, c.sourceLeadId)
       );
 
       saveClientsLocal(finalCombined, false);
@@ -155,9 +180,8 @@ export async function fetchClients(): Promise<Client[]> {
     console.warn('Erro ao carregar clientes do Supabase:', err);
   }
 
-  const deletedIds = getDeletedClientIds();
   const finalLocal = localClients.filter(
-    (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+    (c) => !isClientMarkedDeleted(c.id, c.sourceLeadId)
   );
 
   finalLocal.forEach((c) => {
@@ -209,19 +233,18 @@ export function syncLeadAsClient(
 }
 
 export function mergeClientsWithLeads(clientsList: Client[], leadsList: Lead[]): Client[] {
-  const deletedIds = getDeletedClientIds();
   const merged = clientsList.filter(
-    (c) => !deletedIds.has(c.id) && (!c.sourceLeadId || !deletedIds.has(c.sourceLeadId))
+    (c) => !isClientMarkedDeleted(c.id, c.sourceLeadId)
   );
 
   leadsList.forEach((lead) => {
-    if (deletedIds.has(lead.id) || (lead.clientId && deletedIds.has(lead.clientId))) {
+    if (isClientMarkedDeleted(lead.id, lead.clientId)) {
       return;
     }
 
     if (lead.clientId || (lead.status as string) === 'Cliente' || lead.status === 'ganho') {
       const clientId = lead.clientId || `lead-cli-${lead.id}`;
-      if (deletedIds.has(clientId)) {
+      if (isClientMarkedDeleted(clientId, lead.id)) {
         return;
       }
       const existing = merged.find(
@@ -275,7 +298,7 @@ export function mergeClientsWithLeads(clientsList: Client[], leadsList: Lead[]):
       }
     }
   });
-  return merged;
+  return merged.filter((c) => !isClientMarkedDeleted(c.id, c.sourceLeadId));
 }
 
 export async function updateClientNotes(
@@ -383,7 +406,12 @@ export async function deleteClient(clientId: string, sourceLeadId?: string): Pro
       if (Array.isArray(leads)) {
         let changed = false;
         const updatedLeads = leads.map((l: any) => {
-          if (l.id === clientId || l.id === sourceLeadId || l.clientId === clientId) {
+          if (
+            l.id === clientId ||
+            l.id === sourceLeadId ||
+            l.clientId === clientId ||
+            (sourceLeadId && l.clientId === sourceLeadId)
+          ) {
             changed = true;
             return {
               ...l,
@@ -402,16 +430,29 @@ export async function deleteClient(clientId: string, sourceLeadId?: string): Pro
 
   const current = fetchClientsLocal();
   const updated = current.filter(
-    (c) => c.id !== clientId && (!sourceLeadId || c.sourceLeadId !== sourceLeadId)
+    (c) =>
+      !isClientMarkedDeleted(c.id, c.sourceLeadId) &&
+      c.id !== clientId &&
+      (!sourceLeadId || c.sourceLeadId !== sourceLeadId)
   );
-  saveClientsLocal(updated);
+  saveClientsLocal(updated, false);
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId);
-  if (isUuid) {
+  const isUuid = (val: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+  if (isUuid(clientId)) {
     try {
       await supabase.from('clients').delete().eq('id', clientId);
     } catch (err) {
       console.warn('Erro ao excluir cliente no Supabase:', err);
+    }
+  }
+  if (sourceLeadId && isUuid(sourceLeadId)) {
+    try {
+      await supabase.from('clients').delete().eq('source_lead_id', sourceLeadId);
+      await supabase.from('leads').update({ client_id: null }).eq('id', sourceLeadId);
+    } catch (err) {
+      console.warn('Erro ao desvincular cliente/lead no Supabase:', err);
     }
   }
 }
