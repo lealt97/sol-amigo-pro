@@ -565,57 +565,37 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                     className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
                     style={{ scrollbarWidth: 'none' }}
                   >
-                    {PDF_COVER_TEMPLATES.map((item, index) => {
-                      const selected = !activeModelId && item.id === draft.template;
-                      return (
-                        <article
-                          key={item.id}
-                          className="w-[158px] shrink-0 snap-start rounded-xl border p-2"
-                          style={{
-                            borderColor: selected ? currentTheme.secondary : currentTheme.border,
-                            boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
-                          }}
+                    {PDF_COVER_TEMPLATES.map((item, index) => (
+                      <article
+                        key={item.id}
+                        className="w-[158px] shrink-0 snap-start rounded-xl border p-2"
+                        style={{ borderColor: currentTheme.border }}
+                      >
+                        <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
+                          <img
+                            src={getPdfCoverAssetUrl(item.file)}
+                            alt={item.name}
+                            className="h-full w-full object-contain"
+                            draggable={false}
+                          />
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="truncate text-[11px] font-bold">{item.name}</span>
+                          <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void addTemplateAsModel(item.id)}
+                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-black"
+                          style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
                         >
-                          <button
-                            type="button"
-                            onClick={() => selectTemplate(item.id)}
-                            className="relative block w-full text-left"
-                          >
-                            <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
-                              <img
-                                src={getPdfCoverAssetUrl(item.file)}
-                                alt={item.name}
-                                className="h-full w-full object-contain"
-                                draggable={false}
-                              />
-                            </div>
-                            {selected && (
-                              <span
-                                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
-                                style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </span>
-                            )}
-                          </button>
-
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <span className="truncate text-[11px] font-bold">{item.name}</span>
-                            <span className="text-[9px] opacity-45">{String(index + 1).padStart(2, '0')}</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => void addTemplateAsModel(item.id)}
-                            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-black"
-                            style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Adicionar modelo
-                          </button>
-                        </article>
-                      );
-                    })}
+                          <Plus className="h-3.5 w-3.5" />
+                          Adicionar modelo
+                        </button>
+                      </article>
+                    ))}
                   </div>
                 </section>
 
