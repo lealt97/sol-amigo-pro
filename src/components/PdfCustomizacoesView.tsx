@@ -233,13 +233,6 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     });
   };
 
-  const selectTemplate = (templateId: string) => {
-    setActiveModelId(null);
-    setModelMenuId(null);
-    setDraft(createPristineTemplateSettings(currentPdfSettings, templateId));
-    setActiveLayer(null);
-  };
-
   const scrollSlider = (ref: React.RefObject<HTMLDivElement | null>, direction: -1 | 1) => {
     ref.current?.scrollBy({ left: direction * 420, behavior: 'smooth' });
   };
@@ -266,11 +259,16 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     );
     const next = [...models, model];
     await persistModels(next);
-    setActiveModelId(model.id);
-    setDraft(cloneSettings(model.settings));
-    setActiveLayer(null);
     setModelMenuId(null);
+    setActiveTab('templates');
+    setActiveLayer(null);
     onShowToast(`Modelo "${model.name}" adicionado em Meus Modelos.`);
+    requestAnimationFrame(() => {
+      modelsSliderRef.current?.scrollTo({
+        left: modelsSliderRef.current.scrollWidth,
+        behavior: 'smooth',
+      });
+    });
   };
 
   const editModel = (model: PdfCoverModel) => {
