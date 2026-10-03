@@ -658,11 +658,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                               boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => editModel(model)}
-                              className="relative block w-full text-left"
-                            >
+                            <div className="relative block w-full">
                               <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
                                 <ModelThumbnail model={model} />
                               </div>
@@ -671,13 +667,13 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                                   <Check className="h-3.5 w-3.5" />
                                 </span>
                               )}
-                            </button>
+                            </div>
 
                             <div className="mt-2 flex min-w-0 items-start gap-2">
-                              <button type="button" onClick={() => editModel(model)} className="min-w-0 flex-1 text-left">
+                              <div className="min-w-0 flex-1">
                                 <div className="truncate text-[11px] font-bold" title={model.name}>{model.name}</div>
                                 <div className="mt-0.5 truncate text-[9px] opacity-45">Base: {source.name}</div>
-                              </button>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setModelMenuId(menuOpen ? null : model.id)}
