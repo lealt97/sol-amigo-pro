@@ -202,7 +202,10 @@ export const buildCoverSvg = (svgText: string, options: BuildCoverSvgOptions): s
 
       const clipPath = createSvgElement(doc, 'clipPath');
       clipPath.setAttribute('id', clipId);
-      clipPath.appendChild(maskPath.cloneNode(true));
+      const clipShape = maskPath.cloneNode(true) as Element;
+      clipShape.setAttribute('fill', '#000000');
+      clipShape.removeAttribute('stroke');
+      clipPath.appendChild(clipShape);
       defs.appendChild(clipPath);
 
       const bounds: CoverPhotoBounds = {
