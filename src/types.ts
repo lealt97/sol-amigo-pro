@@ -24,6 +24,7 @@ export interface PdfInternalPage {
   intro: string;
   text: string;
   imageUrl?: string;
+  details?: string;
 }
 
 export interface PdfEditorialSettings {

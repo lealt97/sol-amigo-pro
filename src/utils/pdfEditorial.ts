@@ -7,88 +7,60 @@ import type {
 
 export const EDITORIAL_PAGES: PdfInternalPage[] = [
   {
-    id: "benefits",
-    enabled: true,
-    label: "Energia solar",
-    title: "Mais controle sobre o custo da sua energia",
-    intro:
-      "A geração fotovoltaica converte a luz do sol em eletricidade e atende parte do consumo conforme as regras aplicáveis à unidade consumidora.",
-    text: "Economia recorrente | Redução estimada da energia faturável.\nProteção tarifária | Menor exposição a reajustes futuros.\nValorização | Infraestrutura energética incorporada ao imóvel.\nBaixa manutenção | Sistema silencioso e monitorável.",
-  },
-  {
     id: "project",
     enabled: true,
-    label: "Descrição do projeto",
-    title: "Dimensionamento alinhado ao perfil de consumo",
+    label: "Projeto & Dimensionamento",
+    title: "Resumo técnico do sistema",
     intro:
-      "Sistema recomendado a partir das informações registradas nesta proposta. A execução depende da validação técnica do local.",
-    text: "A conta continua sujeita a cobranças residuais, encargos, tributos e regras da distribuidora. A geração estimada não representa redução idêntica da fatura.",
-  },
-  {
-    id: "generation",
-    enabled: true,
-    label: "Geração estimada",
-    title: "Consumo e geração mês a mês",
-    intro:
-      "Comparativo energético baseado no histórico e nas premissas registradas.",
-    text: "Quando não houver histórico mensal ou irradiação mensal, a apresentação identifica o uso de médias. A produção real varia conforme clima, orientação, sombreamento e condições de operação.",
+      "Dimensionamento baseado em consumo, custo de disponibilidade, HSP e fator de rendimento.",
+    text: "A geração é uma estimativa e pode variar conforme irradiação, temperatura, sombreamento, orientação, indisponibilidades e condições reais da instalação.",
   },
   {
     id: "equipment",
     enabled: true,
-    label: "Composição do sistema",
-    title: "Uma solução completa pronta para operar",
-    intro: "Equipamentos, serviços e componentes considerados nesta proposta.",
-    text: "A compatibilidade elétrica e as especificações finais devem ser verificadas no projeto executivo. Garantias conforme fabricante e condições comerciais registradas.",
-  },
-  {
-    id: "technical",
-    enabled: true,
-    label: "Dados técnicos",
-    title: "Os dados que sustentam o dimensionamento",
-    intro: "Memorial de cálculo, premissas e informações técnicas do sistema.",
-    text: "O dimensionamento definitivo considera histórico de consumo, irradiação, temperatura, sombreamento, perdas elétricas e compatibilidade entre módulos, inversor e baterias. Valores não registrados aparecem como não informados.",
+    label: "Kit, Serviços & Manutenção",
+    title: "Composição do sistema",
+    intro: "Equipamentos e serviços da solução proposta.",
+    text: "Projeto e dimensionamento\nInstalação e comissionamento\nHomologação/documentação quando contratada\nMonitoramento conforme escopo contratado",
+    details:
+      "Itens civis, reforços estruturais, adequações de padrão, andaimes especiais e serviços não previstos no escopo devem ser formalizados como custo adicional na proposta.",
   },
   {
     id: "financial",
     enabled: true,
-    label: "Análise financeira",
-    title: "Economia e retorno do investimento",
+    label: "Análise Financeira",
+    title: "Economia & Payback",
     intro:
-      "Investimento e retorno simples conforme os resultados salvos na proposta.",
-    text: "O payback simples utiliza investimento dividido pela economia anual estimada. A projeção linear não inclui reajuste tarifário, degradação, manutenção, financiamento ou substituição de equipamentos; não equivale a VPL ou TIR.",
+      "O cálculo abaixo usa a economia mensal estimada como referência, sem projeção de reajustes tarifários.",
+    text: "Economia constante. O retorno simples não inclui reajustes, degradação, financiamento ou substituição de equipamentos.",
   },
   {
     id: "commercial",
     enabled: true,
-    label: "Condições comerciais",
-    title: "Escolha a condição que melhor encaixa no seu orçamento",
-    intro: "Valor, pagamento e condições de fornecimento desta proposta.",
-    text: "Condições de crédito, taxas e parcelas dependem da instituição financeira e da aprovação cadastral. Nenhuma parcela é calculada sem as condições correspondentes.",
-  },
-  {
-    id: "execution",
-    enabled: true,
-    label: "Execução e garantias",
-    title: "Etapas, escopo e segurança para contratar",
-    intro: "Cronograma de referência e responsabilidades de entrega.",
-    text: "Validação técnica | Prazo a confirmar após vistoria.\nProjeto e homologação | Conforme distribuidora e escopo contratado.\nInstalação | Conforme disponibilidade e condições do local.\nVistoria e ativação | Conforme distribuidora.",
+    label: "Condições, Garantias & Prazos",
+    title: "Condições da proposta",
+    intro: "Informações para contratação e execução.",
+    text: "Os dados de consumo devem refletir o histórico informado pelo cliente ou o levantamento de cargas realizado no atendimento.\nA geração estimada depende das condições reais de irradiação, temperatura, orientação, inclinação, sombreamento e disponibilidade do sistema.\nAlterações de escopo, obras civis, reforço estrutural e adequações elétricas devem ser registrados antes da contratação.\nO dimensionamento definitivo e a instalação devem observar o projeto executivo e as condições do local.\nO plano de manutenção contratado é executado conforme periodicidade, serviços e condições registrados na proposta e no contrato.",
   },
   {
     id: "acceptance",
     enabled: true,
-    label: "Próximo passo",
-    title: "Pronto para gerar sua própria energia?",
-    intro:
-      "Confirme os dados, o escopo e as condições comerciais com seu consultor para avançar.",
-    text: "A contratação depende do aceite, contrato, vistoria, disponibilidade de equipamentos e condições registradas nesta proposta.",
+    label: "Aceite & Contatos",
+    title: "Termo de aceite",
+    intro: "Encerramento da proposta comercial.",
+    text: "Declaro que recebi e analisei esta proposta comercial para fornecimento e instalação do sistema fotovoltaico descrito neste documento, incluindo o plano de manutenção quando contratado.",
   },
 ];
 
 export function normalizeEditorialSettings(
   settings?: Partial<PdfEditorialSettings>,
 ): PdfEditorialSettings {
-  const supplied = Array.isArray(settings?.pages) ? settings.pages : [];
+  const previous = Array.isArray(settings?.pages) ? settings.pages : [];
+  const supplied = previous.some((p) =>
+    ["benefits", "technical", "generation", "execution"].includes(p.id),
+  )
+    ? []
+    : previous;
   const pages = supplied
     .filter(
       (p, i) =>

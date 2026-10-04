@@ -12,9 +12,9 @@ import { DEFAULT_PDF_SETTINGS } from "../src/utils/themeEngine";
 import { clonePdfSettingsForModel } from "../src/utils/pdfCoverModels";
 
 // CSS is loaded by the browser build; the pure utilities are exercised here.
-test("modelo editorial contém as nove páginas internas sem uma segunda capa", () => {
-  assert.equal(EDITORIAL_PAGES.length, 9);
-  assert.equal(new Set(EDITORIAL_PAGES.map((p) => p.id)).size, 9);
+test("modelo editorial contém as cinco páginas internas sem uma segunda capa", () => {
+  assert.equal(EDITORIAL_PAGES.length, 5);
+  assert.equal(new Set(EDITORIAL_PAGES.map((p) => p.id)).size, 5);
   assert.ok(!EDITORIAL_PAGES.some((p) => p.id === ("cover" as any)));
 });
 test("modelos de capa preservam cópias independentes das páginas internas", () => {
@@ -32,13 +32,13 @@ test("modelos de capa preservam cópias independentes das páginas internas", ()
 test("configurações antigas recebem páginas internas e ordem personalizada permanece", () => {
   const ed = normalizeEditorialSettings({
     pages: [
-      { ...EDITORIAL_PAGES[8], title: "Meu aceite" },
+      { ...EDITORIAL_PAGES[4], title: "Meu aceite" },
       { ...EDITORIAL_PAGES[0], enabled: false },
     ],
   });
   assert.equal(ed.pages[0].id, "acceptance");
   assert.equal(ed.pages[0].title, "Meu aceite");
-  assert.equal(ed.pages.length, 9);
+  assert.equal(ed.pages.length, 5);
   const settings = {
     ...DEFAULT_PDF_SETTINGS,
     showFinancial: false,
@@ -46,7 +46,7 @@ test("configurações antigas recebem páginas internas e ordem personalizada pe
   };
   assert.ok(
     !getVisibleEditorialPages(settings).some(
-      (p) => p.id === "benefits" || p.id === "financial",
+      (p) => p.id === "project" || p.id === "financial",
     ),
   );
 });
@@ -117,4 +117,17 @@ test("salvar e reabrir proposta conserva o snapshot técnico e comercial", async
     (globalThis as any).window = previousWindow;
     (globalThis as any).localStorage = previousStorage;
   }
+});
+
+test("modelo anterior migra para cinco páginas do novo PDF", () => {
+  const old = [
+    { ...EDITORIAL_PAGES[0], id: "benefits" as any },
+    ...EDITORIAL_PAGES,
+  ];
+  const migrated = normalizeEditorialSettings({ pages: old });
+  assert.deepEqual(
+    migrated.pages.map((p) => p.id),
+    ["project", "equipment", "financial", "commercial", "acceptance"],
+  );
+  assert.equal(migrated.pages[0].title, "Resumo técnico do sistema");
 });

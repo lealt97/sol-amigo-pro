@@ -72,8 +72,8 @@ export const PdfInternalPagesEditor: React.FC<{
         <div>
           <h2 className="text-xl font-black">Páginas internas da proposta</h2>
           <p className="mt-1 text-sm opacity-65">
-            Nove seções do Modelo Editorial. Tabelas extensas criam folhas de
-            continuação para preservar os dados.
+            Cinco páginas internas do modelo enviado. Tabelas extensas criam
+            folhas de continuação para preservar os dados.
           </p>
         </div>
         <div className="flex gap-2">
@@ -176,6 +176,19 @@ export const PdfInternalPagesEditor: React.FC<{
               onChange={(e) => updatePage({ text: e.target.value })}
             />
           </label>
+          {page.id === "equipment" && (
+            <label className="block text-xs font-bold">
+              Observações importantes
+              <textarea
+                className="mt-2 w-full rounded-lg border p-2 font-normal"
+                style={fieldStyle}
+                rows={4}
+                maxLength={1000}
+                value={page.details ?? ""}
+                onChange={(e) => updatePage({ details: e.target.value })}
+              />
+            </label>
+          )}
           <label className="block text-xs font-bold">
             Imagem da página (PNG, JPG ou WebP)
             <input

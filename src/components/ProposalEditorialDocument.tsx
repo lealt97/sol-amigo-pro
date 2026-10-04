@@ -37,6 +37,12 @@ const MONTHS = [
 type Row = [string, string];
 const Table = ({ rows }: { rows: Row[] }) => (
   <table className="editorial-table">
+    <thead>
+      <tr>
+        <th>Parâmetro</th>
+        <th>Valor</th>
+      </tr>
+    </thead>
     <tbody>
       {rows.map(([key, value], i) => (
         <tr key={`${key}-${i}`}>
@@ -65,136 +71,92 @@ const safeImage = (url?: string) =>
     ? url
     : undefined;
 
-function BarChart({ proposal }: { proposal: SolarProposal }) {
-  const series = getProposalSeries(proposal);
-  const max = Math.max(
-    1,
-    ...series.consumption.filter(Number.isFinite),
-    ...series.generation.filter(Number.isFinite),
-  );
-  return (
-    <>
-      <svg
-        className="editorial-chart"
-        viewBox="0 0 500 220"
-        role="img"
-        aria-label="Consumo e geração em kWh nos doze meses"
-      >
-        {[0, 1, 2, 3, 4].map((i) => (
-          <g key={i}>
-            <line
-              x1="38"
-              y1={180 - i * 40}
-              x2="498"
-              y2={180 - i * 40}
-              stroke="#dce5eb"
-            />
-            <text
-              x="33"
-              y={184 - i * 40}
-              textAnchor="end"
-              fontSize="9"
-              fill="#587083"
-            >
-              {Math.round((max * i) / 4)}
-            </text>
-          </g>
-        ))}
-        {MONTHS.map((m, i) => (
-          <g key={m}>
-            <rect
-              x={44 + i * 38}
-              y={180 - (Math.max(0, series.consumption[i] || 0) / max) * 160}
-              width="12"
-              height={(Math.max(0, series.consumption[i] || 0) / max) * 160}
-              fill="var(--ed-primary)"
-              rx="2"
-            />
-            <rect
-              x={58 + i * 38}
-              y={180 - (Math.max(0, series.generation[i] || 0) / max) * 160}
-              width="12"
-              height={(Math.max(0, series.generation[i] || 0) / max) * 160}
-              fill="var(--ed-secondary)"
-              rx="2"
-            />
-            <text
-              x={57 + i * 38}
-              y="200"
-              textAnchor="middle"
-              fontSize="9"
-              fill="#587083"
-            >
-              {m}
-            </text>
-          </g>
-        ))}
-      </svg>
-      <p className="editorial-legend">
-        <span>● Consumo</span>
-        <span>● Geração</span> kWh/mês
-      </p>
-      {(series.consumptionIsAverage || series.generationIsAverage) && (
-        <Note>
-          {series.consumptionIsAverage
-            ? "Consumo mensal: média repetida nos meses sem histórico. "
-            : ""}
-          {series.generationIsAverage
-            ? "Geração mensal: média repetida, sem simulação de sazonalidade."
-            : ""}
-        </Note>
-      )}
-    </>
-  );
-}
-
-function FinancialChart({ proposal }: { proposal: SolarProposal }) {
-  const annual = proposal.estimatedMonthlySavings * 12;
-  if (!(annual > 0) || !Number.isFinite(proposal.totalValue))
+function FinancialChart({ proposal: p }: { proposal: SolarProposal }) {
+  const annual = p.estimatedMonthlySavings * 12;
+  if (!(annual > 0) || !Number.isFinite(p.totalValue))
     return (
       <Note>
         Projeção indisponível: informe investimento e economia estimada.
       </Note>
     );
-  const years = [0, 1, 2, 3, 4, 5, 10, 15, 20, 25];
-  const values = years.map((y) => annual * y - proposal.totalValue);
-  const min = Math.min(0, ...values),
-    max = Math.max(1, ...values),
-    range = max - min;
-  const pos = (v: number) => 155 - ((v - min) / range) * 135;
+  const max = Math.max(annual * 8, p.totalValue, 1),
+    y = (v: number) => 160 - (v / max) * 140;
   return (
-    <>
-      <h3>Fluxo acumulado linear</h3>
+    <div className="model-box model-return">
+      <h3>Retorno acumulado — gráfico em barras verticais</h3>
       <svg
-        className="editorial-chart"
-        viewBox="0 0 500 200"
+        viewBox="0 0 500 205"
         role="img"
-        aria-label="Fluxo acumulado linear em 25 anos"
+        aria-label="Economia acumulada em oito anos e referência do investimento"
       >
-        <line x1="32" y1={pos(0)} x2="480" y2={pos(0)} stroke="#c8d5df" />
-        {years.map((y, i) => (
-          <g key={y}>
-            <rect
-              x={35 + i * 44}
-              y={Math.min(pos(0), pos(values[i]))}
-              height={Math.max(1, Math.abs(pos(values[i]) - pos(0)))}
-              width="25"
-              fill={values[i] < 0 ? "var(--ed-primary)" : "var(--ed-secondary)"}
-              rx="2"
+        {[0, 1, 2, 3, 4].map((i) => (
+          <g key={i}>
+            <line
+              x1="38"
+              x2="485"
+              y1={160 - i * 35}
+              y2={160 - i * 35}
+              stroke="#e3eaf0"
             />
-            <text x={47 + i * 44} y="180" textAnchor="middle" fontSize="10">
-              {y}
+            <text
+              x="32"
+              y={163 - i * 35}
+              textAnchor="end"
+              fontSize="8"
+              fill="#8296a8"
+            >
+              {Math.round((max * i) / 4000)}k
             </text>
           </g>
         ))}
-        <text x="480" y="12" textAnchor="end" fontSize="11">
-          {moneyText(values.at(-1))}
+        <line
+          x1="38"
+          x2="485"
+          y1={y(p.totalValue)}
+          y2={y(p.totalValue)}
+          stroke="var(--ed-accent)"
+        />
+        <text x="40" y={y(p.totalValue) - 5} fontSize="8" fill="#ad8520">
+          INVESTIMENTO
+        </text>
+        {Array.from({ length: 9 }, (_, i) => (
+          <g key={i}>
+            <rect
+              x={44 + i * 49}
+              y={y(i * annual)}
+              width="27"
+              height={((i * annual) / max) * 140}
+              rx="4"
+              fill={
+                i * annual >= p.totalValue ? "#b2bf8a" : "var(--ed-secondary)"
+              }
+            />
+            <text
+              x={57 + i * 49}
+              y="177"
+              textAnchor="middle"
+              fontSize="9"
+              fill="#8296a8"
+            >
+              {i}
+            </text>
+            {i === Math.ceil(p.totalValue / annual) && (
+              <text
+                x={57 + i * 49}
+                y={y(i * annual) - 8}
+                textAnchor="middle"
+                fontSize="8"
+              >
+                PAYBACK
+              </text>
+            )}
+          </g>
+        ))}
+        <text x="255" y="198" fontSize="9" fill="#8296a8">
+          Ano
         </text>
       </svg>
-      <p className="editorial-muted">
-        Anos após o investimento • economia constante • valores nominais
-      </p>
-    </>
+    </div>
   );
 }
 
@@ -479,7 +441,7 @@ export const ProposalEditorialDocument: React.FC<{
     "--ed-font-size": `${ed.fontSize}pt`,
     fontFamily: `${settings.font}, Arial, sans-serif`,
   } as React.CSSProperties;
-  let number = includeCover ? 1 : 1;
+  let number = includeCover ? 1 : 0;
   function sheet(
     page: PdfInternalPage,
     content: React.ReactNode,
@@ -501,13 +463,12 @@ export const ProposalEditorialDocument: React.FC<{
                 <strong>{ed.companyName}</strong>
               )}
             </div>
-            <span>{page.label}</span>
-          </header>
-          <div className="editorial-page-heading">
             <span>
               {page.label}
-              {continuation}
+              <small>{page.intro}</small>
             </span>
+          </header>
+          <div className="editorial-page-heading">
             <h1>
               {page.title}
               {continuation}
@@ -524,14 +485,9 @@ export const ProposalEditorialDocument: React.FC<{
           <div className="editorial-content">{content}</div>
           {settings.showFooter && (
             <div className="editorial-footer">
-              <span>
-                {preview
-                  ? "PRÉVIA • DADOS DE EXEMPLO"
-                  : `PROPOSTA ${p.code} • ${p.clientName}`}
-                <br />
-                {ed.footerText}
-              </span>
-              <span>{String(n).padStart(2, "0")}</span>
+              <span>{ed.companyName}</span>
+              <span>{preview ? "PRÉVIA • DADOS DE EXEMPLO" : p.code}</span>
+              <span>Página {n}</span>
             </div>
           )}
         </div>
@@ -545,14 +501,14 @@ export const ProposalEditorialDocument: React.FC<{
       documentRef.current
         ?.querySelectorAll<HTMLElement>(".editorial-page-inner")
         .forEach((inner) => {
-          inner.style.zoom = "1";
+          inner.style.transform = "none";
           inner.style.width = "100%";
           inner.style.minHeight = "267mm";
           const available = (267 * 96) / 25.4;
           const height = inner.getBoundingClientRect().height;
           if (height > available + 1) {
             const scale = available / height;
-            inner.style.zoom = String(scale);
+            inner.style.transform = `scale(${scale})`;
             inner.style.width = `${100 / scale}%`;
             inner.style.minHeight = `${267 / scale}mm`;
           }
@@ -588,56 +544,39 @@ export const ProposalEditorialDocument: React.FC<{
         </article>
       )}
       {pages.flatMap((page) => {
-        if (page.id === "benefits")
-          return [
-            sheet(
-              page,
-              <>
-                <div className="editorial-benefits">
-                  {page.text
-                    .split("\n")
-                    .filter(Boolean)
-                    .map((line, i) => {
-                      const [title, ...text] = line.split("|");
-                      return (
-                        <section key={i}>
-                          <b>{String(i + 1).padStart(2, "0")}</b>
-                          <div>
-                            <h3>{title}</h3>
-                            <p>{text.join("|")}</p>
-                          </div>
-                        </section>
-                      );
-                    })}
-                </div>
-                <h3>Como a energia circula</h3>
-                <div className="editorial-flow">
-                  {[
-                    "Módulos / captam a luz",
-                    "Inversor / converte a energia",
-                    "Imóvel / consome primeiro",
-                    p.systemType === "Híbrido"
-                      ? "Baterias e rede / backup e excedentes"
-                      : "Rede / recebe excedentes",
-                  ].map((v, i) => (
-                    <div key={v}>
-                      <b>{i + 1}</b>
-                      <p>{v}</p>
-                    </div>
-                  ))}
-                </div>
-                {settings.showEnvironmental &&
-                  (p.co2SavedTonsYear != null ||
-                    p.co2AvoidedTons != null ||
-                    p.treesEquivalent != null ||
-                    p.treesPlanted != null) && <Table rows={env} />}
-                <Note>
-                  A economia financeira depende das premissas de consumo e da
-                  tarifa da proposta.
-                </Note>
-              </>,
-            ),
-          ];
+        const d = p.pdfData,
+          sizing = p.sizing;
+        const availability =
+          sizing?.availabilityCostKWh ??
+          (d?.connectionType
+            ? { Monofásica: 30, Bifásica: 50, Trifásica: 100 }[d.connectionType]
+            : undefined);
+        const compensable =
+          sizing?.compensableConsumptionKWh ??
+          (availability != null
+            ? Math.max(0, p.monthlyConsumptionKWh - availability)
+            : undefined);
+        const daily =
+          sizing?.designConsumptionKWh != null
+            ? sizing.designConsumptionKWh / 30
+            : compensable != null
+              ? compensable / 30
+              : undefined;
+        const hsp = p.hsp ?? sizing?.averageCorrectedSunHours,
+          pr =
+            p.performanceRatio != null
+              ? p.performanceRatio / 100
+              : sizing?.performanceRatio;
+        const calculated =
+          sizing?.requiredPowerKWp ??
+          (daily != null && hsp && pr ? daily / (hsp * pr) : undefined);
+        const maintenance = p.maintenancePlan?.enabled
+          ? p.maintenancePlan
+          : undefined;
+        const payback =
+          p.paybackYears > 0
+            ? `${Math.floor(p.paybackYears)} anos e ${Math.round((p.paybackYears % 1) * 12)} meses`
+            : "Não calculado";
         if (page.id === "project")
           return [
             sheet(
@@ -647,271 +586,248 @@ export const ProposalEditorialDocument: React.FC<{
                   items={[
                     [
                       "Consumo médio",
-                      numberText(p.monthlyConsumptionKWh, " kWh"),
+                      numberText(p.monthlyConsumptionKWh, " kWh/mês", 0),
+                    ],
+                    ["Potência calculada", numberText(calculated, " kWp")],
+                    [
+                      "Potência instalada",
+                      numberText(p.systemPowerKWp, " kWp"),
                     ],
                     [
-                      "Geração média",
-                      numberText(p.estimatedMonthlyGenKWh, " kWh"),
+                      "Geração estimada",
+                      numberText(p.estimatedMonthlyGenKWh, " kWh/mês", 0),
                     ],
-                    ["Potência", numberText(p.systemPowerKWp, " kWp")],
                   ]}
                 />
-                <div className="editorial-highlight">
-                  <span>RESULTADO PROJETADO</span>
-                  <div>
-                    <strong>{moneyText(p.estimatedMonthlySavings)}</strong>
-                    <p>economia mensal estimada</p>
-                    <strong>{moneyText(annual)}</strong>
-                    <p>economia anual estimada</p>
+                <div className="model-box model-memorial">
+                  <h3>Memorial de cálculo simplificado</h3>
+                  <div className="model-grid">
+                    <p>
+                      1. Consumo mensal{" "}
+                      <b>{numberText(p.monthlyConsumptionKWh, " kWh/mês")}</b>
+                    </p>
+                    <p>
+                      2. Disponibilidade (
+                      {d?.connectionType ??
+                        sizing?.connectionType ??
+                        "não informada"}
+                      ) <b>{numberText(availability, " kWh")}</b>
+                    </p>
+                    <p>
+                      3. Consumo compensável{" "}
+                      <b>{numberText(compensable, " kWh/mês")}</b>
+                    </p>
+                    <p>
+                      4. Energia diária{" "}
+                      <b>{numberText(daily, " kWh/dia", 3)}</b>
+                    </p>
                   </div>
+                  <strong>
+                    P FV = {numberText(daily)} / ({numberText(hsp)} ×{" "}
+                    {numberText(pr)}) = {numberText(calculated, " kWp")}
+                  </strong>
+                  <small>
+                    Arredondamento físico: {numberText(p.modulesCount, "", 0)} ×{" "}
+                    {numberText(d?.modulePowerW ?? sizing?.modulePowerW, " W")}{" "}
+                    = {numberText(p.systemPowerKWp, " kWp instalados")}
+                  </small>
                 </div>
-                <h3>Premissas principais</h3>
                 <Table
                   rows={[
-                    ["Cliente", p.clientName],
                     [
-                      "Local",
-                      [p.clientCity, p.clientState].filter(Boolean).join(" / "),
+                      "Tipo de sistema / Concessionária",
+                      `${p.systemType} / ${p.concessionaria}`,
                     ],
                     [
-                      "Tipo de instalação",
-                      p.pdfData?.structureType ??
-                        p.sizing?.roofType ??
-                        "Não informado",
+                      "Ligação / HSP adotada",
+                      `${d?.connectionType ?? sizing?.connectionType ?? "Não informado"} / ${numberText(hsp, " h/dia")}`,
                     ],
                     [
-                      "Ligação elétrica",
-                      p.pdfData?.connectionType ??
-                        p.sizing?.connectionType ??
-                        "Não informado",
+                      "Fator de rendimento / Módulos",
+                      `${numberText(pr != null ? pr * 100 : undefined, " %")} / ${numberText(p.modulesCount, "", 0)} × ${numberText(d?.modulePowerW ?? sizing?.modulePowerW, " W")}`,
                     ],
                     [
-                      "HSP",
-                      numberText(
-                        p.hsp ?? p.sizing?.averageCorrectedSunHours,
-                        " h/dia",
-                      ),
+                      "Geração média / Cobertura estimada",
+                      `${numberText(p.estimatedMonthlyGenKWh, " kWh/mês")} / ${numberText(sizing?.estimatedCoveragePercent ?? (p.monthlyConsumptionKWh > 0 ? (p.estimatedMonthlyGenKWh / p.monthlyConsumptionKWh) * 100 : undefined), " %")}`,
                     ],
                   ]}
                 />
-                <Note>{page.text}</Note>
+                <p className="editorial-muted model-bottom-note">{page.text}</p>
               </>,
             ),
-          ];
-        if (page.id === "generation")
-          return [
-            sheet(
-              page,
-              <>
-                <BarChart proposal={p} />
-                <Metrics
-                  items={[
-                    [
-                      "Geração anual",
-                      numberText(
-                        p.sizing?.estimatedAnnualGenerationKWh ??
-                          p.estimatedMonthlyGenKWh * 12,
-                        " kWh",
-                      ),
-                    ],
-                    [
-                      "Média mensal",
-                      numberText(p.estimatedMonthlyGenKWh, " kWh"),
-                    ],
-                    [
-                      "Área estimada",
-                      numberText(
-                        p.pdfData?.estimatedAreaM2 ?? p.sizing?.estimatedAreaM2,
-                        " m²",
-                      ),
-                    ],
-                  ]}
-                />
-                <table className="editorial-month-table">
-                  <thead>
-                    <tr>
-                      <th>Mês</th>
-                      <th>Consumo</th>
-                      <th>Geração</th>
-                      <th>Mês</th>
-                      <th>Consumo</th>
-                      <th>Geração</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MONTHS.slice(0, 6).map((m, i) => (
-                      <tr key={m}>
-                        <td>{m}</td>
-                        <td>{numberText(series.consumption[i])}</td>
-                        <td>{numberText(series.generation[i])}</td>
-                        <td>{MONTHS[i + 6]}</td>
-                        <td>{numberText(series.consumption[i + 6])}</td>
-                        <td>{numberText(series.generation[i + 6])}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="editorial-muted">{page.text}</p>
-              </>,
-            ),
+            ...(p.sizing ||
+            p.systemType === "Híbrido" ||
+            p.pdfData?.loads?.length ||
+            p.pdfData?.monthlyConsumptionKWh
+              ? chunks.map((chunk, i) =>
+                  sheet(
+                    page,
+                    <>
+                      <h3>Dados completos do dimensionamento</h3>
+                      <Table rows={chunk} />
+                      {i === chunks.length - 1 && (
+                        <>
+                          <Table
+                            rows={MONTHS.map(
+                              (month, j) =>
+                                [
+                                  month,
+                                  `${numberText(series.consumption[j], " kWh consumidos")} / ${numberText(series.generation[j], " kWh gerados")}`,
+                                ] as Row,
+                            )}
+                          />
+                          <Note>
+                            {series.consumptionIsAverage ||
+                            series.generationIsAverage
+                              ? "Os meses sem histórico são apresentados pela média registrada."
+                              : "Histórico mensal registrado."}
+                          </Note>
+                          {p.sizing?.notes && <Note>{p.sizing.notes}</Note>}
+                        </>
+                      )}
+                    </>,
+                    " · memorial completo",
+                    `project-details-${i}`,
+                  ),
+                )
+              : []),
+            ...(d?.loads?.length
+              ? Array.from({ length: Math.ceil(d.loads.length / 10) }, (_, i) =>
+                  sheet(
+                    page,
+                    <>
+                      <h3>Levantamento de cargas</h3>
+                      <Table
+                        rows={d
+                          .loads!.slice(i * 10, (i + 1) * 10)
+                          .map((l) => [
+                            l.name,
+                            `${l.quantity} × ${l.powerW} W · ${l.hoursPerDay} h/dia · ${l.daysPerMonth} dias/mês · backup ${l.isPriorityBackup ? "sim" : "não"}`,
+                          ])}
+                      />
+                    </>,
+                    " · cargas",
+                    `project-loads-${i}`,
+                  ),
+                )
+              : []),
           ];
         if (page.id === "equipment") {
-          const equipment =
-            p.pdfData?.equipmentItems ?? p.pricing?.equipmentItems;
-          const equipmentRows: Row[] = equipment?.length
-            ? equipment.map((x) => [
+          const items = d?.equipmentItems ?? p.pricing?.equipmentItems;
+          const kit = items?.length
+            ? items.map((x) => [
+                x.category,
+                numberText(x.quantity, "", 0),
                 x.description,
-                `${numberText(x.quantity, "", 0)} unidade(s) • ${x.category}`,
               ])
             : [
                 [
                   "Módulos fotovoltaicos",
-                  `${numberText(p.modulesCount, "", 0)} • ${p.moduleModel}`,
+                  numberText(p.modulesCount, "", 0),
+                  p.moduleModel,
                 ],
-                ["Inversor", p.inverterModel],
-                ["Estrutura", p.pdfData?.structureType ?? "Não informado"],
+                [
+                  "Inversor solar",
+                  numberText(d?.inverterCount ?? sizing?.inverterCount, "", 0),
+                  p.inverterModel,
+                ],
+                [
+                  "Estrutura de fixação",
+                  "Conforme projeto",
+                  d?.structureType ?? sizing?.roofType ?? "Não informado",
+                ],
                 ...(p.systemType === "Híbrido"
                   ? [
                       [
                         "Baterias",
-                        `${numberText(p.batteryCount, "", 0)} • ${p.batteryModel ?? "Não informado"}`,
-                      ] as Row,
+                        numberText(p.batteryCount, "", 0),
+                        p.batteryModel ?? "Não informado",
+                      ],
                     ]
                   : []),
               ];
-          const out = [];
-          for (let i = 0; i < equipmentRows.length; i += 10)
-            out.push(
-              sheet(
-                page,
-                <>
-                  <Table rows={equipmentRows.slice(i, i + 10)} />
-                  <Note>{page.text}</Note>
-                  {p.maintenancePlan?.enabled && (
-                    <>
-                      <h3>Plano de manutenção</h3>
-                      <p>
-                        {p.maintenancePlan.name} •{" "}
-                        {numberText(
-                          p.maintenancePlan.visitsPerYear,
-                          " visitas/ano",
-                        )}
-                      </p>
-                      <p>{p.maintenancePlan.includedServices.join(" • ")}</p>
-                    </>
-                  )}
-                </>,
-                i ? " (continuação)" : "",
-                `equipment-${i}`,
-              ),
-            );
-          return out;
-        }
-        if (page.id === "technical") {
-          const out = chunks.map((chunk, i) =>
+          return Array.from({ length: Math.ceil(kit.length / 10) }, (_, i) =>
             sheet(
               page,
               <>
-                <Table rows={chunk} />
-                <Note>{page.text}</Note>
-                {i === chunks.length - 1 &&
-                  p.sizing?.hybridWarnings?.map((w) => (
-                    <p key={w} className="editorial-muted">
-                      {w}
-                    </p>
-                  ))}
+                <p className="editorial-muted">
+                  {p.selectedKitName ||
+                    `${p.systemType} · ${numberText(p.systemPowerKWp, " kWp")}`}
+                </p>
+                <table className="model-kit">
+                  <thead>
+                    <tr>
+                      {["Item", "Qtd.", "Descrição / modelo", "Garantia"].map(
+                        (x) => (
+                          <th key={x}>{x}</th>
+                        ),
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kit.slice(i * 10, (i + 1) * 10).map((row, j) => (
+                      <tr key={j}>
+                        {row.map((x, k) => (
+                          <td key={k}>{x}</td>
+                        ))}
+                        <td>
+                          {p.commercialConditions?.warrantyTerms ||
+                            "Conforme fabricante / contrato"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="model-box model-green">
+                  <h3>Plano de manutenção {maintenance ? "incluído" : ""}</h3>
+                  <strong>{maintenance?.name ?? "Não contratado"}</strong>
+                  {maintenance && (
+                    <>
+                      <p>
+                        {numberText(
+                          maintenance.visitsPerYear,
+                          " visitas por ano",
+                          0,
+                        )}{" "}
+                        | periodicidade:{" "}
+                        {numberText(
+                          maintenance.frequencyInterval ??
+                            maintenance.frequencyMonths,
+                        )}{" "}
+                        {maintenance.frequencyUnit ?? "meses"} | valor anual:{" "}
+                        {moneyText(maintenance.annualPrice)}
+                      </p>
+                      <ul className="model-checks">
+                        {maintenance.includedServices.map((x, j) => (
+                          <li key={j}>{x}</li>
+                        ))}
+                      </ul>
+                      <p>{maintenance.notes}</p>
+                    </>
+                  )}
+                </div>
+                <div className="model-grid">
+                  <div className="model-box">
+                    <h3>Serviços incluídos no sistema</h3>
+                    <ul className="model-checks">
+                      {page.text
+                        .split("\n")
+                        .filter(Boolean)
+                        .map((x, j) => (
+                          <li key={j}>{x}</li>
+                        ))}
+                    </ul>
+                  </div>
+                  <div className="model-box">
+                    <h3>Observações importantes</h3>
+                    <p>{page.details}</p>
+                  </div>
+                </div>
               </>,
-              i ? " (continuação)" : "",
-              `technical-${i}`,
+              i ? " · continuação" : "",
+              `equipment-${i}`,
             ),
           );
-          const loads = p.pdfData?.loads;
-          if (loads?.length)
-            for (let i = 0; i < loads.length; i += 10)
-              out.push(
-                sheet(
-                  page,
-                  <>
-                    <h3>Levantamento de cargas</h3>
-                    <table className="editorial-month-table">
-                      <thead>
-                        <tr>
-                          <th>Carga</th>
-                          <th>Qtd.</th>
-                          <th>W</th>
-                          <th>h/dia</th>
-                          <th>dias/mês</th>
-                          <th>kWh/mês</th>
-                          <th>Backup</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {loads.slice(i, i + 10).map((l) => (
-                          <tr key={l.id}>
-                            <td>{l.name}</td>
-                            <td>{l.quantity}</td>
-                            <td>{l.powerW}</td>
-                            <td>{l.hoursPerDay}</td>
-                            <td>{l.daysPerMonth}</td>
-                            <td>
-                              {numberText(
-                                (l.powerW *
-                                  l.quantity *
-                                  l.hoursPerDay *
-                                  l.daysPerMonth) /
-                                  1000,
-                              )}
-                            </td>
-                            <td>{l.isPriorityBackup ? "Sim" : "Não"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <Note>
-                      O consumo mensal usa potência × quantidade × horas/dia ×
-                      dias/mês ÷ 1.000. Backup e autonomia exigem análise
-                      específica das cargas prioritárias.
-                    </Note>
-                  </>,
-                  " • cargas",
-                  `loads-${i}`,
-                ),
-              );
-          if (p.sizing?.monthlySunHours)
-            out.push(
-              sheet(
-                page,
-                <>
-                  <h3>Irradiação mensal adotada</h3>
-                  <Table
-                    rows={MONTHS.map(
-                      (month, i) =>
-                        [
-                          month,
-                          numberText(p.sizing?.monthlySunHours[i], " h/dia"),
-                        ] as Row,
-                    )}
-                  />
-                  <Note>
-                    HSP antes do fator de inclinação registrado no memorial. A
-                    geração mensal correspondente está na seção Geração
-                    estimada.
-                  </Note>
-                </>,
-                " • irradiação",
-                "technical-hsp",
-              ),
-            );
-          if (p.sizing?.notes)
-            out.push(
-              sheet(
-                page,
-                <Note>{p.sizing.notes}</Note>,
-                " • observações",
-                "technical-notes",
-              ),
-            );
-          return out;
         }
         if (page.id === "financial")
           return [
@@ -920,32 +836,75 @@ export const ProposalEditorialDocument: React.FC<{
               <>
                 <Metrics
                   items={[
-                    ["Investimento", moneyText(p.totalValue)],
-                    [
-                      "Payback simples",
-                      p.paybackYears > 0
-                        ? numberText(p.paybackYears, " anos")
-                        : "Não calculado",
-                    ],
+                    ["Economia mensal", moneyText(p.estimatedMonthlySavings)],
+                    ["Economia anual", moneyText(annual)],
+                    ["Payback simples", payback],
                   ]}
                 />
+                <div className="model-box">
+                  <h3>Comparativo mensal estimado</h3>
+                  <div className="model-grid">
+                    <div>
+                      <p>
+                        Conta atual <b>{moneyText(p.currentMonthlyBill)}</b>
+                      </p>
+                      <div className="model-account-bar" />
+                      <p>
+                        Conta residual estimada{" "}
+                        <b>
+                          {moneyText(
+                            p.currentMonthlyBill != null
+                              ? Math.max(
+                                  0,
+                                  p.currentMonthlyBill -
+                                    p.estimatedMonthlySavings,
+                                )
+                              : undefined,
+                          )}
+                        </b>
+                      </p>
+                      <div
+                        className="model-account-bar residual"
+                        style={{
+                          width: p.currentMonthlyBill
+                            ? `${Math.max(0, 1 - p.estimatedMonthlySavings / p.currentMonthlyBill) * 100}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                    <div className="model-reduction">
+                      REDUÇÃO ESTIMADA
+                      <strong>
+                        {numberText(
+                          p.currentMonthlyBill
+                            ? (p.estimatedMonthlySavings /
+                                p.currentMonthlyBill) *
+                                100
+                            : undefined,
+                          " %",
+                          0,
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
                 <FinancialChart proposal={p} />
                 <Table
                   rows={[
                     [
-                      "Economia mensal estimada",
-                      moneyText(p.estimatedMonthlySavings),
+                      "Sistema fotovoltaico",
+                      moneyText(p.totalValue - (maintenance?.annualPrice ?? 0)),
                     ],
-                    ["Economia anual estimada", moneyText(annual)],
                     [
-                      "Tarifa adotada",
-                      p.pdfData?.energyTariff != null
-                        ? `${moneyText(p.pdfData.energyTariff)}/kWh`
-                        : "Não informado",
+                      "Plano de manutenção — 1º ano",
+                      maintenance
+                        ? moneyText(maintenance.annualPrice)
+                        : "Não contratado",
                     ],
+                    ["Investimento total da proposta", moneyText(p.totalValue)],
                   ]}
                 />
-                <Note>{page.text}</Note>
+                <p className="editorial-muted">{page.text}</p>
               </>,
             ),
           ];
@@ -954,60 +913,54 @@ export const ProposalEditorialDocument: React.FC<{
             sheet(
               page,
               <>
-                <div className="editorial-highlight">
-                  <span>VALOR TOTAL DO PROJETO</span>
-                  <strong>{moneyText(p.totalValue)}</strong>
+                <div className="model-grid model-conditions">
+                  {[
+                    [
+                      "Pagamento",
+                      p.commercialConditions?.paymentMethods ||
+                        "Condição comercial não informada.",
+                    ],
+                    [
+                      "Validade",
+                      `Proposta emitida em ${dateText(p.createdAt)} e válida até ${dateText(validity)}.`,
+                    ],
+                    [
+                      "Prazo de execução",
+                      p.commercialConditions?.deliveryTimeframe ||
+                        "Prazo a confirmar conforme disponibilidade, acesso ao imóvel e aprovação técnica.",
+                    ],
+                    [
+                      "Garantias",
+                      p.commercialConditions?.warrantyTerms ||
+                        "Conforme fabricantes e condições do contrato.",
+                    ],
+                  ].map(([title, text]) => (
+                    <div className="model-box" key={title}>
+                      <h3>{title}</h3>
+                      <p>{text}</p>
+                    </div>
+                  ))}
                 </div>
-                <h3>Pagamento</h3>
-                <p>
-                  {p.commercialConditions?.paymentMethods ||
-                    "Condições não informadas. Confirme com seu consultor."}
-                </p>
-                <h3>Condições e observações</h3>
-                <p>{p.commercialConditions?.notes || "Não informadas."}</p>
-                {p.pricing && (
-                  <Table
-                    rows={[
-                      ["Valor bruto", moneyText(p.pricing.grossSalePrice)],
-                      ["Desconto", moneyText(p.pricing.discountValue)],
-                      ["Preço final", moneyText(p.pricing.finalSalePrice)],
-                      ["Preço por Wp", moneyText(p.pricing.pricePerWp)],
-                    ]}
-                  />
-                )}
-                <Note>{page.text}</Note>
-              </>,
-            ),
-          ];
-        if (page.id === "execution")
-          return [
-            sheet(
-              page,
-              <>
-                <h3>Cronograma de referência</h3>
-                <Table
-                  rows={page.text
+                <h3>Premissas e responsabilidades</h3>
+                <ul className="model-checks">
+                  {page.text
                     .split("\n")
                     .filter(Boolean)
-                    .map((line) => {
-                      const [label, ...value] = line.split("|");
-                      return [label, value.join("|")] as Row;
-                    })}
-                />
-                <h3>Prazo registrado</h3>
-                <p>
-                  {p.commercialConditions?.deliveryTimeframe ||
-                    "Não informado."}
-                </p>
-                <h3>Garantias e escopo</h3>
-                <p>
-                  {p.commercialConditions?.warrantyTerms ||
-                    "Garantias e escopo devem ser confirmados e registrados antes da contratação."}
-                </p>
-                <Note>
-                  Validade da proposta: {dateText(validity)}. Sujeita à vistoria
-                  e confirmação do escopo.
-                </Note>
+                    .map((x, j) => (
+                      <li key={j}>{x}</li>
+                    ))}
+                </ul>
+                {p.commercialConditions?.notes && (
+                  <p>{p.commercialConditions.notes}</p>
+                )}
+                <div className="model-box model-green model-environment">
+                  <h3>Indicadores ambientais estimados</h3>
+                  <Metrics items={env} />
+                  <small>
+                    Equivalências ambientais informativas conforme dados
+                    registrados na proposta.
+                  </small>
+                </div>
               </>,
             ),
           ];
@@ -1015,46 +968,61 @@ export const ProposalEditorialDocument: React.FC<{
           sheet(
             page,
             <>
-              <h3>Dados da proposta</h3>
-              <Table
-                rows={[
-                  ["Código", p.code],
-                  ["Cliente", p.clientName],
-                  ["Documento", p.pdfData?.clientDocument || "Não informado"],
-                  ["E-mail", p.clientEmail || "Não informado"],
-                  ["Telefone", p.clientPhone || "Não informado"],
-                  [
-                    "Endereço",
-                    p.pdfData?.clientAddress ||
-                      [p.clientCity, p.clientState].filter(Boolean).join(" / "),
-                  ],
-                  [
-                    "Emissão / validade",
-                    `${dateText(p.createdAt)} / ${dateText(validity)}`,
-                  ],
-                ]}
-              />
-              <div className="editorial-signatures">
-                <div>Nome / assinatura do cliente</div>
-                <div>Data / documento</div>
-              </div>
-              <h3>Fale com seu consultor</h3>
-              <div className="editorial-contact">
-                <p>
-                  <strong>{ed.companyName}</strong>
-                  <br />
-                  Documento: {ed.companyDocument || "Não informado"}
-                </p>
-                <p>
-                  {ed.companyPhone || "Telefone não informado"}
-                  <br />
-                  {ed.companyEmail || "E-mail não informado"}
-                </p>
-              </div>
-              <p className="editorial-muted">
-                {ed.companyAddress || "Endereço da empresa não informado"}
+              <p>
+                {page.text} Código: {p.code}.
               </p>
-              <Note>{page.text}</Note>
+              <div className="model-box model-acceptance">
+                <h3>Resumo para aceite</h3>
+                <div className="model-grid">
+                  {[
+                    ["Cliente", p.clientName],
+                    [
+                      "Sistema",
+                      `${p.systemType} · ${numberText(p.systemPowerKWp, " kWp")}`,
+                    ],
+                    [
+                      "Geração estimada",
+                      numberText(p.estimatedMonthlyGenKWh, " kWh/mês"),
+                    ],
+                    ["Investimento total", moneyText(p.totalValue)],
+                    ["Payback simples", payback],
+                    ["Manutenção", maintenance?.name ?? "Não contratado"],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <small>{label}</small>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <h3>Assinaturas</h3>
+              <div className="editorial-signatures">
+                <div>
+                  Responsável comercial
+                  <br />
+                  Nome: ______________________
+                  <br />
+                  Data: ____ / ____ / ______
+                </div>
+                <div>
+                  Cliente / Contratante
+                  <br />
+                  Nome: ______________________
+                  <br />
+                  Data: ____ / ____ / ______
+                </div>
+              </div>
+              <div className="model-contact">
+                <div>
+                  <strong>{ed.companyName}</strong>
+                  <p>{ed.footerText}</p>
+                </div>
+                <div>
+                  <p>Contato comercial: {ed.companyPhone || "Não informado"}</p>
+                  <p>E-mail: {ed.companyEmail || "Não informado"}</p>
+                  <p>{ed.companyAddress}</p>
+                </div>
+              </div>
             </>,
           ),
         ];
