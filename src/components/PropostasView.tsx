@@ -119,25 +119,25 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   }, [initialFilterCode]);
 
   // Conversor para SolarProposal (para o ProposalViewerModal)
-  const clientPropToSolar = (p: ClientProposal): SolarProposal => ({
+  const clientPropToSolar = (p: ClientProposal): SolarProposal => p.snapshot ? { ...p.snapshot, status: p.status } : ({
     id: p.id,
     code: p.code,
     clientName: p.clientName,
-    clientCity: 'Campinas',
-    clientState: 'SP',
-    concessionaria: 'CPFL Paulista',
-    monthlyConsumptionKWh: p.estimatedMonthlyGenKWh || 1200,
+    clientCity: '',
+    clientState: '',
+    concessionaria: '',
+    monthlyConsumptionKWh: NaN,
     systemPowerKWp: p.systemPowerKWp,
     systemType: p.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
-    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh || Math.round(p.systemPowerKWp * 120),
-    modulesCount: p.modulesCount || Math.ceil((p.systemPowerKWp * 1000) / 585),
-    moduleModel: p.moduleModel || 'Canadian Solar 585W TOPCon Bi-facial',
-    inverterModel: p.inverterModel || 'Inversor Deye Trifásico',
+    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh ?? NaN,
+    modulesCount: p.modulesCount ?? NaN,
+    moduleModel: p.moduleModel || 'Não informado',
+    inverterModel: p.inverterModel || 'Não informado',
     batteryModel: p.batteryModel,
     batteryCount: p.batteryCount,
     totalValue: p.totalValue,
-    estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
-    paybackYears: 3.2,
+    estimatedMonthlySavings: p.estimatedMonthlySavings ?? NaN,
+    paybackYears: NaN,
     status: p.status,
     maintenancePlan: p.maintenancePlan,
     createdAt: p.createdAt,
@@ -150,9 +150,10 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   // Salvar nova proposta criada no NewProposalModal
   const handleSaveNewProposal = (newSolar: SolarProposal) => {
     const newClientProp: ClientProposal = {
+      snapshot: structuredClone(newSolar),
       id: newSolar.id,
       code: newSolar.code,
-      clientId: `cli-${Date.now()}`,
+      clientId: newSolar.clientId || newSolar.leadId || `cli-${Date.now()}`,
       clientName: newSolar.clientName,
       title: `${newSolar.systemPowerKWp} kWp • ${newSolar.clientName}`,
       systemPowerKWp: newSolar.systemPowerKWp,

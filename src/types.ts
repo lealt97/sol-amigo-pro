@@ -14,6 +14,56 @@ export interface PdfElementTransform {
   rotation: number;
 }
 
+export type PdfInternalPageId = 'benefits' | 'project' | 'generation' | 'equipment' | 'technical' | 'financial' | 'commercial' | 'execution' | 'acceptance';
+
+export interface PdfInternalPage {
+  id: PdfInternalPageId;
+  enabled: boolean;
+  label: string;
+  title: string;
+  intro: string;
+  text: string;
+  imageUrl?: string;
+  details?: string;
+}
+
+export interface PdfEditorialSettings {
+  pages: PdfInternalPage[];
+  companyName: string;
+  companyEmail: string;
+  companyPhone: string;
+  companyDocument: string;
+  companyAddress: string;
+  footerText: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  fontSize: number;
+  validityDays: number;
+}
+
+export interface ProposalPdfData {
+  consumptionMode?: 'direct' | 'monthly' | 'load_table';
+  monthlyConsumptionKWh?: (number | null)[];
+  monthlyGenerationKWh?: number[];
+  loads?: { id: string; name: string; quantity: number; powerW: number; hoursPerDay: number; daysPerMonth: number; isPriorityBackup: boolean }[];
+  connectionType?: SolarConnectionType;
+  energyTariff?: number;
+  publicLightingTax?: number;
+  targetCoveragePercent?: number;
+  modulePowerW?: number;
+  estimatedAreaM2?: number;
+  inverterPowerKW?: number;
+  inverterCount?: number;
+  structureType?: string;
+  clientAddress?: string;
+  clientDocument?: string;
+  backupAutonomyHours?: number;
+  batteryUnitCapacityKWh?: number;
+  batteryRecommendationKWh?: number;
+  equipmentItems?: KitEquipmentItem[];
+}
+
 export interface PdfSettingsConfig {
   template: string;
   useAccountColors: boolean;
@@ -28,6 +78,7 @@ export interface PdfSettingsConfig {
   showFooter: boolean;
   customLogoUrl?: string;
   customCoverUrl?: string;
+  editorial?: PdfEditorialSettings;
   coverColors?: Record<string, string>;
   coverLogoTransform?: PdfElementTransform;
   coverPhotoTransform?: PdfElementTransform;
@@ -185,6 +236,9 @@ export interface SolarProposal {
   id: string;
   code: string;
   publicToken?: string;
+  clientId?: string;
+  leadId?: string;
+  pdfData?: ProposalPdfData;
   versionNumber?: number;
   versionsCount?: number;
   clientName: string;
