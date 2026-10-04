@@ -1,4 +1,4 @@
-import { MaintenancePlanSelection } from '../types';
+import { MaintenancePlanSelection, SolarProposal } from '../types';
 export interface ClientProposal {
   id: string;
   code: string;
@@ -18,6 +18,7 @@ export interface ClientProposal {
   estimatedMonthlySavings?: number;
   maintenancePlan?: MaintenancePlanSelection;
   notes?: string;
+  snapshot?: SolarProposal;
   createdAt: string;
 }
 
@@ -210,6 +211,7 @@ export async function createQuickProposalForClient(
     estimatedMonthlyGenKWh: data.estimatedMonthlyGenKWh,
     estimatedMonthlySavings: data.estimatedMonthlySavings,
     maintenancePlan: data.maintenancePlan,
+    snapshot: data.snapshot ? structuredClone(data.snapshot) : undefined,
     notes: data.notes,
     createdAt: new Date().toISOString(),
   };
@@ -296,6 +298,7 @@ export async function createQuickProposalForTarget(
     modulesCount: data?.modulesCount || 20,
     moduleModel: data?.moduleModel || 'Canadian Solar 585W TOPCon',
     inverterModel: data?.inverterModel || 'Inversor Deye 12kW',
+    snapshot: data?.snapshot ? structuredClone(data.snapshot) : undefined,
     maintenancePlan: data?.maintenancePlan,
     createdAt: new Date().toISOString(),
   };

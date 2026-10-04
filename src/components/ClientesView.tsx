@@ -504,9 +504,10 @@ export function ClientesView({
   // Salvar proposta gerada
   const handleSaveProposalFromModal = (proposal: SolarProposal) => {
     const newProp: ClientProposal = {
+      snapshot: structuredClone(proposal),
       id: proposal.id,
       code: proposal.code,
-      clientId: proposalClientPreselected?.id || `cli-${Date.now()}`,
+      clientId: proposal.clientId || proposal.leadId || proposalClientPreselected?.id || `cli-${Date.now()}`,
       clientName: proposal.clientName,
       title: `${proposal.systemPowerKWp} kWp • ${proposal.clientName}`,
       systemPowerKWp: proposal.systemPowerKWp,
@@ -532,25 +533,25 @@ export function ClientesView({
   };
 
   // Converter ClientProposal para SolarProposal para visualização
-  const convertToSolarProposal = (p: ClientProposal, client?: Client): SolarProposal => ({
+  const convertToSolarProposal = (p: ClientProposal, client?: Client): SolarProposal => p.snapshot ? { ...p.snapshot, status: p.status } : ({
     id: p.id,
     code: p.code,
     clientName: p.clientName,
-    clientCity: client?.city || 'Campinas',
-    clientState: client?.state || 'SP',
-    concessionaria: client?.concessionaria || 'CPFL Paulista',
-    monthlyConsumptionKWh: p.estimatedMonthlyGenKWh || 1200,
+    clientCity: client?.city || '',
+    clientState: client?.state || '',
+    concessionaria: client?.concessionaria || '',
+    monthlyConsumptionKWh: client?.avgConsumptionKWh ?? NaN,
     systemPowerKWp: p.systemPowerKWp,
     systemType: p.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
-    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh || Math.round(p.systemPowerKWp * 120),
-    modulesCount: p.modulesCount || Math.ceil((p.systemPowerKWp * 1000) / 585),
-    moduleModel: p.moduleModel || 'Canadian Solar 585W TOPCon Bi-facial',
-    inverterModel: p.inverterModel || 'Inversor Deye Trifásico',
+    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh ?? NaN,
+    modulesCount: p.modulesCount ?? NaN,
+    moduleModel: p.moduleModel || 'Não informado',
+    inverterModel: p.inverterModel || 'Não informado',
     batteryModel: p.batteryModel,
     batteryCount: p.batteryCount,
     totalValue: p.totalValue,
-    estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
-    paybackYears: 3.2,
+    estimatedMonthlySavings: p.estimatedMonthlySavings ?? NaN,
+    paybackYears: NaN,
     status: p.status,
     createdAt: p.createdAt,
   });

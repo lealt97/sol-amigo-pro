@@ -682,6 +682,10 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
           onSaveProposal={async (newSolar) => {
             const { createQuickProposalForClient } = await import('../services/proposals');
             await createQuickProposalForClient({
+              snapshot: structuredClone(newSolar),
+              code: newSolar.code,
+              status: newSolar.status,
+              maintenancePlan: newSolar.maintenancePlan,
               clientId: proposalLead.clientId || proposalLead.id,
               clientName: proposalLead.name,
               systemType: newSolar.systemType || 'On-Grid',

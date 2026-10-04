@@ -40,3 +40,29 @@ npm run build
 ```
 
 Configure `VITE_PUBLIC_APP_URL` com a URL pública terminada em `/`. O valor usado no GitHub Pages é `https://lealt97.github.io/sol-amigo-pro/`.
+
+## Proposta editorial e páginas internas
+
+Em **Personalização da proposta PDF → Páginas internas**, configure as nove
+seções do Modelo Editorial: energia solar, descrição do projeto, geração,
+equipamentos, memorial técnico, análise financeira, condições comerciais,
+execução/garantias e aceite. A capa continua usando uma das 12 bases SVG
+existentes; nenhum arquivo de capa foi substituído.
+
+É possível editar títulos, introduções, textos, imagens, cores, fonte, rodapé,
+dados da empresa, validade padrão, ordem e inclusão das seções. Os dados de
+consumo, equipamentos, dimensionamento e preço são editados no assistente da
+proposta e alimentam automaticamente as tabelas e gráficos. A prévia do
+customizador usa dados de exemplo identificados como tal.
+
+Novas propostas guardam um snapshot completo no armazenamento já utilizado
+pela aplicação. Ao reabrir, esse snapshot conserva os dados técnicos e
+comerciais originais. Propostas antigas sem snapshot exibem os campos ausentes
+como não informados, sem acrescentar payback ou equipamentos demonstrativos.
+Esta alteração não adiciona sincronização remota dos snapshots.
+
+A visualização imprime em A4 com **Imprimir / Salvar PDF**. Escolha **Salvar
+como PDF** no navegador, sem cabeçalhos/rodapés do navegador. Tabelas longas de
+equipamentos, dados técnicos e cargas criam folhas de continuação. A projeção
+financeira é linear e identifica suas limitações; ela não substitui um cálculo
+de fluxo descontado, VPL ou TIR.
