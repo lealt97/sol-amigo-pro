@@ -43,25 +43,12 @@ Configure `VITE_PUBLIC_APP_URL` com a URL pública terminada em `/`. O valor usa
 
 ## Proposta editorial e páginas internas
 
-Em **Personalização da proposta PDF → Páginas internas**, configure as cinco
-páginas internas de `Modelo_Proposta_Sol_Amigo_Pro`: projeto e dimensionamento,
-kit e manutenção, análise financeira, condições e aceite. A capa continua usando uma das 12 bases SVG
-existentes; nenhum arquivo de capa foi substituído.
+Em **Personalização da proposta PDF → Páginas internas**, configure três páginas: resumo comercial com cliente e emitente, materiais/serviços e investimento/contratação. As 12 capas SVG existentes continuam disponíveis.
 
-É possível editar títulos, introduções, textos, imagens, cores, fonte, rodapé,
-dados da empresa, validade padrão, ordem e inclusão das seções. Os dados de
-consumo, equipamentos, dimensionamento e preço são editados no assistente da
-proposta e alimentam automaticamente as tabelas e gráficos. A prévia do
-customizador usa dados de exemplo identificados como tal.
+O resumo mostra potência, consumo, geração, área, economia mensal/anual e payback simples. Sistemas híbridos incluem banco de baterias e autonomia calculada quando registrados. A proposta comercial não inclui o memorial completo, cargas ou projeções de longo prazo. Listagens de materiais extensas recebem continuação, com numeração contínua e total de páginas.
 
-Novas propostas guardam um snapshot completo no armazenamento já utilizado
-pela aplicação. Ao reabrir, esse snapshot conserva os dados técnicos e
-comerciais originais. Propostas antigas sem snapshot exibem os campos ausentes
-como não informados, sem acrescentar payback ou equipamentos demonstrativos.
-Esta alteração não adiciona sincronização remota dos snapshots.
+As páginas reutilizam o mapa de substituição de cores da capa, com contraste automático nos blocos preenchidos. É possível desligar o vínculo para usar uma paleta independente. Títulos, textos, imagens, dados do emitente, fonte e ordem permanecem editáveis. Valores de custos internos e margem não aparecem na proposta.
 
-A visualização imprime em A4 com **Imprimir / Salvar PDF**. Escolha **Salvar
-como PDF** no navegador, sem cabeçalhos/rodapés do navegador. Tabelas longas de
-equipamentos, dados técnicos e cargas criam folhas de continuação. A projeção
-financeira apresenta a economia acumulada em oito anos e a referência do investimento; é linear e identifica suas limitações; ela não substitui um cálculo
-de fluxo descontado, VPL ou TIR.
+Novas propostas guardam os dados comerciais do perfil do usuário (nome, empresa, contato e CNPJ) junto ao snapshot técnico e comercial. Esses dados identificam o responsável que gerou a proposta. Os campos do customizador servem como alternativa para propostas antigas sem emitente. O CPF pessoal do usuário não é exportado.
+
+Use **Imprimir / Salvar PDF**, sem cabeçalhos e rodapés do navegador. A prévia do customizador contém dados de exemplo identificados. Propostas reais apresentam dados ausentes como não informados.

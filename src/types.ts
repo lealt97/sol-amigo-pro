@@ -29,6 +29,9 @@ export interface PdfInternalPage {
 
 export interface PdfEditorialSettings {
   pages: PdfInternalPage[];
+  layoutVersion?: number;
+  useCoverColors?: boolean;
+  representativeName?: string;
   companyName: string;
   companyEmail: string;
   companyPhone: string;
@@ -42,7 +45,16 @@ export interface PdfEditorialSettings {
   validityDays: number;
 }
 
+export interface ProposalIssuer {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  companyDocument: string;
+}
+
 export interface ProposalPdfData {
+  issuer?: ProposalIssuer;
   consumptionMode?: 'direct' | 'monthly' | 'load_table';
   monthlyConsumptionKWh?: (number | null)[];
   monthlyGenerationKWh?: number[];

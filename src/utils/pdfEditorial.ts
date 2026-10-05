@@ -9,46 +9,28 @@ export const EDITORIAL_PAGES: PdfInternalPage[] = [
   {
     id: "project",
     enabled: true,
-    label: "Projeto & Dimensionamento",
-    title: "Resumo técnico do sistema",
-    intro:
-      "Dimensionamento baseado em consumo, custo de disponibilidade, HSP e fator de rendimento.",
-    text: "A geração é uma estimativa e pode variar conforme irradiação, temperatura, sombreamento, orientação, indisponibilidades e condições reais da instalação.",
+    label: "Proposta comercial",
+    title: "Seu projeto de energia solar",
+    intro: "Sistema recomendado para o seu consumo.",
+    text: "Geração e economia estimadas conforme os dados do projeto. Os resultados reais variam conforme as condições de operação e faturamento.",
   },
   {
     id: "equipment",
     enabled: true,
-    label: "Kit, Serviços & Manutenção",
-    title: "Composição do sistema",
-    intro: "Equipamentos e serviços da solução proposta.",
-    text: "Projeto e dimensionamento\nInstalação e comissionamento\nHomologação/documentação quando contratada\nMonitoramento conforme escopo contratado",
+    label: "Materiais e serviços",
+    title: "O que compõe a sua solução",
+    intro: "Relação dos materiais previstos para instalação.",
+    text: "Projeto e dimensionamento\nInstalação e comissionamento\nHomologação conforme escopo contratado\nMonitoramento conforme escopo contratado",
     details:
-      "Itens civis, reforços estruturais, adequações de padrão, andaimes especiais e serviços não previstos no escopo devem ser formalizados como custo adicional na proposta.",
-  },
-  {
-    id: "financial",
-    enabled: true,
-    label: "Análise Financeira",
-    title: "Economia & Payback",
-    intro:
-      "O cálculo abaixo usa a economia mensal estimada como referência, sem projeção de reajustes tarifários.",
-    text: "Economia constante. O retorno simples não inclui reajustes, degradação, financiamento ou substituição de equipamentos.",
+      "Adequações civis e elétricas adicionais devem ser confirmadas antes da contratação.",
   },
   {
     id: "commercial",
     enabled: true,
-    label: "Condições, Garantias & Prazos",
+    label: "Investimento e contratação",
     title: "Condições da proposta",
-    intro: "Informações para contratação e execução.",
-    text: "Os dados de consumo devem refletir o histórico informado pelo cliente ou o levantamento de cargas realizado no atendimento.\nA geração estimada depende das condições reais de irradiação, temperatura, orientação, inclinação, sombreamento e disponibilidade do sistema.\nAlterações de escopo, obras civis, reforço estrutural e adequações elétricas devem ser registrados antes da contratação.\nO dimensionamento definitivo e a instalação devem observar o projeto executivo e as condições do local.\nO plano de manutenção contratado é executado conforme periodicidade, serviços e condições registrados na proposta e no contrato.",
-  },
-  {
-    id: "acceptance",
-    enabled: true,
-    label: "Aceite & Contatos",
-    title: "Termo de aceite",
-    intro: "Encerramento da proposta comercial.",
-    text: "Declaro que recebi e analisei esta proposta comercial para fornecimento e instalação do sistema fotovoltaico descrito neste documento, incluindo o plano de manutenção quando contratado.",
+    intro: "Valores, prazos e aceite.",
+    text: "O aceite confirma os equipamentos, serviços e condições descritos nesta proposta. Alterações de escopo devem ser formalizadas entre as partes.",
   },
 ];
 
@@ -56,11 +38,7 @@ export function normalizeEditorialSettings(
   settings?: Partial<PdfEditorialSettings>,
 ): PdfEditorialSettings {
   const previous = Array.isArray(settings?.pages) ? settings.pages : [];
-  const supplied = previous.some((p) =>
-    ["benefits", "technical", "generation", "execution"].includes(p.id),
-  )
-    ? []
-    : previous;
+  const supplied = settings?.layoutVersion === 2 ? previous : [];
   const pages = supplied
     .filter(
       (p, i) =>
@@ -71,6 +49,9 @@ export function normalizeEditorialSettings(
   for (const page of EDITORIAL_PAGES)
     if (!pages.some((p) => p.id === page.id)) pages.push({ ...page });
   return {
+    layoutVersion: 2,
+    useCoverColors: settings?.useCoverColors ?? true,
+    representativeName: settings?.representativeName ?? "",
     companyName: settings?.companyName ?? "Sol Amigo",
     companyEmail: settings?.companyEmail ?? "",
     companyPhone: settings?.companyPhone ?? "",
@@ -138,10 +119,7 @@ export function getProposalSeries(proposal: SolarProposal) {
 
 export function getVisibleEditorialPages(settings: PdfSettingsConfig) {
   return normalizeEditorialSettings(settings.editorial).pages.filter(
-    (p) =>
-      p.enabled &&
-      (p.id !== "financial" || settings.showFinancial) &&
-      (p.id !== "equipment" || settings.showEquipment),
+    (p) => p.enabled && (p.id !== "equipment" || settings.showEquipment),
   );
 }
 
