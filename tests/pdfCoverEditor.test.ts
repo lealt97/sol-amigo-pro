@@ -60,3 +60,5 @@ test('todas as 12 capas possuem placeholder de logo explicitamente marcado', () 
     assert.equal(count, expected, `a4-${id} deve marcar exatamente o placeholder do logo`);
   });
 });
+
+
