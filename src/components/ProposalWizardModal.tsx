@@ -29,7 +29,6 @@ import {
 import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
-import { fetchProposalIssuer } from '../services/proposalIssuer';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
 import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
 import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
@@ -497,7 +496,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     }
   };
 
-  const handleGenerateProposalFinal = async () => {
+  const handleGenerateProposalFinal = () => {
     if (!selectedTarget) {
       onShowToast?.('Selecione um cliente ou interessado.');
       return;
@@ -524,27 +523,8 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       ? Number((finalValue / (monthlySavings * 12)).toFixed(2))
       : 0;
 
-    const issuer = await fetchProposalIssuer();
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,
-      clientId: selectedTarget.type === 'client' ? selectedTarget.id : selectedTarget.clientId,
-      leadId: selectedTarget.type === 'lead' ? selectedTarget.id : selectedTarget.sourceLeadId,
-      pdfData: {
-        issuer,
-        consumptionMode,
-        monthlyConsumptionKWh: consumptionMode === 'monthly' ? monthlyValues.map(m => typeof m.value === 'number' ? m.value : null) : undefined,
-        loads: consumptionMode === 'load_table' || isHybrid ? loadItems.map(l => ({ ...l })) : undefined,
-        connectionType, energyTariff, publicLightingTax, targetCoveragePercent, modulePowerW,
-        estimatedAreaM2: Number((finalModules * 2.58).toFixed(2)),
-        inverterPowerKW: selectedKit?.inverterPowerKW,
-        inverterCount: selectedKit ? selectedKit.items.filter(i => /inversor/i.test(i.category)).reduce((sum, i) => sum + i.quantity, 0) || 1 : undefined,
-        structureType: selectedKit?.structureType,
-        clientAddress: [selectedTarget.street, selectedTarget.addressNumber, selectedTarget.city, selectedTarget.state].filter(Boolean).join(', '),
-        backupAutonomyHours: isHybrid ? backupAutonomyHours : undefined,
-        batteryUnitCapacityKWh: isHybrid ? batteryCapacityKWh : undefined,
-        batteryRecommendationKWh: isHybrid ? Math.max(1, Math.ceil((((loadItems.filter(l => l.isPriorityBackup).reduce((sum, l) => sum + l.powerW * l.quantity * l.hoursPerDay * l.daysPerMonth / 1000, 0) / 30 || consKWh / 30 * 0.45) / 24) * backupAutonomyHours / (0.9 * 0.92)) / 5.12)) * 5.12 : undefined,
-        equipmentItems: commercialPricing?.equipmentItems?.map(item => ({ ...item })) ?? selectedKit?.items.map(item => ({ ...item })),
-      },
       code: propCode,
       clientName: selectedTarget.name,
       clientEmail: selectedTarget.email,
@@ -566,7 +546,6 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       estimatedMonthlyGenKWh: finalMonthlyGen,
       estimatedMonthlySavings: Math.round(monthlySavings),
       paybackYears: simplePaybackYears,
-      currentMonthlyBill: consKWh * energyTariff + publicLightingTax,
       totalValue: finalValue,
       hsp: hsp,
       performanceRatio: performanceRatio,

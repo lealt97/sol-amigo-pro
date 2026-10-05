@@ -31,8 +31,6 @@ import {
   normalizeSvgColor,
   normalizeTransform,
 } from '../utils/pdfCoverEditor';
-import { PdfInternalPagesEditor } from './PdfInternalPagesEditor';
-import { cloneEditorialSettings } from '../utils/pdfEditorial';
 import { savePdfSettings } from '../utils/themeEngine';
 import {
   fetchProfileBrandLogos,
@@ -54,12 +52,11 @@ interface PdfCustomizacoesViewProps {
   onShowToast: (msg: string) => void;
 }
 
-type EditorTab = 'templates' | 'colors' | 'logo' | 'photo' | 'pages';
+type EditorTab = 'templates' | 'colors' | 'logo' | 'photo';
 type EditableLayer = 'logo' | 'photo';
 
 const cloneSettings = (settings: PdfSettingsConfig): PdfSettingsConfig => ({
   ...settings,
-  editorial: cloneEditorialSettings(settings.editorial),
   coverColors: { ...(settings.coverColors ?? {}) },
   coverLogoTransform: { ...normalizeTransform(settings.coverLogoTransform, 'logo') },
   coverPhotoTransform: { ...normalizeTransform(settings.coverPhotoTransform, 'photo') },
@@ -423,7 +420,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
 
     savePdfSettings(normalized);
     onSavePdfSettings(normalized);
-    onShowToast(activeModelId ? 'Modelo atualizado e aplicado.' : 'Personalização da proposta salva.');
+    onShowToast(activeModelId ? 'Modelo atualizado e aplicado.' : 'Personalização da capa salva.');
   };
 
   const restoreSaved = () => {
@@ -447,7 +444,6 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     { id: 'colors', label: 'Cores', icon: Palette },
     { id: 'logo', label: 'Logo', icon: Move },
     { id: 'photo', label: 'Foto', icon: UploadCloud },
-    { id: 'pages', label: 'Páginas', icon: Pencil },
   ];
 
   const logoTransform = normalizeTransform(draft.coverLogoTransform, 'logo');
@@ -465,13 +461,13 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
               <ImageIcon className="h-4 w-4" />
               Editor de propostas
             </div>
-            <h1 className="mt-1 text-2xl font-black">Personalização da proposta PDF</h1>
+            <h1 className="mt-1 text-2xl font-black">Personalização da capa PDF</h1>
             <p className="mt-1 max-w-3xl text-sm opacity-65">
               As 12 capas originais ficam protegidas. Adicione uma delas em Meus Modelos para editar cores, logo e foto sem alterar o arquivo de origem.
             </p>
           </div>
 
-          {(activeModelId || activeTab === 'pages') && (
+          {activeModelId && (
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -502,16 +498,12 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setActiveTab('templates')} className="rounded-xl border px-4 py-2 text-sm font-bold" style={{ borderColor: currentTheme.border, background: activeTab !== 'pages' ? currentTheme.secondary : undefined }}>Capas</button>
-        <button type="button" onClick={() => { setActiveTab('pages'); setActiveLayer(null); }} className="rounded-xl border px-4 py-2 text-sm font-bold" style={{ borderColor: currentTheme.border, background: activeTab === 'pages' ? currentTheme.secondary : undefined }}>Páginas internas</button>
-      </div>
-      {activeTab === 'pages' ? <PdfInternalPagesEditor settings={draft} theme={currentTheme} onChange={setDraft} onSave={() => void handleSave()} onDiscard={restoreSaved} /> : <div className="grid min-w-0 gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
         <aside
           className="min-w-0 rounded-2xl border"
           style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border }}
         >
-          <div className="grid grid-cols-5 gap-1 border-b p-2" style={{ borderColor: currentTheme.border }}>
+          <div className="grid grid-cols-4 gap-1 border-b p-2" style={{ borderColor: currentTheme.border }}>
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
@@ -519,9 +511,9 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                 <button
                   key={tab.id}
                   type="button"
-                  disabled={tab.id !== 'templates' && tab.id !== 'pages' && !activeModelId}
+                  disabled={tab.id !== 'templates' && !activeModelId}
                   onClick={() => {
-                    if (tab.id !== 'templates' && tab.id !== 'pages' && !activeModelId) return;
+                    if (tab.id !== 'templates' && !activeModelId) return;
                     setActiveTab(tab.id);
                     if (tab.id === 'logo') setActiveLayer('logo');
                     else if (tab.id === 'photo') setActiveLayer('photo');
@@ -1120,7 +1112,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
             </div>
           )}
         </section>
-      </div>}
+      </div>
     </div>
   );
 };

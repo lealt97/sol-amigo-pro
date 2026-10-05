@@ -40,15 +40,3 @@ npm run build
 ```
 
 Configure `VITE_PUBLIC_APP_URL` com a URL pública terminada em `/`. O valor usado no GitHub Pages é `https://lealt97.github.io/sol-amigo-pro/`.
-
-## Proposta editorial e páginas internas
-
-Em **Personalização da proposta PDF → Páginas internas**, configure três páginas: resumo comercial com cliente e emitente, materiais/serviços e investimento/contratação. As 12 capas SVG existentes continuam disponíveis.
-
-O resumo mostra potência, consumo, geração, área, economia mensal/anual e payback simples. Sistemas híbridos incluem banco de baterias e autonomia calculada quando registrados. A proposta comercial não inclui o memorial completo, cargas ou projeções de longo prazo. Listagens de materiais extensas recebem continuação, com numeração contínua e total de páginas.
-
-As páginas reutilizam o mapa de substituição de cores da capa, com contraste automático nos blocos preenchidos. É possível desligar o vínculo para usar uma paleta independente. Títulos, textos, imagens, dados do emitente, fonte e ordem permanecem editáveis. Valores de custos internos e margem não aparecem na proposta.
-
-Novas propostas guardam os dados comerciais do perfil do usuário (nome, empresa, contato e CNPJ) junto ao snapshot técnico e comercial. Esses dados identificam o responsável que gerou a proposta. Os campos do customizador servem como alternativa para propostas antigas sem emitente. O CPF pessoal do usuário não é exportado.
-
-Use **Imprimir / Salvar PDF**, sem cabeçalhos e rodapés do navegador. A prévia do customizador contém dados de exemplo identificados. Propostas reais apresentam dados ausentes como não informados.

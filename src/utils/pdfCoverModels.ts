@@ -1,10 +1,8 @@
 import type { PdfCoverModel, PdfSettingsConfig } from '../types';
-import { cloneEditorialSettings } from './pdfEditorial';
 import { normalizeTransform } from './pdfCoverEditor';
 
 export const clonePdfSettingsForModel = (settings: PdfSettingsConfig): PdfSettingsConfig => ({
   ...settings,
-  editorial: cloneEditorialSettings(settings.editorial),
   coverColors: { ...(settings.coverColors ?? {}) },
   coverLogoTransform: { ...normalizeTransform(settings.coverLogoTransform, 'logo') },
   coverPhotoTransform: { ...normalizeTransform(settings.coverPhotoTransform, 'photo') },
