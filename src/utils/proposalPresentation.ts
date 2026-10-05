@@ -75,7 +75,7 @@ export function getProposalMaterials(p: SolarProposal) {
     return items.map((x) => ({
       description: x.description,
       category: x.category,
-      quantity: numberText(x.quantity, "", 0),
+      quantity: numberText(x.quantity, "", 3),
     }));
   const materials = [
     {

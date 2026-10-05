@@ -200,3 +200,21 @@ test("payback arredonda meses sem produzir doze meses residuais", () => {
   assert.equal(paybackText(1.999), "2 anos");
   assert.equal(paybackText(NaN), "Não calculado");
 });
+
+test("materiais conservam quantidades fracionárias", () => {
+  const rows = getProposalMaterials({
+    ...EDITORIAL_PREVIEW_PROPOSAL,
+    pdfData: {
+      equipmentItems: [
+        {
+          id: "cabo",
+          category: "Cabos",
+          description: "Cabo solar",
+          quantity: 12.5,
+          unitCost: 0,
+        },
+      ],
+    },
+  });
+  assert.equal(rows[0].quantity, "12,5");
+});
