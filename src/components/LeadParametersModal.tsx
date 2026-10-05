@@ -1549,10 +1549,6 @@ export function LeadParametersModal({
           onSaveProposal={async (newSolar) => {
             const { createQuickProposalForClient } = await import('../services/proposals');
             await createQuickProposalForClient({
-              snapshot: structuredClone(newSolar),
-              code: newSolar.code,
-              status: newSolar.status,
-              maintenancePlan: newSolar.maintenancePlan,
               clientId: lead.clientId || lead.id,
               clientName: lead.name,
               systemType: newSolar.systemType || 'On-Grid',
