@@ -29,6 +29,7 @@ import {
 import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
+import { fetchProposalIssuer } from '../services/proposalIssuer';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
 import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
 import { fetchWebsiteFormSettings } from '../services/websiteFormIntegration';
@@ -496,7 +497,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     }
   };
 
-  const handleGenerateProposalFinal = () => {
+  const handleGenerateProposalFinal = async () => {
     if (!selectedTarget) {
       onShowToast?.('Selecione um cliente ou interessado.');
       return;
@@ -523,11 +524,13 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       ? Number((finalValue / (monthlySavings * 12)).toFixed(2))
       : 0;
 
+    const issuer = await fetchProposalIssuer();
     const newProp: SolarProposal = {
       id: `prop-${Date.now()}`,
       clientId: selectedTarget.type === 'client' ? selectedTarget.id : selectedTarget.clientId,
       leadId: selectedTarget.type === 'lead' ? selectedTarget.id : selectedTarget.sourceLeadId,
       pdfData: {
+        issuer,
         consumptionMode,
         monthlyConsumptionKWh: consumptionMode === 'monthly' ? monthlyValues.map(m => typeof m.value === 'number' ? m.value : null) : undefined,
         loads: consumptionMode === 'load_table' || isHybrid ? loadItems.map(l => ({ ...l })) : undefined,

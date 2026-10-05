@@ -12,9 +12,9 @@ import { DEFAULT_PDF_SETTINGS } from "../src/utils/themeEngine";
 import { clonePdfSettingsForModel } from "../src/utils/pdfCoverModels";
 
 // CSS is loaded by the browser build; the pure utilities are exercised here.
-test("modelo editorial contém as cinco páginas internas sem uma segunda capa", () => {
-  assert.equal(EDITORIAL_PAGES.length, 5);
-  assert.equal(new Set(EDITORIAL_PAGES.map((p) => p.id)).size, 5);
+test("modelo editorial contém as três páginas internas sem uma segunda capa", () => {
+  assert.equal(EDITORIAL_PAGES.length, 3);
+  assert.equal(new Set(EDITORIAL_PAGES.map((p) => p.id)).size, 3);
   assert.ok(!EDITORIAL_PAGES.some((p) => p.id === ("cover" as any)));
 });
 test("modelos de capa preservam cópias independentes das páginas internas", () => {
@@ -31,14 +31,15 @@ test("modelos de capa preservam cópias independentes das páginas internas", ()
 });
 test("configurações antigas recebem páginas internas e ordem personalizada permanece", () => {
   const ed = normalizeEditorialSettings({
+    layoutVersion: 2,
     pages: [
-      { ...EDITORIAL_PAGES[4], title: "Meu aceite" },
+      { ...EDITORIAL_PAGES[2], title: "Meu aceite" },
       { ...EDITORIAL_PAGES[0], enabled: false },
     ],
   });
-  assert.equal(ed.pages[0].id, "acceptance");
+  assert.equal(ed.pages[0].id, "commercial");
   assert.equal(ed.pages[0].title, "Meu aceite");
-  assert.equal(ed.pages.length, 5);
+  assert.equal(ed.pages.length, 3);
   const settings = {
     ...DEFAULT_PDF_SETTINGS,
     showFinancial: false,
@@ -119,7 +120,7 @@ test("salvar e reabrir proposta conserva o snapshot técnico e comercial", async
   }
 });
 
-test("modelo anterior migra para cinco páginas do novo PDF", () => {
+test("modelo anterior migra para três páginas do novo PDF", () => {
   const old = [
     { ...EDITORIAL_PAGES[0], id: "benefits" as any },
     ...EDITORIAL_PAGES,
@@ -127,7 +128,75 @@ test("modelo anterior migra para cinco páginas do novo PDF", () => {
   const migrated = normalizeEditorialSettings({ pages: old });
   assert.deepEqual(
     migrated.pages.map((p) => p.id),
-    ["project", "equipment", "financial", "commercial", "acceptance"],
+    ["project", "equipment", "commercial"],
   );
-  assert.equal(migrated.pages[0].title, "Resumo técnico do sistema");
+  assert.equal(migrated.pages[0].title, "Seu projeto de energia solar");
+});
+
+import {
+  getInternalPagePalette,
+  getProposalMaterials,
+  issuerFromProfile,
+  paybackText,
+} from "../src/utils/proposalPresentation";
+import { DEFAULT_THEME } from "../src/utils/themeEngine";
+test("motor de cores da capa colore as páginas e preserva contraste", () => {
+  const settings = {
+    ...DEFAULT_PDF_SETTINGS,
+    useAccountColors: false,
+    editorial: normalizeEditorialSettings(),
+    coverColors: { "#0e2337": "#FACB5C", "#0076DD": "#183956" },
+  };
+  const palette = getInternalPagePalette(settings, DEFAULT_THEME);
+  assert.equal(palette.primary, "#FACB5C");
+  assert.equal(palette.primaryInk, "#0E2337");
+  assert.equal(palette.secondary, "#183956");
+  assert.equal(palette.secondaryInk, "#FFFFFF");
+  settings.editorial.useCoverColors = false;
+  assert.equal(
+    getInternalPagePalette(settings, DEFAULT_THEME).primary,
+    "#0E2337",
+  );
+});
+test("materiais preservam a listagem completa e não expõem custo interno", () => {
+  const p = {
+    ...EDITORIAL_PREVIEW_PROPOSAL,
+    pdfData: {
+      equipmentItems: Array.from({ length: 27 }, (_, i) => ({
+        id: String(i),
+        category: "Material",
+        description: "Item " + i,
+        quantity: i + 1,
+        unitCost: 999,
+      })),
+    },
+  };
+  const rows = getProposalMaterials(p);
+  assert.equal(rows.length, 27);
+  assert.equal(rows[26].quantity, "27");
+  assert.ok(!JSON.stringify(rows).includes("unitCost"));
+});
+test("emitente usa os campos do perfil sem CPF pessoal ou metadados adicionais", () => {
+  const issuer = issuerFromProfile({
+    email: "comercial@exemplo.com",
+    user_metadata: {
+      full_name: "Consultor",
+      company: "Empresa",
+      phone: "11999999999",
+      cnpj: "123",
+      cpf: "privado",
+      other: "privado",
+    },
+  });
+  assert.deepEqual(issuer, {
+    name: "Consultor",
+    company: "Empresa",
+    email: "comercial@exemplo.com",
+    phone: "11999999999",
+    companyDocument: "123",
+  });
+});
+test("payback arredonda meses sem produzir doze meses residuais", () => {
+  assert.equal(paybackText(1.999), "2 anos");
+  assert.equal(paybackText(NaN), "Não calculado");
 });

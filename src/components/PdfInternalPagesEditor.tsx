@@ -10,6 +10,7 @@ import {
   EDITORIAL_PREVIEW_PROPOSAL,
   cloneEditorialSettings,
 } from "../utils/pdfEditorial";
+import { getInternalPagePalette } from "../utils/proposalPresentation";
 import { ProposalEditorialDocument } from "./ProposalEditorialDocument";
 import { uploadPdfCoverPhoto } from "../services/pdfCustomization";
 
@@ -22,13 +23,14 @@ export const PdfInternalPagesEditor: React.FC<{
 }> = ({ settings, theme, onChange, onSave, onDiscard }) => {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-  const [pageId, setPageId] = useState("benefits");
+  const [pageId, setPageId] = useState("project");
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [example, setExample] = useState<SolarProposal>(
     EDITORIAL_PREVIEW_PROPOSAL,
   );
   const ed = cloneEditorialSettings(settings.editorial);
+  const palette = getInternalPagePalette(settings, theme);
   const page = ed.pages.find((p) => p.id === pageId) ?? ed.pages[0];
   const update = (patch: Partial<PdfEditorialSettings>) =>
     onChange({ ...settings, editorial: { ...ed, ...patch } });
@@ -72,8 +74,8 @@ export const PdfInternalPagesEditor: React.FC<{
         <div>
           <h2 className="text-xl font-black">Páginas internas da proposta</h2>
           <p className="mt-1 text-sm opacity-65">
-            Cinco páginas internas do modelo enviado. Tabelas extensas criam
-            folhas de continuação para preservar os dados.
+            Três páginas comerciais: resumo, materiais e contratação. Listas
+            extensas de materiais recebem páginas de continuação.
           </p>
         </div>
         <div className="flex gap-2">
@@ -248,16 +250,43 @@ export const PdfInternalPagesEditor: React.FC<{
               Cores e tipografia das páginas
             </summary>
             <div className="mt-4 space-y-3">
+              <label className="block text-xs">
+                <input
+                  type="checkbox"
+                  checked={ed.useCoverColors}
+                  onChange={(e) => update({ useCoverColors: e.target.checked })}
+                />{" "}
+                Usar o motor de cores da capa nas páginas
+              </label>
               {(["primary", "secondary", "accent"] as const).map((key, i) => (
                 <label
                   className="flex items-center justify-between text-xs"
                   key={key}
                 >
-                  {["Texto e blocos", "Destaques e gráfico", "Detalhes"][i]}
+                  {
+                    [
+                      "Cabeçalhos e investimento",
+                      "Cabeçalho da tabela",
+                      "Detalhes",
+                    ][i]
+                  }
                   <input
                     type="color"
-                    value={ed[key]}
-                    onChange={(e) => update({ [key]: e.target.value })}
+                    value={palette[key]}
+                    onChange={(e) =>
+                      ed.useCoverColors
+                        ? onChange({
+                            ...settings,
+                            coverColors: {
+                              ...settings.coverColors,
+                              [(settings.useAccountColors
+                                ? theme[key]
+                                : ed[key]
+                              ).toUpperCase()]: e.target.value.toUpperCase(),
+                            },
+                          })
+                        : update({ [key]: e.target.value })
+                    }
                   />
                 </label>
               ))}
@@ -308,7 +337,7 @@ export const PdfInternalPagesEditor: React.FC<{
                     onChange({ ...settings, showFinancial: e.target.checked })
                   }
                 />{" "}
-                Exibir análise financeira
+                Exibir economia e retorno no resumo
               </label>
               <label className="block text-xs">
                 <input
@@ -324,9 +353,18 @@ export const PdfInternalPagesEditor: React.FC<{
           </details>
           <details>
             <summary className="cursor-pointer text-sm font-black">
-              Empresa, rodapé e validade
+              Emitente, rodapé e validade
             </summary>
             <div className="mt-4 space-y-3">
+              <p className="text-xs opacity-60">
+                Novas propostas usam o nome e os contatos do seu Perfil. Estes
+                campos complementam os dados ausentes.
+              </p>
+              {input(
+                "Responsável comercial",
+                ed.representativeName ?? "",
+                (representativeName) => update({ representativeName }),
+              )}
               {input("Empresa", ed.companyName, (companyName) =>
                 update({ companyName }),
               )}
