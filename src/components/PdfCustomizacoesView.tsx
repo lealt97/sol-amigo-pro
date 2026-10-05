@@ -101,6 +101,22 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
   const [modelsLoading, setModelsLoading] = useState(true);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [modelMenuId, setModelMenuId] = useState<string | null>(null);
+  const [renameModelId, setRenameModelId] = useState<string | null>(null);
+  const [renameName, setRenameName] = useState('');
+  const [renameError, setRenameError] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const renameDialogRef = useRef<HTMLDialogElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renameModelId) {
+      renameDialogRef.current?.showModal();
+      renameInputRef.current?.select();
+    } else {
+      renameDialogRef.current?.close();
+    }
+  }, [renameModelId]);
+
   const previewRef = useRef<HTMLDivElement>(null);
   const originalsSliderRef = useRef<HTMLDivElement>(null);
   const modelsSliderRef = useRef<HTMLDivElement>(null);
@@ -277,27 +293,43 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     setModelMenuId(null);
   };
 
-  const renameModel = async (model: PdfCoverModel) => {
-    const entered = window.prompt('Novo nome do modelo:', model.name);
-    if (entered === null) return;
-    const name = entered.trim();
+  const openRenameModel = (model: PdfCoverModel) => {
+    setRenameName(model.name);
+    setRenameError('');
+    setRenameModelId(model.id);
+    setModelMenuId(null);
+  };
+
+  const renameModel = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (renaming) return;
+    const model = models.find((item) => item.id === renameModelId);
+    if (!model) return;
+    const name = renameName.trim();
     if (!name) {
-      onShowToast('Informe um nome para o modelo.');
+      setRenameError('Informe um nome para o modelo.');
       return;
     }
-    if (name === model.name) return;
     if (models.some((item) => item.id !== model.id && item.name.trim().toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'))) {
-      onShowToast('Já existe um modelo com esse nome.');
+      setRenameError('Já existe um modelo com esse nome.');
+      return;
+    }
+    if (name === model.name) {
+      setRenameModelId(null);
       return;
     }
     const next = models.map((item) => item.id === model.id ? { ...item, name, updatedAt: new Date().toISOString() } : item);
+    setRenaming(true);
+    setRenameError('');
     try {
       await savePdfCoverModels(next);
       setModels(next);
-      setModelMenuId(null);
+      setRenameModelId(null);
       onShowToast('Modelo renomeado.');
     } catch {
-      setError('Não foi possível renomear o modelo. Tente novamente.');
+      setRenameError('Não foi possível renomear o modelo. Tente novamente.');
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -727,7 +759,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void renameModel(model)}
+                                  onClick={() => openRenameModel(model)}
                                   className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
                                   style={{ borderColor: currentTheme.border }}
                                 >
@@ -1146,6 +1178,46 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
           )}
         </section>
       </div>
+      <dialog
+        ref={renameDialogRef}
+        aria-labelledby="rename-cover-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          if (!renaming) setRenameModelId(null);
+        }}
+        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border p-6 shadow-2xl backdrop:bg-black/60"
+        style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border, color: currentTheme.text }}
+      >
+        <form onSubmit={renameModel}>
+          <h2 id="rename-cover-title" className="text-lg font-bold">Renomear modelo</h2>
+          <label htmlFor="rename-cover-name" className="mb-2 mt-5 block text-sm font-bold">Nome do modelo</label>
+          <input
+            ref={renameInputRef}
+            id="rename-cover-name"
+            autoFocus
+            value={renameName}
+            disabled={renaming}
+            onChange={(event) => {
+              setRenameName(event.target.value);
+              setRenameError('');
+            }}
+            aria-invalid={Boolean(renameError)}
+            aria-describedby={renameError ? 'rename-cover-error' : undefined}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ backgroundColor: currentTheme.background, borderColor: currentTheme.border }}
+          />
+          {renameError && <p id="rename-cover-error" role="alert" className="mt-2 text-sm text-red-500">{renameError}</p>}
+          <div className="mt-6 flex justify-end gap-3">
+            <button type="button" disabled={renaming} onClick={() => setRenameModelId(null)} className="rounded-lg border px-4 py-2 text-sm font-bold disabled:opacity-50" style={{ borderColor: currentTheme.border }}>
+              Cancelar
+            </button>
+            <button type="submit" disabled={renaming} className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-50" style={{ backgroundColor: currentTheme.secondary, color: '#fff' }}>
+              {renaming && <Loader2 className="h-4 w-4 animate-spin" />}
+              {renaming ? 'Salvando...' : 'Salvar nome'}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 };
