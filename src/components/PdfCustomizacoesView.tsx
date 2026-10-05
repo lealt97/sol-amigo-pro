@@ -277,6 +277,30 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
     setModelMenuId(null);
   };
 
+  const renameModel = async (model: PdfCoverModel) => {
+    const entered = window.prompt('Novo nome do modelo:', model.name);
+    if (entered === null) return;
+    const name = entered.trim();
+    if (!name) {
+      onShowToast('Informe um nome para o modelo.');
+      return;
+    }
+    if (name === model.name) return;
+    if (models.some((item) => item.id !== model.id && item.name.trim().toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'))) {
+      onShowToast('Já existe um modelo com esse nome.');
+      return;
+    }
+    const next = models.map((item) => item.id === model.id ? { ...item, name, updatedAt: new Date().toISOString() } : item);
+    try {
+      await savePdfCoverModels(next);
+      setModels(next);
+      setModelMenuId(null);
+      onShowToast('Modelo renomeado.');
+    } catch {
+      setError('Não foi possível renomear o modelo. Tente novamente.');
+    }
+  };
+
   const duplicateModel = async (model: PdfCoverModel) => {
     const copy = duplicatePdfCoverModel(model, models.map((item) => item.name));
     const next = [...models, copy];
@@ -700,6 +724,15 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                   Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void renameModel(model)}
+                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
+                                  style={{ borderColor: currentTheme.border }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Renomear
                                 </button>
                                 <button
                                   type="button"
