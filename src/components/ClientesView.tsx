@@ -12,6 +12,7 @@ import {
   MapPin,
   MoreVertical,
   NotepadText,
+  Pencil,
   Phone,
   Plus,
   RefreshCw,
@@ -30,6 +31,7 @@ import {
   saveClientsLocal,
   deleteClient,
   updateClient,
+  renameClient,
   updateClientNotes,
   mergeClientsWithLeads,
   isClientMarkedDeleted,
@@ -105,6 +107,10 @@ export function ClientesView({
   const [notesModalClient, setNotesModalClient] = useState<Client | null>(null);
   const [paramsModalClient, setParamsModalClient] = useState<Client | null>(null);
   const [deleteClientTarget, setDeleteClientTarget] = useState<Client | null>(null);
+  const [renameClientTarget, setRenameClientTarget] = useState<Client | null>(null);
+  const [renameNewName, setRenameNewName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameError, setRenameError] = useState('');
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
   const [proposalClientPreselected, setProposalClientPreselected] = useState<Client | null>(null);
   const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
@@ -491,6 +497,51 @@ export function ClientesView({
       onNavigate('propostas', client.name);
     } else {
       setProposalsModalClient(client);
+    }
+  };
+
+  // Abrir modal de renomear cliente
+  const handleOpenRename = (client: Client) => {
+    setOpenMenuId(null);
+    setRenameClientTarget(client);
+    setRenameNewName(client.name);
+    setRenameError('');
+  };
+
+  // Salvar renomeação do cliente
+  const handleSaveRename = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!renameClientTarget) return;
+    const trimmed = renameNewName.trim();
+    if (!trimmed) {
+      setRenameError('O nome não pode ficar vazio.');
+      return;
+    }
+    if (trimmed === renameClientTarget.name) {
+      setRenameClientTarget(null);
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      const updatedClient = {
+        ...renameClientTarget,
+        name: trimmed,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setClients((prev) =>
+        prev.map((c) => (c.id === renameClientTarget.id ? updatedClient : c))
+      );
+
+      await renameClient(renameClientTarget.id, trimmed, renameClientTarget.sourceLeadId);
+      onShowToast(`Cliente renomeado para "${trimmed}".`);
+      setRenameClientTarget(null);
+    } catch (err) {
+      console.error('Erro ao renomear cliente:', err);
+      setRenameError('Não foi possível salvar o novo nome.');
+    } finally {
+      setIsRenaming(false);
     }
   };
 
@@ -966,6 +1017,16 @@ export function ClientesView({
                           </button>
 
                           <button
+                            onClick={() => handleOpenRename(client)}
+                            className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors"
+                          >
+                            <Pencil className="h-4 w-4 shrink-0 text-[var(--secondary)] group-hover:text-white group-hover:stroke-white transition-colors" />
+                            <span className="font-medium group-hover:text-white transition-colors">
+                              Renomear
+                            </span>
+                          </button>
+
+                          <button
                             onClick={() => handleOpenNotes(client)}
                             className="lead-menu-item group flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors"
                           >
@@ -1284,6 +1345,111 @@ export function ClientesView({
           onLeadUpdated={handleClientLeadUpdated}
           onShowToast={onShowToast}
         />
+      )}
+
+      {/* MODAL: Renomear Cliente */}
+      {renameClientTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isRenaming) {
+              setRenameClientTarget(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border p-6 shadow-2xl space-y-4"
+            style={{
+              backgroundColor: theme.primary,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--secondary) 15%, transparent)',
+                    color: 'var(--secondary)',
+                  }}
+                >
+                  <Pencil className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Renomear Cliente</h3>
+                  <p className="text-xs text-[var(--muted)]">Atualize o nome deste cliente</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isRenaming && setRenameClientTarget(null)}
+                className="rounded-lg p-1.5 opacity-60 hover:opacity-100 hover:bg-white/5 transition-all cursor-pointer"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRename} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-1.5">
+                  Nome do Cliente
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={renameNewName}
+                  onChange={(e) => {
+                    setRenameNewName(e.target.value);
+                    if (renameError) setRenameError('');
+                  }}
+                  placeholder="Ex: João da Silva ou Empresa Solar Ltda"
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all focus:border-[var(--secondary)]"
+                  style={{
+                    backgroundColor: theme.background,
+                    borderColor: renameError ? 'var(--danger)' : theme.border,
+                    color: theme.text,
+                  }}
+                />
+                {renameError && (
+                  <p className="mt-1 text-xs text-[var(--danger)]">{renameError}</p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => setRenameClientTarget(null)}
+                  disabled={isRenaming}
+                  className="rounded-lg border px-4 py-2 text-xs font-semibold cursor-pointer disabled:opacity-50"
+                  style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRenaming || !renameNewName.trim()}
+                  className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--secondary)' }}
+                >
+                  {isRenaming ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Salvar Nome</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* MODAL: Confirmação de Exclusão de Cliente */}

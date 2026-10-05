@@ -4,12 +4,14 @@ import {
   clonePdfSettingsForModel,
   createPdfCoverModel,
   duplicatePdfCoverModel,
+  renamePdfCoverModel,
   updatePdfCoverModelSettings,
 } from '../utils/pdfCoverModels';
 
 export {
   createPdfCoverModel,
   duplicatePdfCoverModel,
+  renamePdfCoverModel,
   updatePdfCoverModelSettings,
 };
 

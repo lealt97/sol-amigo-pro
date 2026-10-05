@@ -4,6 +4,7 @@ import type { PdfSettingsConfig } from '../src/types';
 import {
   createPdfCoverModel,
   duplicatePdfCoverModel,
+  renamePdfCoverModel,
   updatePdfCoverModelSettings,
 } from '../src/utils/pdfCoverModels';
 
@@ -63,4 +64,14 @@ test('editar um modelo mantém a referência do template original sem alterar ou
   assert.equal(updated.settings.template, 'a4-02');
   assert.equal(updated.settings.coverColors!['#0076DD'], '#FACB5C');
   assert.equal(sibling.settings.coverColors!['#0076DD'], '#00AA00');
+});
+
+test('renomear um modelo atualiza o nome sem alterar configurações de capa', () => {
+  const model = createPdfCoverModel('a4-01', baseSettings, 'Nome Antigo');
+  const renamed = renamePdfCoverModel(model, 'Nome Novo Proposta');
+
+  assert.equal(renamed.id, model.id);
+  assert.equal(renamed.name, 'Nome Novo Proposta');
+  assert.equal(renamed.settings.template, 'a4-01');
+  assert.equal(renamed.settings.coverColors!['#0076DD'], '#00AA00');
 });

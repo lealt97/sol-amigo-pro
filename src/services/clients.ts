@@ -460,23 +460,61 @@ export async function deleteClient(clientId: string, sourceLeadId?: string): Pro
 export async function updateClient(clientId: string, data: Partial<Client>): Promise<void> {
   const current = fetchClientsLocal();
   const updated = current.map((c) =>
-    c.id === clientId ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
+    c.id === clientId || (c.sourceLeadId && c.sourceLeadId === clientId)
+      ? { ...c, ...data, updatedAt: new Date().toISOString() }
+      : c
   );
   saveClientsLocal(updated);
+
   try {
-    await supabase.from('clients').update({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      city: data.city,
-      state: data.state,
-      street: data.street,
-      address_number: data.addressNumber,
-      property_type: data.propertyType || data.type,
-      status: data.status,
-    }).eq('id', clientId);
+    const payload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.phone !== undefined) payload.phone = data.phone;
+    if (data.city !== undefined) payload.city = data.city;
+    if (data.state !== undefined) payload.state = data.state;
+    if (data.street !== undefined) payload.street = data.street;
+    if (data.addressNumber !== undefined) payload.address_number = data.addressNumber;
+    if (data.propertyType !== undefined || data.type !== undefined) {
+      payload.property_type = data.propertyType || data.type;
+    }
+    if (data.status !== undefined) payload.status = data.status;
+
+    await supabase.from('clients').update(payload).eq('id', clientId);
   } catch (err) {
     console.warn('Erro ao atualizar cliente no Supabase:', err);
+  }
+}
+
+export async function renameClient(
+  clientId: string,
+  newName: string,
+  sourceLeadId?: string
+): Promise<void> {
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+
+  // 1. Atualiza clientes localmente e no Supabase
+  await updateClient(clientId, { name: trimmed });
+
+  // 2. Se tiver sourceLeadId, atualiza o lead correspondente também
+  if (sourceLeadId) {
+    try {
+      const { updateLeadParameters } = await import('./leads');
+      await updateLeadParameters(sourceLeadId, { name: trimmed });
+    } catch (err) {
+      console.warn('Erro ao atualizar nome do lead vinculado:', err);
+    }
+  }
+
+  // 3. Atualiza propostas vinculadas
+  try {
+    const { updateProposalsClientName } = await import('./proposals');
+    updateProposalsClientName('', trimmed, clientId);
+  } catch (err) {
+    console.warn('Erro ao atualizar propostas vinculadas:', err);
   }
 }
 

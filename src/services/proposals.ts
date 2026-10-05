@@ -305,3 +305,30 @@ export async function createQuickProposalForTarget(
   return newProposal;
 }
 
+/**
+ * Atualiza o nome do cliente associado às propostas locais
+ */
+export function updateProposalsClientName(
+  oldName: string,
+  newName: string,
+  clientId?: string
+): void {
+  const all = getStoredProposalsLocal();
+  let changed = false;
+  const updated = all.map((p) => {
+    const matchId = clientId && p.clientId === clientId;
+    const matchName =
+      oldName &&
+      p.clientName &&
+      p.clientName.trim().toLowerCase() === oldName.trim().toLowerCase();
+    if (matchId || matchName) {
+      changed = true;
+      return { ...p, clientName: newName };
+    }
+    return p;
+  });
+  if (changed) {
+    saveStoredProposalsLocal(updated);
+  }
+}
+

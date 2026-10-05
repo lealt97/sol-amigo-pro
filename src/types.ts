@@ -195,7 +195,6 @@ export interface SolarProposal {
   propertyType?: string;
   concessionaria: string;
   monthlyConsumptionKWh: number;
-  currentMonthlyBill?: number;
   systemPowerKWp: number;
   systemType?: 'On-Grid' | 'Híbrido';
   estimatedMonthlyGenKWh: number;

@@ -748,4 +748,25 @@ export async function fetchLeadNotesCount(leadId: string): Promise<number> {
   }
 }
 
+export async function renameLead(leadId: string, newName: string): Promise<void> {
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+
+  await updateLeadParameters(leadId, { name: trimmed });
+
+  try {
+    const { updateClient } = await import('./clients');
+    await updateClient(leadId, { name: trimmed });
+  } catch (err) {
+    console.warn('Erro ao propagar renomeação do lead para clientes:', err);
+  }
+
+  try {
+    const { updateProposalsClientName } = await import('./proposals');
+    updateProposalsClientName('', trimmed, leadId);
+  } catch (err) {
+    console.warn('Erro ao atualizar propostas vinculadas:', err);
+  }
+}
+
 

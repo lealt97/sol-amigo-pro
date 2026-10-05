@@ -27,7 +27,7 @@ interface ProposalViewerModalProps {
   pdfSettings: PdfSettingsConfig;
   theme: ThemeConfig;
   onClose: () => void;
-  onShowToast: (msg: string) => void;
+  onShowToast: (message: string) => void;
 }
 
 export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({

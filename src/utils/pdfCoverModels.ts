@@ -58,3 +58,12 @@ export const updatePdfCoverModelSettings = (
   settings: clonePdfSettingsForModel({ ...settings, template: model.sourceTemplateId }),
   updatedAt: new Date().toISOString(),
 });
+
+export const renamePdfCoverModel = (
+  model: PdfCoverModel,
+  newName: string
+): PdfCoverModel => ({
+  ...model,
+  name: newName.trim() || model.name,
+  updatedAt: new Date().toISOString(),
+});
