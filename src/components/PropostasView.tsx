@@ -123,6 +123,8 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     id: p.id,
     code: p.code,
     clientName: p.clientName,
+    clientDocument: clients.find(client => client.id === p.clientId)?.document,
+    clientAddress: [clients.find(client => client.id === p.clientId)?.street, clients.find(client => client.id === p.clientId)?.addressNumber].filter(Boolean).join(", "),
     clientCity: 'Campinas',
     clientState: 'SP',
     concessionaria: 'CPFL Paulista',

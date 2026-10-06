@@ -1,5 +1,5 @@
 import React from 'react';
-import { PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
+import { PdfSettingsConfig, ProposalEquipmentOutput, SolarProposal, ThemeConfig } from '../types';
 import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice } from '../utils/maintenance';
 import './solarProposalDocument.css';
 
@@ -21,12 +21,27 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
   const y = (value: number) => 260 - ((value - min) / (max - min)) * 220;
   const zero = y(0);
   const conditions = p.commercialConditions;
-  const equipment = p.pricing?.equipmentItems?.length ? p.pricing.equipmentItems : [
+  const equipment: ProposalEquipmentOutput[] = p.equipmentOutput?.length ? p.equipmentOutput : p.pricing?.equipmentItems?.length ? p.pricing.equipmentItems : [
     { id: 'modules', description: p.moduleModel || 'Módulos fotovoltaicos', quantity: p.modulesCount, category: 'Módulos', unitCost: 0 },
     { id: 'inverter', description: p.inverterModel || 'Inversor solar', quantity: p.sizing?.inverterCount || 1, category: 'Inversor', unitCost: 0 },
     ...(p.batteryCount ? [{ id: 'battery', description: p.batteryModel || 'Bateria', quantity: p.batteryCount, category: 'Baterias', unitCost: 0 }] : []),
   ];
+  const company = p.companyInfo;
   const pages: { title: string; subtitle: string; content: React.ReactNode }[] = [
+    {
+      title: 'Sobre a empresa', subtitle: company?.name || 'Conheça a integradora responsável pela proposta.',
+      content: <>
+        <div className="proposal-info-box"><h3>{company?.name || 'Integradora'}</h3><p className="proposal-multiline">{company?.description || 'Apresentação da empresa não informada no perfil da conta.'}</p></div>
+        <h3>Dados da empresa e do responsável</h3>
+        <table><tbody>
+          <tr><td>Empresa</td><td>{company?.name || 'Não informada'}</td></tr>
+          <tr><td>CNPJ</td><td>{company?.document || 'Não informado'}</td></tr>
+          <tr><td>Responsável</td><td>{company?.representative || 'Não informado'}</td></tr>
+          <tr><td>Telefone</td><td>{company?.phone || 'Não informado'}</td></tr>
+          <tr><td>E-mail</td><td>{company?.email || 'Não informado'}</td></tr>
+        </tbody></table>
+      </>,
+    },
     {
       title: 'Detalhes da proposta', subtitle: 'Sistema fotovoltaico | ' + (p.systemType || 'On-Grid'),
       content: <>
@@ -38,6 +53,12 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
           ['Potência instalada', number(p.systemPowerKWp) + ' kWp'],
           ['Geração média estimada', number(p.estimatedMonthlyGenKWh) + ' kWh/mês'],
           ['Módulos fotovoltaicos', number(p.modulesCount) + ' unidades'],
+          ...(p.technicalOutput?.connectionType ? [['Tipo de ligação', p.technicalOutput.connectionType]] : []),
+          ...(p.technicalOutput?.targetCoveragePercent !== undefined ? [['Cobertura desejada', number(p.technicalOutput.targetCoveragePercent) + '%']] : []),
+          ...(p.performanceRatio !== undefined ? [['Performance Ratio', number(p.performanceRatio) + '%']] : []),
+          ...(p.sizing?.estimatedAreaM2 ? [['Área estimada', number(p.sizing.estimatedAreaM2) + ' m²']] : []),
+          ...(p.technicalOutput?.backupAutonomyHours ? [['Autonomia de backup desejada', number(p.technicalOutput.backupAutonomyHours) + ' horas']] : []),
+          ...(p.batteryCapacityKWh ? [['Capacidade total das baterias', number(p.batteryCapacityKWh) + ' kWh']] : []),
           ...(p.hsp ? [['Irradiação solar diária média', number(p.hsp) + ' kWh/m²/dia']] : []),
         ].map(([label, value]) => <tr key={label}><td>{label}</td><td><strong>{value}</strong></td></tr>)}</tbody></table>
         <div className="proposal-info-box"><h3>Proposta {p.code}</h3><p>Emissão: {date(p.createdAt)}</p><p>Validade: {date(p.validUntil)}</p></div>
@@ -45,9 +66,9 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
     },
   ];
   if (settings.showEquipment) {
-    for (let start = 0; start < equipment.length; start += 12) {
-      pages.push({ title: 'Os produtos', subtitle: 'Lista de materiais orçados nesta proposta comercial.',
-        content: <><table><thead><tr><th>Produto / material</th><th>Categoria</th><th>Quantidade</th></tr></thead><tbody>{equipment.slice(start, start + 12).map(item => <tr key={item.id}><td>{item.description}</td><td>{item.category}</td><td>{number(item.quantity)}</td></tr>)}</tbody></table>
+    for (let start = 0; start < equipment.length; start += 6) {
+      pages.push({ title: 'Os equipamentos', subtitle: 'Lista de materiais orçados nesta proposta comercial.',
+        content: <><table><thead><tr><th>Produto / material</th><th>Categoria</th><th>Quantidade</th></tr></thead><tbody>{equipment.slice(start, start + 6).map(item => <tr key={item.id}><td><strong>{item.description}</strong>{(item.brand || item.model) && <p>{[item.brand, item.model].filter(Boolean).join(' · ')}</p>}{item.powerW !== undefined && <p>Potência: {number(item.powerW)} W</p>}{item.capacityKWh !== undefined && <p>Capacidade: {number(item.capacityKWh)} kWh</p>}{item.warrantyYears !== undefined && item.warrantyYears > 0 && <p>Garantia de catálogo: {item.warrantyYears} ano(s)</p>}</td><td>{item.category}</td><td>{number(item.quantity)}</td></tr>)}</tbody></table>
           <div className="proposal-total"><span>Valor total da proposta</span><strong>{money(investment)}</strong>{p.systemPowerKWp > 0 && <small>{money(investment / (p.systemPowerKWp * 1000))} por Wp</small>}</div>
           <p className="proposal-note">Valores apresentados para o conjunto contratado. O detalhamento dos materiais não representa preços individuais de venda.</p></>,
       });
@@ -92,9 +113,9 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
     title: 'Aceite da proposta', subtitle: 'Confirmação dos produtos, valores e condições apresentados.',
     content: <>
       <p>Ao aceitar esta proposta, o cliente declara estar de acordo com os materiais, o investimento e as condições comerciais descritos neste documento.</p>
-      <div className="proposal-info-box"><h3>Dados do cliente</h3><p>Nome: {p.clientName}</p><p>CPF / CNPJ: _______________________________________</p><p>Endereço: _________________________________________</p><p>Cidade / UF: {[p.clientCity, p.clientState].filter(Boolean).join(' / ')}</p></div>
+      <div className="proposal-info-box"><h3>Dados do cliente</h3><p>Nome: {p.clientName}</p><p>CPF / CNPJ: {p.clientDocument || 'Não informado no cadastro'}</p><p>Endereço: {p.clientAddress || 'Não informado no cadastro'}</p><p>Cidade / UF: {[p.clientCity, p.clientState].filter(Boolean).join(' / ')}</p>{p.clientEmail && <p>E-mail: {p.clientEmail}</p>}{p.clientPhone && <p>Telefone: {p.clientPhone}</p>}</div>
       <p>Local e data: _______________________________________</p>
-      <div className="proposal-signatures"><div><span />Integradora / responsável</div><div><span />{p.clientName}</div></div>
+      <div className="proposal-signatures"><div><span />{company?.name || company?.representative || 'Integradora / responsável'}{company?.document && <p>{company.document}</p>}</div><div><span />{p.clientName}</div></div>
     </>,
   });
   return <div className="solar-proposal-pages" style={{ '--proposal-primary': primary, '--proposal-accent': accent } as React.CSSProperties}>

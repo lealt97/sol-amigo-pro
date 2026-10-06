@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { fetchProposalCompany } from '../services/proposalCompany';
 import { X, Printer, Sun, MapPin, MessageCircle, Mail, Copy } from 'lucide-react';
 import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
@@ -18,6 +19,15 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
   onClose,
   onShowToast,
 }) => {
+  const [accountCompany, setAccountCompany] = useState<SolarProposal['companyInfo']>();
+  useEffect(() => {
+    let active = true;
+    setAccountCompany(undefined);
+    if (proposal && !proposal.companyInfo) {
+      fetchProposalCompany().then(company => { if (active) setAccountCompany(company); }).catch(() => {});
+    }
+    return () => { active = false; };
+  }, [proposal?.id, proposal?.companyInfo]);
   if (!proposal) return null;
 
   const isHybrid = proposal.systemType === 'Híbrido' || proposal.batteryCount! > 0;
@@ -221,7 +231,7 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
 
           <div className="mt-auto pt-12 text-right text-xs text-slate-500">Proposta {proposal.code} · Página 1</div>
           </div>
-          <SolarProposalDocument proposal={proposal} pdfSettings={pdfSettings} theme={theme} />
+          <SolarProposalDocument proposal={{ ...proposal, companyInfo: proposal.companyInfo || accountCompany }} pdfSettings={pdfSettings} theme={theme} />
 
         </div>
       </div>
