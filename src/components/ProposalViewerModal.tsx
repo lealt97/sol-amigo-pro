@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { fetchProposalCompany } from '../services/proposalCompany';
 import { X, Printer } from 'lucide-react';
+import { ProposalCoverPage } from './ProposalCoverPage';
 import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
 
@@ -18,6 +19,7 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
   theme,
   onClose,
 }) => {
+  const [coverReady, setCoverReady] = useState(false);
   const [accountCompany, setAccountCompany] = useState<SolarProposal['companyInfo']>();
 
   useEffect(() => {
@@ -46,10 +48,11 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  if (!proposal) return null;
+  const documentProposal = useMemo(() => proposal ? { ...proposal, companyInfo: proposal.companyInfo || accountCompany } : null, [proposal, accountCompany]);
+  if (!proposal || !documentProposal) return null;
 
   const handlePrint = () => {
-    window.print();
+    if (coverReady) window.print();
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -81,6 +84,7 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
 
             <div className="flex items-center gap-2">
               <button
+                disabled={!coverReady}
                 onClick={handlePrint}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2EA043] text-white font-mono text-xs font-semibold transition-colors cursor-pointer shadow-xs"
                 title="Imprimir proposta completa em PDF"
@@ -108,8 +112,9 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
             style={{ fontFamily: `${pdfSettings.font}, sans-serif` }}
           >
             {/* Folhas da Proposta Técnica & Comercial */}
+            <ProposalCoverPage proposal={documentProposal} settings={pdfSettings} onReady={setCoverReady} />
             <SolarProposalDocument
-              proposal={{ ...proposal, companyInfo: proposal.companyInfo || accountCompany }}
+              proposal={documentProposal}
               pdfSettings={pdfSettings}
               theme={theme}
             />
