@@ -123,7 +123,7 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
       <header><span>{p.code}</span>{settings.showLogo && settings.customLogoUrl && <img src={settings.customLogoUrl} alt="Logo da integradora" />}</header>
       <h2>{page.title}</h2><p className="proposal-subtitle">{page.subtitle}</p>
       <div className="proposal-page-content">{page.content}</div>
-      <footer><span>{p.clientName} · {p.code}</span><span>{index + 2} / {pages.length + 1}</span></footer>
+      <footer><span>{p.clientName} · {p.code}</span><span>{index + 1} / {pages.length}</span></footer>
     </section>)}
   </div>;
 }
