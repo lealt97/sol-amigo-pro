@@ -160,6 +160,7 @@ export interface BuildCoverSvgOptions {
   logoUrl?: string;
   logoTransform?: Partial<PdfElementTransform>;
   logoSlot?: CoverLogoSlot;
+  scopeId?: string;
 }
 
 export const stripLogoPlaceholderMarkup = (svgText: string): string =>
@@ -180,6 +181,74 @@ export const buildCoverSvg = (svgText: string, options: BuildCoverSvgOptions): s
   const doc = new DOMParser().parseFromString(sourceSvg, 'image/svg+xml');
   const svg = doc.documentElement;
   if (svg.nodeName.toLowerCase() !== 'svg') return svgText;
+
+  const rawScope = options.scopeId || ('cv_' + Math.random().toString(36).slice(2, 8));
+  const scopeId = rawScope.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  // Prefixa todos os IDs internos do SVG (masks, clipPaths, gradients) para isolar completamente
+  // cada SVG no documento e evitar que a edição de uma capa altere as miniaturas dos outros cards.
+  const idMap = new Map<string, string>();
+  doc.querySelectorAll('[id]').forEach((element) => {
+    const oldId = element.getAttribute('id');
+    if (oldId && !oldId.startsWith(scopeId + '_')) {
+      const newId = `${scopeId}_${oldId}`;
+      idMap.set(oldId, newId);
+      element.setAttribute('id', newId);
+    }
+  });
+
+  if (idMap.size > 0) {
+    const attributesToUpdate = [
+      'clip-path',
+      'mask',
+      'fill',
+      'stroke',
+      'filter',
+      'href',
+      'xlink:href',
+      'style',
+    ] as const;
+
+    doc.querySelectorAll('*').forEach((element) => {
+      attributesToUpdate.forEach((attr) => {
+        const val = element.getAttribute(attr);
+        if (val) {
+          let updatedVal = val;
+          idMap.forEach((newId, oldId) => {
+            if (updatedVal.includes(`url(#${oldId})`)) {
+              updatedVal = updatedVal.split(`url(#${oldId})`).join(`url(#${newId})`);
+            }
+            if (updatedVal.includes(`url('#${oldId}')`)) {
+              updatedVal = updatedVal.split(`url('#${oldId}')`).join(`url('#${newId}')`);
+            }
+            if (updatedVal.includes(`url("#${oldId}")`)) {
+              updatedVal = updatedVal.split(`url("#${oldId}")`).join(`url("#${newId}")`);
+            }
+            if (updatedVal === `#${oldId}`) {
+              updatedVal = `#${newId}`;
+            }
+          });
+          if (updatedVal !== val) {
+            element.setAttribute(attr, updatedVal);
+          }
+        }
+      });
+
+      // Também verifica xlink:href com namespace explícito
+      const xlinkHref = element.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+      if (xlinkHref) {
+        let updatedXlink = xlinkHref;
+        idMap.forEach((newId, oldId) => {
+          if (updatedXlink === `#${oldId}`) {
+            updatedXlink = `#${newId}`;
+          }
+        });
+        if (updatedXlink !== xlinkHref) {
+          element.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', updatedXlink);
+        }
+      }
+    });
+  }
 
   const colorOverrides = options.colorOverrides ?? {};
   doc.querySelectorAll('[fill],[stroke]').forEach((element) => {
@@ -209,7 +278,7 @@ export const buildCoverSvg = (svgText: string, options: BuildCoverSvgOptions): s
         svg.insertBefore(defs, svg.firstChild);
       }
 
-      const clipId = 'solamigo-cover-photo-clip';
+      const clipId = `solamigo_photo_clip_${scopeId}`;
       const existingClip = doc.getElementById(clipId);
       existingClip?.remove();
 

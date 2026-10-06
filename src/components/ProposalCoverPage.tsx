@@ -27,6 +27,7 @@ export function ProposalCoverPage({ proposal, settings, onReady }: {
         logoUrl: settings.showLogo ? settings.customLogoUrl : undefined,
         logoTransform: settings.coverLogoTransform,
         logoSlot: template.logoSlot,
+        scopeId: 'proposal-cover',
       });
       setSvg(fillPdfCoverFields(edited, proposal, settings));
       onReady(true);

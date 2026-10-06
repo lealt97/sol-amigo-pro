@@ -6,7 +6,6 @@ import {
   Copy,
   Image as ImageIcon,
   Loader2,
-  MoreVertical,
   Move,
   Palette,
   Pencil,
@@ -15,6 +14,7 @@ import {
   RotateCcw,
   Save,
   Trash2,
+  Type,
   UploadCloud,
 } from 'lucide-react';
 import { PdfCoverModel, PdfElementTransform, PdfSettingsConfig, ThemeConfig } from '../types';
@@ -216,6 +216,7 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
       logoUrl: draft.showLogo ? draft.customLogoUrl : undefined,
       logoTransform: draft.coverLogoTransform,
       logoSlot: template.logoSlot,
+      scopeId: 'editor-preview',
     });
   }, [
     rawSvg,
@@ -706,86 +707,85 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                       {models.map((model) => {
                         const selected = activeModelId === model.id;
                         const source = getPdfCoverTemplate(model.sourceTemplateId);
-                        const menuOpen = modelMenuId === model.id;
                         return (
                           <article
                             key={model.id}
-                            className="w-[168px] shrink-0 snap-start rounded-xl border p-2"
+                            className="group relative w-[168px] shrink-0 snap-start rounded-xl border p-2 transition-shadow"
                             style={{
                               borderColor: selected ? currentTheme.secondary : currentTheme.border,
                               boxShadow: selected ? `0 0 0 2px ${currentTheme.secondary}25` : undefined,
                             }}
                           >
-                            <div className="relative block w-full">
-                              <div className="aspect-[595/842] overflow-hidden rounded-lg bg-white">
+                            <div className="relative block w-full overflow-hidden rounded-lg">
+                              <div className="aspect-[595/842] overflow-hidden bg-white">
                                 <ModelThumbnail model={model} />
                               </div>
                               {selected && (
-                                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
+                                <span className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
                                   <Check className="h-3.5 w-3.5" />
                                 </span>
                               )}
-                            </div>
 
-                            <div className="mt-2 flex min-w-0 items-start gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-[11px] font-bold" title={model.name}>{model.name}</div>
-                                <div className="mt-0.5 truncate text-[9px] opacity-45">Base: {source.name}</div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setModelMenuId(menuOpen ? null : model.id)}
-                                className="shrink-0 rounded-md border p-1.5"
-                                style={{ borderColor: currentTheme.border }}
-                                aria-label={`Opções de ${model.name}`}
-                                aria-expanded={menuOpen}
-                              >
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-
-                            {menuOpen && (
+                              {/* Botões redondos no hover posicionados no meio na horizontal */}
                               <div
-                                className="mt-2 overflow-hidden rounded-lg border"
-                                style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
+                                className="absolute inset-0 z-20 flex items-center justify-center gap-1.5 bg-black/60 backdrop-blur-[2px] opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <button
                                   type="button"
-                                  onClick={() => editModel(model)}
-                                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editModel(model);
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-white shadow-lg transition-transform hover:scale-110 hover:bg-blue-600 active:scale-95"
+                                  title="Editar modelo"
+                                  aria-label={`Editar ${model.name}`}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
-                                  Editar
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => openRenameModel(model)}
-                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
-                                  style={{ borderColor: currentTheme.border }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openRenameModel(model);
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-white shadow-lg transition-transform hover:scale-110 hover:bg-amber-600 active:scale-95"
+                                  title="Renomear modelo"
+                                  aria-label={`Renomear ${model.name}`}
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                  Renomear
+                                  <Type className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void duplicateModel(model)}
-                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold hover:opacity-80"
-                                  style={{ borderColor: currentTheme.border }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void duplicateModel(model);
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-white shadow-lg transition-transform hover:scale-110 hover:bg-emerald-600 active:scale-95"
+                                  title="Duplicar modelo"
+                                  aria-label={`Duplicar ${model.name}`}
                                 >
                                   <Copy className="h-3.5 w-3.5" />
-                                  Duplicar
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void deleteModel(model)}
-                                  className="flex w-full items-center gap-2 border-t px-2.5 py-2 text-left text-[10px] font-bold text-red-400 hover:opacity-80"
-                                  style={{ borderColor: currentTheme.border }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void deleteModel(model);
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-red-400 shadow-lg transition-transform hover:scale-110 hover:border-red-600 hover:bg-red-600 hover:text-white active:scale-95"
+                                  title="Excluir modelo"
+                                  aria-label={`Excluir ${model.name}`}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
-                                  Excluir
                                 </button>
                               </div>
-                            )}
+                            </div>
+
+                            <div className="mt-2 min-w-0">
+                              <div className="truncate text-[11px] font-bold" title={model.name}>{model.name}</div>
+                              <div className="mt-0.5 truncate text-[9px] opacity-45">Base: {source.name}</div>
+                            </div>
                           </article>
                         );
                       })}
@@ -1251,6 +1251,7 @@ const ModelThumbnail: React.FC<{ model: PdfCoverModel }> = ({ model }) => {
       logoUrl: model.settings.showLogo ? model.settings.customLogoUrl : undefined,
       logoTransform: model.settings.coverLogoTransform,
       logoSlot: template.logoSlot,
+      scopeId: `thumb_${model.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
     });
   }, [
     svg,
