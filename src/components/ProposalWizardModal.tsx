@@ -1556,6 +1556,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           {/* ETAPA 4: CUSTOS, MARGEM & PREÇO DE VENDA                                 */}
           {/* ========================================================================= */}
           {currentStep === 'commercial_pricing' && (
+            <div className="space-y-5">
             <ProposalWizardStep4Commercial
               theme={theme}
               installedPowerKWp={installedPowerKWp}
@@ -1565,6 +1566,22 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               onPricingChange={setCommercialPricing}
               onShowToast={onShowToast}
             />
+              <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: theme.border, backgroundColor: theme.card }}>
+                <h4 className="font-bold">Pagamento, entrega e garantias</h4>
+                <p className="text-xs opacity-60">Preencha durante o dimensionamento. Estas condições serão salvas com a proposta e preenchidas automaticamente no PDF.</p>
+                {[
+                  { label: 'Pagamento à vista', value: cashPaymentTerms, set: setCashPaymentTerms, placeholder: 'Informe o valor à vista, desconto e vencimento.' },
+                  { label: 'Pagamento a prazo', value: installmentPaymentTerms, set: setInstallmentPaymentTerms, placeholder: 'Informe entrada, número de parcelas, valores e etapas de pagamento.' },
+                  { label: 'Financiamento / outras formas de pagamento', value: paymentMethods, set: setPaymentMethods, placeholder: 'Informe as condições de financiamento acordadas, incluindo parcelas, juros e carência, se houver.' },
+                  { label: 'Prazo de entrega e instalação', value: deliveryTimeframe, set: setDeliveryTimeframe, placeholder: 'Informe o prazo e a partir de qual evento ele é contado.' },
+                  { label: 'Garantias e suporte', value: warrantyTerms, set: setWarrantyTerms, placeholder: 'Informe as garantias dos equipamentos, instalação e suporte.' },
+                  { label: 'Observações comerciais', value: commercialNotes, set: setCommercialNotes, placeholder: 'Outras condições e serviços incluídos.' },
+                ].map(field => <label key={field.label} className="block text-sm font-semibold">
+                  {field.label}
+                  <textarea value={field.value} onChange={event => field.set(event.target.value)} placeholder={field.placeholder} rows={3} className="mt-2 block w-full rounded-lg border p-3 text-sm font-normal" style={{ borderColor: theme.border, backgroundColor: theme.background }} />
+                </label>)}
+              </div>
+            </div>
           )}
 
           {/* ========================================================================= */}
@@ -1594,20 +1611,20 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 </div>
               </div>
 
-              <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: theme.border, backgroundColor: theme.card }}>
-                <h4 className="font-bold">Pagamento, entrega e garantias</h4>
-                <p className="text-xs opacity-60">Estas informações aparecerão nas páginas da proposta PDF.</p>
+              <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: theme.border, backgroundColor: theme.card }}>
+                <h4 className="font-bold">Condições comerciais para o PDF</h4>
                 {[
-                  { label: 'Pagamento à vista', value: cashPaymentTerms, set: setCashPaymentTerms, placeholder: 'Informe o valor à vista, desconto e vencimento.' },
-                  { label: 'Pagamento a prazo', value: installmentPaymentTerms, set: setInstallmentPaymentTerms, placeholder: 'Informe entrada, número de parcelas, valores e etapas de pagamento.' },
-                  { label: 'Financiamento / outras formas de pagamento', value: paymentMethods, set: setPaymentMethods, placeholder: 'À vista: valor e desconto. A prazo: entrada, parcelas e vencimentos. Financiamento: condições acordadas.' },
-                  { label: 'Prazo de entrega e instalação', value: deliveryTimeframe, set: setDeliveryTimeframe, placeholder: 'Informe o prazo e a partir de qual evento ele é contado.' },
-                  { label: 'Garantias e suporte', value: warrantyTerms, set: setWarrantyTerms, placeholder: 'Informe as garantias dos equipamentos, instalação e suporte.' },
-                  { label: 'Observações comerciais', value: commercialNotes, set: setCommercialNotes, placeholder: 'Outras condições e serviços incluídos.' },
-                ].map(field => <label key={field.label} className="block text-sm font-semibold">
-                  {field.label}
-                  <textarea value={field.value} onChange={event => field.set(event.target.value)} placeholder={field.placeholder} rows={3} className="mt-2 block w-full rounded-lg border p-3 text-sm font-normal" style={{ borderColor: theme.border, backgroundColor: theme.background }} />
-                </label>)}
+                  ['À vista', cashPaymentTerms],
+                  ['A prazo', installmentPaymentTerms],
+                  ['Financiamento', paymentMethods],
+                  ['Entrega e instalação', deliveryTimeframe],
+                  ['Garantias e suporte', warrantyTerms],
+                  ['Observações', commercialNotes],
+                ].filter(([, value]) => value.trim()).map(([label, value]) => (
+                  <div key={label} className="text-sm"><strong>{label}</strong><p className="mt-1 whitespace-pre-wrap opacity-70">{value}</p></div>
+                ))}
+                {!cashPaymentTerms.trim() && !installmentPaymentTerms.trim() && !paymentMethods.trim() && <p className="text-sm opacity-60">Pagamento a definir com a integradora.</p>}
+                <button type="button" onClick={() => setCurrentStep('commercial_pricing')} className="text-sm font-bold underline" style={{ color: theme.secondary }}>Editar na etapa Comercial</button>
               </div>
               {/* Grid de Resumo */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
