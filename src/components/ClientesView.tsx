@@ -571,6 +571,7 @@ export function ClientesView({
       batteryCount: proposal.batteryCount,
       estimatedMonthlyGenKWh: proposal.estimatedMonthlyGenKWh,
       estimatedMonthlySavings: proposal.estimatedMonthlySavings,
+      documentSnapshot: proposal,
       createdAt: proposal.createdAt || new Date().toISOString(),
     };
 
@@ -601,7 +602,8 @@ export function ClientesView({
     batteryCount: p.batteryCount,
     totalValue: p.totalValue,
     estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
-    paybackYears: 3.2,
+    paybackYears: p.estimatedMonthlySavings && p.estimatedMonthlySavings > 0 ? p.totalValue / (p.estimatedMonthlySavings * 12) : 0,
+    ...p.documentSnapshot,
     status: p.status,
     createdAt: p.createdAt,
   });

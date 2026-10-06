@@ -749,6 +749,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
               inverterModel: newSolar.inverterModel,
               estimatedMonthlyGenKWh: newSolar.estimatedMonthlyGenKWh,
               estimatedMonthlySavings: newSolar.estimatedMonthlySavings,
+      documentSnapshot: newSolar,
             });
             setProposalLead(null);
             onShowToast(`Proposta ${newSolar.code} gerada com sucesso.`);

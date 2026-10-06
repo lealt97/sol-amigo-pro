@@ -1,26 +1,7 @@
-import React, { useRef } from 'react';
-import {
-  X,
-  Printer,
-  Download,
-  Share2,
-  Sun,
-  Zap,
-  Leaf,
-  ShieldCheck,
-  Calendar,
-  MapPin,
-  CheckCircle,
-  FileText,
-  MessageCircle,
-  Mail,
-  Copy,
-  AlertTriangle,
-  Battery,
-  Wrench,
-} from 'lucide-react';
+import React from 'react';
+import { X, Printer, Sun, MapPin, MessageCircle, Mail, Copy } from 'lucide-react';
+import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
-import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
 interface ProposalViewerModalProps {
   proposal: SolarProposal | null;
@@ -89,8 +70,8 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:fixed">
-      <div className="bg-[#161B22] border border-[#30363D] rounded-lg max-w-4xl w-full p-3 md:p-4 shadow-2xl my-6 space-y-3 print:m-0 print:p-0 print:max-w-none print:w-full print:shadow-none print:rounded-none">
+    <div className="proposal-viewer-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:fixed">
+      <div className="proposal-viewer-shell bg-[#161B22] border border-[#30363D] rounded-lg max-w-4xl w-full p-3 md:p-4 shadow-2xl my-6 space-y-3 print:m-0 print:p-0 print:max-w-none print:w-full print:shadow-none print:rounded-none">
         {/* Modal Toolbar (Hidden on Print) */}
         <div className="flex items-center justify-between bg-[#1C2128] p-3 rounded-lg border border-[#30363D] print:hidden">
           <div className="flex items-center gap-2">
@@ -138,9 +119,10 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
         {/* The Printable A4 Proposal Document */}
         <div
           id="printable-solar-proposal"
-          className="bg-white rounded-2xl border border-slate-200/90 shadow-lg p-8 md:p-12 space-y-8 print:border-none print:shadow-none print:p-8"
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-lg print:border-none print:shadow-none"
           style={{ fontFamily: `${pdfSettings.font}, sans-serif` }}
         >
+          <div className="proposal-cover-page min-h-[850px] p-8 md:p-12 space-y-8">
           {/* Top Bar Header */}
           <div className="flex items-start justify-between border-b border-slate-100 pb-6">
             <div className="flex items-center gap-3">
@@ -237,201 +219,10 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
             </div>
           </div>
 
-          {/* Financial and Power Highlight Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                Potência Instalada
-              </span>
-              <span className="text-xl font-black text-slate-900 mt-1 block">
-                {proposal.systemPowerKWp} kWp
-              </span>
-              <span className="text-[10px] text-slate-500">
-                {proposal.modulesCount} Módulos Fotovoltaicos
-              </span>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                Economia Mensal
-              </span>
-              <span className="text-xl font-black text-emerald-600 mt-1 block">
-                R$ {proposal.estimatedMonthlySavings.toLocaleString('pt-BR')}
-              </span>
-              <span className="text-[10px] text-slate-500">
-                R$ {(proposal.estimatedMonthlySavings * 12).toLocaleString('pt-BR')} / ano
-              </span>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                Tempo de Payback
-              </span>
-              <span className="text-xl font-black text-blue-600 mt-1 block">
-                {proposal.paybackYears} anos
-              </span>
-              <span className="text-[10px] text-slate-500">
-                Retorno do investimento
-              </span>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                Investimento Total
-              </span>
-              <span className="text-xl font-black text-slate-900 mt-1 block">
-                R$ {proposal.totalValue.toLocaleString('pt-BR')}
-              </span>
-              <span className="text-[10px] text-slate-500">
-                Turn-key (Com instalação)
-              </span>
-            </div>
+          <div className="mt-auto pt-12 text-right text-xs text-slate-500">Proposta {proposal.code} · Página 1</div>
           </div>
+          <SolarProposalDocument proposal={proposal} pdfSettings={pdfSettings} theme={theme} />
 
-          {/* Technical Hardware Section (if enabled) */}
-          {pdfSettings.showEquipment && (
-            <div className="space-y-3">
-              <h4
-                className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-100"
-                style={{ color: effectivePrimary }}
-              >
-                <Sun className="w-4 h-4 text-amber-500" />
-                Especificações Técnicas dos Equipamentos
-              </h4>
-
-              <div className={`grid grid-cols-1 ${isHybrid ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 text-xs`}>
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
-                  <span className="font-bold text-slate-900 block text-sm">
-                    Gerador Solar Fotovoltaico
-                  </span>
-                  <div className="text-slate-600">{proposal.moduleModel || `${proposal.modulesCount} Módulos Fotovoltaicos Tier-1`}</div>
-                  <div className="text-slate-500">Quantidade: <b>{proposal.modulesCount} unidades</b></div>
-                  <div className="text-slate-500">Garantia do Fabricante: <b>12 anos produto / 25 anos performance (84.8%)</b></div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
-                  <span className="font-bold text-slate-900 block text-sm">
-                    {isHybrid ? 'Inversor Híbrido & Gerenciamento' : 'Inversor Central & Proteções'}
-                  </span>
-                  <div className="text-slate-600">{proposal.inverterModel || (isHybrid ? 'Inversor Solar Híbrido Inteligente' : 'Inversor Solar On-Grid')}</div>
-                  <div className="text-slate-500">Monitoramento via Wi-Fi / App Mobile incluso</div>
-                  <div className="text-slate-500">Stringbox CC + CA com DPS e Disjuntores inclusos</div>
-                </div>
-
-                {isHybrid && (
-                  <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/60 space-y-1.5">
-                    <span className="font-bold text-emerald-950 block text-sm flex items-center gap-1.5">
-                      <Battery className="w-4 h-4 text-emerald-600" />
-                      Banco de Baterias (Backup)
-                    </span>
-                    <div className="text-emerald-900 font-semibold">{proposal.batteryModel || 'Bateria de Lítio LiFePO4 (BMS)'}</div>
-                    <div className="text-slate-600">Quantidade: <b>{proposal.batteryCount || 1} módulo(s)</b></div>
-                    <div className="text-slate-600">Capacidade: <b>{((proposal.batteryCapacityKWh || 5.12) * (proposal.batteryCount || 1)).toFixed(1)} kWh</b></div>
-                    <div className="text-slate-500">Garantia: <b>10 anos / 6.000 ciclos</b></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {proposal.maintenancePlan?.enabled && (
-            <div className="space-y-3">
-              <h4
-                className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-100"
-                style={{ color: effectivePrimary }}
-              >
-                <Wrench className="w-4 h-4" />
-                Plano de Manutenção
-              </h4>
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="font-bold text-slate-900 text-sm">{proposal.maintenancePlan.name}</div>
-                    <div className="mt-1 text-slate-600">
-                      {proposal.maintenancePlan.visitsPerYear} visita(s) por ano • {formatMaintenanceFrequency(proposal.maintenancePlan)}
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">{getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit' ? 'Valor por visita' : 'Valor anual'}</div>
-                    <div className="text-base font-black text-emerald-700">
-                      R$ {(getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit'
-                        ? (proposal.maintenancePlan.pricePerVisit || 0)
-                        : getMaintenanceAnnualSalePrice(proposal.maintenancePlan)
-                      ).toLocaleString('pt-BR')}
-                    </div>
-                    {getMaintenancePricingMode(proposal.maintenancePlan) === 'per_visit' && (
-                      <div className="mt-0.5 text-[10px] text-slate-500">
-                        R$ {getMaintenanceAnnualSalePrice(proposal.maintenancePlan).toLocaleString('pt-BR')}/ano estimado
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {proposal.maintenancePlan.includedServices.length > 0 && (
-                  <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    {proposal.maintenancePlan.includedServices.map((service) => (
-                      <div key={service} className="flex items-center gap-1.5 text-slate-600">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{service}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {proposal.maintenancePlan.notes && (
-                  <div className="mt-3 text-slate-500">{proposal.maintenancePlan.notes}</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Environmental Impact Section (if enabled) */}
-          {pdfSettings.showEnvironmental && (
-            <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
-                  <Leaf className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-emerald-950 text-sm">
-                    Impacto Ambiental Positivo em 25 Anos
-                  </h4>
-                  <p className="text-xs text-emerald-800">
-                    Sua decisão ajuda a preservar o planeta e reduzir as emissões de gases estufa.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-6 text-xs font-bold text-emerald-900">
-                <div>
-                  <span className="text-base font-black block">{proposal.co2AvoidedTons}t</span>
-                  CO₂ Evitado
-                </div>
-                <div>
-                  <span className="text-base font-black block">{proposal.treesPlanted}</span>
-                  Árvores Equivalentes
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Legal estimation notice */}
-          <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              <strong>Aviso de responsabilidade técnica:</strong> Os valores de geração de energia, economia financeira e retorno de investimento são estimativas baseadas na irradiação solar e histórico de consumo fornecido. A homologação final e instalação dependem de vistoria técnica e aprovação da concessionária de energia.
-            </p>
-          </div>
-
-          {/* Footer with contacts and engineering guarantee */}
-          {pdfSettings.showFooter && (
-            <div className="pt-6 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-3">
-              <div>
-                Documento comercial gerado no Sol Amigo PRO
-              </div>
-              <div className="flex items-center gap-4">
-                <span>Dados da integradora conforme as configurações da conta</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
