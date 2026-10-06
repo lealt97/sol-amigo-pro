@@ -183,7 +183,39 @@ export interface MaintenancePlanSelection {
   notes: string;
 }
 
+export interface ProposalCompanyInfo {
+  name: string;
+  representative: string;
+  document: string;
+  email: string;
+  phone: string;
+  description: string;
+}
+
+export interface ProposalEquipmentOutput {
+  id: string;
+  description: string;
+  category: string;
+  quantity: number;
+  brand?: string;
+  model?: string;
+  warrantyYears?: number;
+  powerW?: number;
+  capacityKWh?: number;
+}
+
 export interface SolarProposal {
+  companyInfo?: ProposalCompanyInfo;
+  clientDocument?: string;
+  clientAddress?: string;
+  equipmentOutput?: ProposalEquipmentOutput[];
+  technicalOutput?: {
+    connectionType?: SolarConnectionType;
+    targetCoveragePercent?: number;
+    modulePowerW?: number;
+    energyTariff?: number;
+    backupAutonomyHours?: number;
+  };
   id: string;
   code: string;
   publicToken?: string;

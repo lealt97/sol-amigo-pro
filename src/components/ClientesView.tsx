@@ -588,6 +588,8 @@ export function ClientesView({
     id: p.id,
     code: p.code,
     clientName: p.clientName,
+    clientDocument: client?.document,
+    clientAddress: [client?.street, client?.addressNumber].filter(Boolean).join(", "),
     clientCity: client?.city || 'Campinas',
     clientState: client?.state || 'SP',
     concessionaria: client?.concessionaria || 'CPFL Paulista',

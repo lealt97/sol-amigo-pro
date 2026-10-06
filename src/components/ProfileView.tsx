@@ -64,6 +64,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
+  const [companyDescription, setCompanyDescription] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
   const [cpf, setCpf] = useState('');
@@ -92,6 +93,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
 
       setFullName(String(metadata.full_name ?? ''));
       setCompany(String(metadata.company ?? ''));
+      setCompanyDescription(String(metadata.company_description ?? ''));
       setPhone(formatPhone(String(metadata.phone ?? '')));
       setCpf(formatCpf(String(metadata.cpf ?? '')));
       setCnpj(formatCnpj(String(metadata.cnpj ?? '')));
@@ -146,6 +148,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
       data: {
         full_name: fullName.trim(),
         company: company.trim(),
+        company_description: companyDescription.trim(),
         phone: phoneDigits,
         cpf: cpfDigits,
         cnpj: cnpjDigits,
@@ -385,6 +388,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
                   />
                 </label>
 
+                <label className="block text-sm font-semibold md:col-span-2">
+                  <span className="mb-2 block">Sobre a empresa</span>
+                  <textarea value={companyDescription} onChange={event => setCompanyDescription(event.target.value)} rows={5} maxLength={2000} className="crm-input" placeholder="Apresente a empresa, sua experiência e os serviços oferecidos." />
+                  <span className="mt-1.5 block text-xs font-normal opacity-50">Texto usado na página Sobre a empresa das propostas.</span>
+                </label>
                 <label className="block text-sm font-semibold md:col-span-2">
                   <span className="mb-2 flex items-center gap-2">
                     <Phone className="h-4 w-4 opacity-65" /> Telefone / celular

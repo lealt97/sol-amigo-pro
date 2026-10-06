@@ -27,6 +27,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
+import { fetchProposalCompany } from '../services/proposalCompany';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
 import { formatPhone, getOnlyDigits } from '../utils/formatters';
@@ -52,6 +53,7 @@ export interface ProposalTargetSelection {
   email?: string;
   city?: string;
   state?: string;
+  document?: string;
   street?: string;
   addressNumber?: string;
   propertyType?: string;
@@ -108,6 +110,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const [leadsList, setLeadsList] = useState<Lead[]>([]);
 
   // Alvo selecionado (Cliente ou Interessado)
+  const [companyInfo, setCompanyInfo] = useState<SolarProposal['companyInfo']>();
   const [selectedTarget, setSelectedTarget] = useState<ProposalTargetSelection | null>(null);
 
   // Busca e filtros na Etapa 1
@@ -224,12 +227,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     async function loadData() {
       setLoadingContacts(true);
       try {
-        const [cList, lList, formSettings] = await Promise.all([
+        const [cList, lList, formSettings, company] = await Promise.all([
           fetchClients().catch(() => []),
           fetchLeads().catch(() => []),
           fetchWebsiteFormSettings().catch(() => null),
+          fetchProposalCompany().catch(() => undefined),
         ]);
         if (!isMounted) return;
+        setCompanyInfo(company);
         const mergedClients = mergeClientsWithLeads(cList, lList);
         setClientsList(mergedClients);
         setLeadsList(lList);
@@ -274,6 +279,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               id: targetClient.id,
               name: targetClient.name,
               type: 'client',
+              document: (targetClient as Client).document,
               phone: targetClient.phone,
               email: targetClient.email,
               city: targetClient.city,
@@ -353,6 +359,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
         id: c.id,
         name: c.name,
         type: 'client',
+        document: c.document,
         phone: c.phone,
         email: c.email,
         city: c.city,
@@ -533,6 +540,19 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       id: `prop-${Date.now()}`,
       code: propCode,
       clientName: selectedTarget.name,
+      companyInfo,
+      clientDocument: selectedTarget.document || clientsList.find(client => client.id === selectedTarget.id || client.id === selectedTarget.clientId)?.document,
+      clientAddress: [selectedTarget.street, selectedTarget.addressNumber].filter(Boolean).join(', '),
+      technicalOutput: { connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours: isHybrid ? backupAutonomyHours : undefined },
+      equipmentOutput: selectedKit?.items?.length ? selectedKit.items.map(item => ({
+        id: item.id, description: item.product.name, category: item.product.category,
+        quantity: item.quantity, brand: item.product.brand, model: item.product.model,
+        warrantyYears: item.product.warrantyYears, powerW: item.product.powerW, capacityKWh: item.product.capacityKWh,
+      })) : [
+        { id: 'modules', description: moduleModel, category: 'Módulo FV', quantity: finalModules, powerW: modulePowerW },
+        { id: 'inverter', description: inverterModel, category: 'Inversor', quantity: 1 },
+        ...(isHybrid ? [{ id: 'battery', description: batteryModel, category: 'Bateria', quantity: batteryCount, capacityKWh: batteryCapacityKWh }] : []),
+      ],
       clientEmail: selectedTarget.email,
       clientPhone: selectedTarget.phone,
       propertyType: selectedTarget.propertyType || 'Residencial',
