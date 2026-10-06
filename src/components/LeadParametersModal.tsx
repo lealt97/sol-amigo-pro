@@ -1560,6 +1560,7 @@ export function LeadParametersModal({
               inverterModel: newSolar.inverterModel,
               estimatedMonthlyGenKWh: newSolar.estimatedMonthlyGenKWh,
               estimatedMonthlySavings: newSolar.estimatedMonthlySavings,
+      documentSnapshot: newSolar,
             });
             setShowCreateProposalModal(false);
             onShowToast(`Proposta ${newSolar.code} gerada com sucesso.`);

@@ -117,6 +117,8 @@ export interface ProposalVersion {
   costsSnapshot: OpportunityKitCosts;
   commercialConditions: {
     paymentMethods?: string;
+    cashPaymentTerms?: string;
+    installmentPaymentTerms?: string;
     warrantyTerms?: string;
     deliveryTimeframe?: string;
     notes?: string;
@@ -223,6 +225,8 @@ export interface SolarProposal {
   maintenancePlan?: MaintenancePlanSelection;
   commercialConditions?: {
     paymentMethods?: string;
+    cashPaymentTerms?: string;
+    installmentPaymentTerms?: string;
     warrantyTerms?: string;
     deliveryTimeframe?: string;
     notes?: string;

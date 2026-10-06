@@ -1,0 +1,40 @@
+.solar-proposal-page { background: #fff; color: #1e293b; min-height: 1000px; padding: 48px 52px 30px; margin-top: 20px; display: flex; flex-direction: column; position: relative; border-top: 5px solid var(--proposal-accent); overflow-wrap: anywhere; }
+.solar-proposal-page header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #64748b; margin-bottom: 45px; }
+.solar-proposal-page header img { max-width: 150px; max-height: 44px; object-fit: contain; }
+.solar-proposal-page h2 { font-size: 32px; font-weight: 800; letter-spacing: -1px; color: var(--proposal-primary); line-height: 1.2; }
+.proposal-subtitle { margin-top: 8px; margin-bottom: 34px; font-size: 14px; color: #64748b; }
+.proposal-page-content { flex: 1; font-size: 13px; line-height: 1.7; }
+.solar-proposal-page h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--proposal-primary); }
+.proposal-info-box { padding: 22px; background: #f8fafc; margin-bottom: 20px; border-left: 3px solid var(--proposal-accent); }
+.proposal-multiline { white-space: pre-wrap; }
+.solar-proposal-page table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 12px; }
+.solar-proposal-page td, .solar-proposal-page th { padding: 12px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+.solar-proposal-page th { background: #f1f5f9; font-weight: 700; }
+.solar-proposal-page tr { break-inside: avoid; }
+.proposal-total { text-align: right; padding: 24px 0; }
+.proposal-total strong { font-size: 27px; color: var(--proposal-primary); }
+.proposal-total span, .proposal-total strong, .proposal-total small { display: block; }
+.proposal-note { font-size: 11px; line-height: 1.6; color: #64748b; margin: 16px 0; }
+.proposal-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+.proposal-metrics div { padding: 18px; background: #f8fafc; }
+.proposal-metrics small, .proposal-metrics strong { display: block; }
+.proposal-metrics strong { font-size: 21px; color: var(--proposal-primary); }
+.proposal-payback-chart { width: 100%; height: auto; margin: 20px 0; }
+.solar-proposal-page footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 32px; padding-top: 14px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 10px; }
+.proposal-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 100px; text-align: center; }
+.proposal-signatures span { display: block; border-top: 1px solid #64748b; margin-bottom: 10px; }
+@media (max-width: 600px) { .solar-proposal-page { padding: 30px 20px; min-height: 850px; } .solar-proposal-page h2 { font-size: 26px; } }
+@media print {
+  @page { size: A4; margin: 0; }
+  body:has(#printable-solar-proposal) * { visibility: hidden; }
+  #printable-solar-proposal, #printable-solar-proposal * { visibility: visible !important; }
+  body:has(#printable-solar-proposal) { background: white; }
+  body:has(#printable-solar-proposal) #root { height: auto !important; overflow: visible !important; }
+  .proposal-viewer-overlay, .proposal-viewer-shell { position: static !important; display: block !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; border: 0 !important; background: white !important; }
+  #printable-solar-proposal { position: absolute; inset: 0 auto auto 0; width: 210mm; padding: 0 !important; border: 0 !important; }
+  .proposal-cover-page, .solar-proposal-page { box-sizing: border-box; width: 210mm; min-height: 297mm; margin: 0; padding: 16mm 17mm 10mm; break-after: page; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .solar-proposal-page:last-child { break-after: auto; }
+}
+.solar-proposal-page td, .solar-proposal-page th { color: #1e293b !important; background-color: transparent; }
+.solar-proposal-page th { background-color: #f1f5f9; }
+.solar-proposal-page footer { background: transparent !important; color: #64748b !important; }

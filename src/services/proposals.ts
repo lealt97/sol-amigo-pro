@@ -1,4 +1,4 @@
-import { MaintenancePlanSelection } from '../types';
+import { MaintenancePlanSelection, SolarProposal } from '../types';
 export interface ClientProposal {
   id: string;
   code: string;
@@ -18,6 +18,7 @@ export interface ClientProposal {
   estimatedMonthlySavings?: number;
   maintenancePlan?: MaintenancePlanSelection;
   notes?: string;
+  documentSnapshot?: SolarProposal;
   createdAt: string;
 }
 
@@ -211,6 +212,7 @@ export async function createQuickProposalForClient(
     estimatedMonthlySavings: data.estimatedMonthlySavings,
     maintenancePlan: data.maintenancePlan,
     notes: data.notes,
+    documentSnapshot: data.documentSnapshot,
     createdAt: new Date().toISOString(),
   };
 

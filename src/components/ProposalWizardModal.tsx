@@ -94,6 +94,12 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   onShowToast,
 }) => {
   // Etapa atual
+  const [cashPaymentTerms, setCashPaymentTerms] = useState('');
+  const [installmentPaymentTerms, setInstallmentPaymentTerms] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState('');
+  const [deliveryTimeframe, setDeliveryTimeframe] = useState('');
+  const [warrantyTerms, setWarrantyTerms] = useState('');
+  const [commercialNotes, setCommercialNotes] = useState('');
   const [currentStep, setCurrentStep] = useState<WizardStep>('client_selection');
 
   // Dados carregados para seleção
@@ -554,12 +560,12 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
       pricing: commercialPricing || undefined,
       maintenancePlan,
       commercialConditions: {
-        paymentMethods: isHybrid
-          ? 'Financiamento Solar em até 84x com 90 dias de carência ou à vista com 6% de desconto'
-          : 'À vista com 5% de desconto ou 36x sem juros no solar Santander',
-        notes: selectedKit
-          ? `Kit homologado da aba Kits: ${selectedKit.name} (${selectedKit.sku || 'Catálogo'})`
-          : 'Dimensionamento solar com componentes selecionados avulsos.',
+        paymentMethods: paymentMethods.trim(),
+        cashPaymentTerms: cashPaymentTerms.trim(),
+        installmentPaymentTerms: installmentPaymentTerms.trim(),
+        deliveryTimeframe: deliveryTimeframe.trim(),
+        warrantyTerms: warrantyTerms.trim(),
+        notes: commercialNotes.trim(),
       },
       status: 'Rascunho',
       createdAt: new Date().toISOString(),
@@ -1588,6 +1594,21 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 </div>
               </div>
 
+              <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: theme.border, backgroundColor: theme.card }}>
+                <h4 className="font-bold">Pagamento, entrega e garantias</h4>
+                <p className="text-xs opacity-60">Estas informações aparecerão nas páginas da proposta PDF.</p>
+                {[
+                  { label: 'Pagamento à vista', value: cashPaymentTerms, set: setCashPaymentTerms, placeholder: 'Informe o valor à vista, desconto e vencimento.' },
+                  { label: 'Pagamento a prazo', value: installmentPaymentTerms, set: setInstallmentPaymentTerms, placeholder: 'Informe entrada, número de parcelas, valores e etapas de pagamento.' },
+                  { label: 'Financiamento / outras formas de pagamento', value: paymentMethods, set: setPaymentMethods, placeholder: 'À vista: valor e desconto. A prazo: entrada, parcelas e vencimentos. Financiamento: condições acordadas.' },
+                  { label: 'Prazo de entrega e instalação', value: deliveryTimeframe, set: setDeliveryTimeframe, placeholder: 'Informe o prazo e a partir de qual evento ele é contado.' },
+                  { label: 'Garantias e suporte', value: warrantyTerms, set: setWarrantyTerms, placeholder: 'Informe as garantias dos equipamentos, instalação e suporte.' },
+                  { label: 'Observações comerciais', value: commercialNotes, set: setCommercialNotes, placeholder: 'Outras condições e serviços incluídos.' },
+                ].map(field => <label key={field.label} className="block text-sm font-semibold">
+                  {field.label}
+                  <textarea value={field.value} onChange={event => field.set(event.target.value)} placeholder={field.placeholder} rows={3} className="mt-2 block w-full rounded-lg border p-3 text-sm font-normal" style={{ borderColor: theme.border, backgroundColor: theme.background }} />
+                </label>)}
+              </div>
               {/* Grid de Resumo */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* CARD 1: TITULAR & LOCAL */}
