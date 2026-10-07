@@ -16,6 +16,7 @@ import { PersonalizacaoView } from './components/PersonalizacaoView';
 import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { HelpModal } from './components/HelpModal';
 import { PublicLeadFormView } from './components/PublicLeadFormView';
+import { PublicProposalView } from './components/PublicProposalView';
 import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
 import { LeadsView } from './components/LeadsView';
 import { ClientesView } from './components/ClientesView';
@@ -34,6 +35,7 @@ const getBlankPageId = (page: PageKey) => {
 };
 
 export default function App() {
+  const publicProposalToken = new URLSearchParams(window.location.search).get('proposta');
   const publicLeadFormToken =
     new URLSearchParams(window.location.search).get('captacao') ||
     new URLSearchParams(window.location.search).get('formToken');
@@ -94,6 +96,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (publicProposalToken !== null || publicLeadFormToken) return;
     let mounted = true;
 
     const restoreSession = async () => {
@@ -137,7 +140,7 @@ export default function App() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [publicProposalToken, publicLeadFormToken]);
 
   const handleLogin = async ({ email, password, remember }: { email: string; password: string; remember: boolean }): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -215,6 +218,7 @@ export default function App() {
     setActivePage('dashboard');
   };
 
+  if (publicProposalToken !== null) return <PublicProposalView token={publicProposalToken} />;
   if (publicLeadFormToken) return <PublicLeadFormView formToken={publicLeadFormToken} />;
 
   if (authLoading) {

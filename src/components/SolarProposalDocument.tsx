@@ -23,7 +23,7 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
   const conditions = p.commercialConditions;
   const equipment: ProposalEquipmentOutput[] = p.equipmentOutput?.length ? p.equipmentOutput : p.pricing?.equipmentItems?.length ? p.pricing.equipmentItems : [
     { id: 'modules', description: p.moduleModel || 'Módulos fotovoltaicos', quantity: p.modulesCount, category: 'Módulos', unitCost: 0 },
-    { id: 'inverter', description: p.inverterModel || 'Inversor solar', quantity: p.sizing?.inverterCount || 1, category: 'Inversor', unitCost: 0 },
+    { id: 'inverter', description: p.inverterModel || 'Inversor solar', quantity: p.technicalOutput?.inverterCount || p.sizing?.inverterCount || 1, category: 'Inversor', unitCost: 0 },
     ...(p.batteryCount ? [{ id: 'battery', description: p.batteryModel || 'Bateria', quantity: p.batteryCount, category: 'Baterias', unitCost: 0 }] : []),
   ];
   const company = p.companyInfo;
@@ -56,7 +56,7 @@ export function SolarProposalDocument({ proposal: p, pdfSettings: settings, them
           ...(p.technicalOutput?.connectionType ? [['Tipo de ligação', p.technicalOutput.connectionType]] : []),
           ...(p.technicalOutput?.targetCoveragePercent !== undefined ? [['Cobertura desejada', number(p.technicalOutput.targetCoveragePercent) + '%']] : []),
           ...(p.performanceRatio !== undefined ? [['Performance Ratio', number(p.performanceRatio) + '%']] : []),
-          ...(p.sizing?.estimatedAreaM2 ? [['Área estimada', number(p.sizing.estimatedAreaM2) + ' m²']] : []),
+          ...((p.technicalOutput?.estimatedAreaM2 || p.sizing?.estimatedAreaM2) ? [['Área estimada', number(p.technicalOutput?.estimatedAreaM2 || p.sizing?.estimatedAreaM2 || 0) + ' m²']] : []),
           ...(p.technicalOutput?.backupAutonomyHours ? [['Autonomia de backup desejada', number(p.technicalOutput.backupAutonomyHours) + ' horas']] : []),
           ...(p.batteryCapacityKWh ? [['Capacidade total das baterias', number(p.batteryCapacityKWh) + ' kWh']] : []),
           ...(p.hsp ? [['Irradiação solar diária média', number(p.hsp) + ' kWh/m²/dia']] : []),

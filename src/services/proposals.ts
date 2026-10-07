@@ -127,6 +127,7 @@ export function deleteClientProposal(proposalId: string): ClientProposal[] {
     import('../lib/supabase')
       .then(({ supabase }) => {
         supabase.from('proposals').delete().eq('id', proposalId).then();
+        supabase.from('public_proposal_documents').delete().eq('source_id', proposalId).then();
       })
       .catch(() => {});
   } catch {}
