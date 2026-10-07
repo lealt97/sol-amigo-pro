@@ -1,4 +1,16 @@
 import { MaintenancePlanSelection, SolarProposal } from '../types';
+
+export interface ProposalApprovalDetails {
+  approvedBy?: string;
+  approvedAt?: string;
+  approvalDocument?: string;
+  approvalNotes?: string;
+  refusedAt?: string;
+  refusalReason?: string;
+  refusalNotes?: string;
+  viewedAt?: string;
+}
+
 export interface ClientProposal {
   id: string;
   code: string;
@@ -19,11 +31,23 @@ export interface ClientProposal {
   maintenancePlan?: MaintenancePlanSelection;
   notes?: string;
   documentSnapshot?: SolarProposal;
+  approvalDetails?: ProposalApprovalDetails;
   createdAt: string;
 }
 
 export const PROPOSALS_STORAGE_KEY = 'solamigo.proposals.v1';
 export const PROPOSALS_UPDATED_EVENT = 'solamigo:proposals-updated';
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === PROPOSALS_STORAGE_KEY) {
+      const local = getStoredProposalsLocal();
+      window.dispatchEvent(
+        new CustomEvent(PROPOSALS_UPDATED_EVENT, { detail: local })
+      );
+    }
+  });
+}
 
 export const INITIAL_CLIENT_PROPOSALS: ClientProposal[] = [];
 
@@ -334,4 +358,155 @@ export function updateProposalsClientName(
     saveStoredProposalsLocal(updated);
   }
 }
+
+export function getPublicProposalUrl(codeOrId: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  return `${origin}${pathname}?proposta=${encodeURIComponent(codeOrId)}`;
+}
+
+export function clientProposalToSolarProposal(
+  p: ClientProposal,
+  clientExtra?: { document?: string; street?: string; addressNumber?: string; city?: string; state?: string; concessionaria?: string }
+): SolarProposal {
+  return {
+    id: p.id,
+    code: p.code,
+    clientName: p.clientName,
+    clientDocument: clientExtra?.document,
+    clientAddress: [clientExtra?.street, clientExtra?.addressNumber].filter(Boolean).join(', '),
+    clientCity: clientExtra?.city || 'Campinas',
+    clientState: clientExtra?.state || 'SP',
+    concessionaria: clientExtra?.concessionaria || 'CPFL Paulista',
+    monthlyConsumptionKWh: p.estimatedMonthlyGenKWh || 1200,
+    systemPowerKWp: p.systemPowerKWp,
+    systemType: p.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
+    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh || Math.round(p.systemPowerKWp * 120),
+    modulesCount: p.modulesCount || Math.ceil((p.systemPowerKWp * 1000) / 585),
+    moduleModel: p.moduleModel || 'Canadian Solar 585W TOPCon Bi-facial',
+    inverterModel: p.inverterModel || 'Inversor Deye Trifásico',
+    batteryModel: p.batteryModel,
+    batteryCount: p.batteryCount,
+    totalValue: p.totalValue,
+    estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
+    paybackYears:
+      p.estimatedMonthlySavings && p.estimatedMonthlySavings > 0
+        ? p.totalValue / (p.estimatedMonthlySavings * 12)
+        : 0,
+    ...p.documentSnapshot,
+    status: p.status,
+    maintenancePlan: p.maintenancePlan,
+    createdAt: p.createdAt,
+  };
+}
+
+export async function fetchProposalByCodeOrId(codeOrId: string): Promise<ClientProposal | null> {
+  const normalized = (codeOrId || '').trim();
+  if (!normalized) return null;
+
+  const local = getStoredProposalsLocal();
+  const match = local.find(
+    (p) =>
+      p.code?.toLowerCase() === normalized.toLowerCase() ||
+      p.id?.toLowerCase() === normalized.toLowerCase()
+  );
+  if (match) return match;
+
+  try {
+    const { supabase } = await import('../lib/supabase');
+    const { data } = await supabase
+      .from('proposals')
+      .select('*')
+      .or(`code.eq.${normalized},id.eq.${normalized}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      return {
+        id: data.id,
+        code: data.code,
+        clientId: data.client_id || data.lead_id || '',
+        clientName: data.client_name || data.title || 'Cliente',
+        title: data.title || `Proposta ${data.code}`,
+        systemPowerKWp: Number(data.system_power_kwp || data.power_kwp || 0),
+        systemType: data.system_type || 'On-Grid',
+        totalValue: Number(data.total_value || data.value || 0),
+        status: data.status || 'Pendente',
+        modulesCount: data.modules_count,
+        moduleModel: data.module_model,
+        inverterModel: data.inverter_model,
+        maintenancePlan: data.maintenance_plan || undefined,
+        createdAt: data.created_at || new Date().toISOString(),
+      };
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+export async function updateProposalStatus(
+  codeOrId: string,
+  newStatus: ClientProposal['status'],
+  extraDetails?: ProposalApprovalDetails
+): Promise<ClientProposal | null> {
+  const normalized = (codeOrId || '').trim().toLowerCase();
+  if (!normalized) return null;
+
+  const all = getStoredProposalsLocal();
+  const index = all.findIndex(
+    (p) => p.code?.toLowerCase() === normalized || p.id?.toLowerCase() === normalized
+  );
+
+  let updatedProposal: ClientProposal | null = null;
+  if (index !== -1) {
+    const current = all[index];
+    updatedProposal = {
+      ...current,
+      status: newStatus,
+      approvalDetails: {
+        ...current.approvalDetails,
+        ...extraDetails,
+      },
+      notes:
+        extraDetails?.approvalNotes ||
+        extraDetails?.refusalNotes ||
+        current.notes,
+    };
+    all[index] = updatedProposal;
+    saveStoredProposalsLocal(all);
+  } else {
+    // Se não existia no local, tenta buscar no supabase antes ou criar
+    const found = await fetchProposalByCodeOrId(codeOrId);
+    if (found) {
+      updatedProposal = {
+        ...found,
+        status: newStatus,
+        approvalDetails: {
+          ...found.approvalDetails,
+          ...extraDetails,
+        },
+      };
+      saveStoredProposalsLocal([updatedProposal, ...all]);
+    }
+  }
+
+  // Tenta sincronizar com Supabase se a tabela proposals estiver disponível
+  try {
+    const { supabase } = await import('../lib/supabase');
+    await supabase
+      .from('proposals')
+      .update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .or(`code.eq.${codeOrId},id.eq.${codeOrId}`);
+  } catch {
+    // ignore
+  }
+
+  return updatedProposal;
+}
+
 

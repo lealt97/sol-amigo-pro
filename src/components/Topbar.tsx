@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CalendarDays, Check, HelpCircle, Menu } from 'lucide-react';
+import { Bell, CalendarDays, Check, CheckCircle2, Eye, FileCheck, HelpCircle, Menu, XCircle } from 'lucide-react';
 import { PageKey, ThemeConfig } from '../types';
 import { BrandLogo } from './BrandLogo';
 import { getContrastFg } from '../utils/themeEngine';
@@ -15,6 +15,12 @@ import {
   markCalendarNotificationAsRead,
   subscribeToCalendarNotifications,
 } from '../services/calendarNotifications';
+import {
+  ProposalNotificationItem,
+  markAllProposalNotificationsAsRead,
+  markProposalNotificationAsRead,
+  subscribeToProposalNotifications,
+} from '../services/proposalNotifications';
 
 interface TopbarProps {
   activePage: PageKey;
@@ -61,7 +67,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   const [leadUnreadCount, setLeadUnreadCount] = useState(0);
   const [calendarNotifications, setCalendarNotifications] = useState<CalendarNotificationItem[]>([]);
   const [calendarUnreadCount, setCalendarUnreadCount] = useState(0);
-  const unreadCount = leadUnreadCount + calendarUnreadCount;
+  const [proposalNotifications, setProposalNotifications] = useState<ProposalNotificationItem[]>([]);
+  const [proposalUnreadCount, setProposalUnreadCount] = useState(0);
+  const unreadCount = leadUnreadCount + calendarUnreadCount + proposalUnreadCount;
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -78,6 +86,14 @@ export const Topbar: React.FC<TopbarProps> = ({
     const unsubscribe = subscribeToCalendarNotifications((items, count) => {
       setCalendarNotifications(items);
       setCalendarUnreadCount(count);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToProposalNotifications((items, count) => {
+      setProposalNotifications(items);
+      setProposalUnreadCount(count);
     });
     return () => unsubscribe();
   }, []);
@@ -117,9 +133,16 @@ export const Topbar: React.FC<TopbarProps> = ({
     );
   };
 
+  const handleProposalNotificationClick = (item: ProposalNotificationItem) => {
+    markProposalNotificationAsRead(item.id);
+    setNotificationsOpen(false);
+    onNavigate?.('propostas', item.proposalCode);
+  };
+
   const handleMarkAllRead = () => {
     markAllLeadsAsRead();
     markAllCalendarNotificationsAsRead();
+    markAllProposalNotificationsAsRead();
   };
 
   const topbarBg = theme?.primary || '#161B22';
@@ -241,18 +264,109 @@ export const Topbar: React.FC<TopbarProps> = ({
                 className="max-h-80 overflow-y-auto divide-y"
                 style={{ borderColor }}
               >
-                {notifications.length === 0 && calendarNotifications.length === 0 ? (
+                {notifications.length === 0 && calendarNotifications.length === 0 && proposalNotifications.length === 0 ? (
                   <div className="py-8 px-4 text-center">
                     <Bell className="w-7 h-7 opacity-40 mx-auto mb-2" style={{ color: topbarFg }} />
                     <p className="text-xs font-semibold" style={{ color: topbarFg }}>
                       Nenhuma notificação
                     </p>
                     <p className="mt-1 text-[11px] opacity-70" style={{ color: topbarFg }}>
-                      Novos leads e compromissos próximos aparecerão aqui.
+                      Aceites de propostas, leads e compromissos aparecerão aqui.
                     </p>
                   </div>
                 ) : (
                   <>
+                    {/* Notificações de Propostas (Aceite, Recusa, Visualização) */}
+                    {proposalNotifications.map((notif) => {
+                      const isApproved = notif.type === 'approved';
+                      const isRefused = notif.type === 'refused';
+                      const badgeBg = isApproved
+                        ? 'rgba(16, 185, 129, 0.15)'
+                        : isRefused
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : 'rgba(56, 189, 248, 0.15)';
+                      const badgeFg = isApproved
+                        ? '#10b981'
+                        : isRefused
+                        ? '#ef4444'
+                        : '#38bdf8';
+
+                      return (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleProposalNotificationClick(notif)}
+                          className="p-3 text-xs cursor-pointer transition-colors flex items-start gap-2.5 hover:opacity-90"
+                          style={{
+                            backgroundColor: !notif.read
+                              ? isDark
+                                ? 'rgba(255, 255, 255, 0.07)'
+                                : 'rgba(0, 0, 0, 0.05)'
+                              : 'transparent',
+                            borderBottom: `1px solid ${borderColor}`,
+                          }}
+                        >
+                          <div
+                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+                            style={{
+                              backgroundColor: badgeBg,
+                              borderColor: badgeFg,
+                              color: badgeFg,
+                            }}
+                          >
+                            {isApproved ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : isRefused ? (
+                              <XCircle className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span
+                                className="truncate font-bold"
+                                style={{
+                                  color: isApproved
+                                    ? '#10b981'
+                                    : isRefused
+                                    ? '#ef4444'
+                                    : topbarFg,
+                                }}
+                              >
+                                {notif.title}
+                              </span>
+                              {!notif.read && (
+                                <span className="h-2 w-2 shrink-0 rounded-full bg-red-500 animate-pulse" />
+                              )}
+                            </div>
+
+                            <p className="mt-0.5 text-xs font-semibold text-slate-100 truncate">
+                              {notif.clientName}
+                            </p>
+
+                            <p className="mt-0.5 text-[11px] opacity-75 line-clamp-2" style={{ color: topbarFg }}>
+                              {notif.message}
+                            </p>
+
+                            <div className="mt-1 flex items-center justify-between gap-2 text-[10px] opacity-70">
+                              <span className="font-mono font-bold text-amber-400">
+                                {notif.proposalCode}
+                              </span>
+                              <span>
+                                {new Date(notif.createdAt).toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
                     {calendarNotifications.map((notif) => (
                       <div
                         key={notif.notificationKey}

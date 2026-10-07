@@ -39,6 +39,10 @@ export default function App() {
   const publicLeadFormToken =
     new URLSearchParams(window.location.search).get('captacao') ||
     new URLSearchParams(window.location.search).get('formToken');
+  const publicProposalCode =
+    new URLSearchParams(window.location.search).get('proposta') ||
+    new URLSearchParams(window.location.search).get('prop') ||
+    new URLSearchParams(window.location.search).get('p');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
@@ -220,6 +224,7 @@ export default function App() {
 
   if (publicProposalToken !== null) return <PublicProposalView token={publicProposalToken} />;
   if (publicLeadFormToken) return <PublicLeadFormView formToken={publicLeadFormToken} />;
+  if (publicProposalCode) return <PublicProposalView proposalCode={publicProposalCode} />;
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white"><div className="text-center"><div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" /><p className="text-sm font-semibold">Carregando sua conta...</p></div></div>;

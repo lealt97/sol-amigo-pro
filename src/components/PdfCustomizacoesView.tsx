@@ -16,8 +16,15 @@ import {
   Trash2,
   Type,
   UploadCloud,
+  QrCode,
 } from 'lucide-react';
 import { PdfCoverModel, PdfElementTransform, PdfSettingsConfig, ThemeConfig } from '../types';
+import { ProposalShareModal } from './ProposalShareModal';
+import {
+  ClientProposal,
+  getStoredProposalsLocal,
+  saveStoredProposalsLocal,
+} from '../services/proposals';
 import {
   getPdfCoverAssetUrl,
   getPdfCoverTemplate,
@@ -105,8 +112,36 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
   const [renameName, setRenameName] = useState('');
   const [renameError, setRenameError] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [sharingProposal, setSharingProposal] = useState<ClientProposal | null>(null);
   const renameDialogRef = useRef<HTMLDialogElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenShareModal = (model: PdfCoverModel) => {
+    const existing = getStoredProposalsLocal();
+    let propToShare = existing[0];
+    if (!propToShare) {
+      const codeNum = Math.floor(100 + Math.random() * 899);
+      propToShare = {
+        id: `prop-${Date.now()}`,
+        code: `PROP-2026-${codeNum}`,
+        clientId: 'cli-sample',
+        clientName: 'Carlos Eduardo Ferreira',
+        title: `Proposta Residencial Solar (12.5 kWp)`,
+        systemPowerKWp: 12.5,
+        systemType: 'On-Grid',
+        totalValue: 46800,
+        status: 'Pendente',
+        modulesCount: 22,
+        moduleModel: 'Canadian Solar 585W TOPCon',
+        inverterModel: 'Inversor Deye 12kW',
+        estimatedMonthlyGenKWh: 1580,
+        estimatedMonthlySavings: 1350,
+        createdAt: new Date().toISOString(),
+      };
+      saveStoredProposalsLocal([propToShare]);
+    }
+    setSharingProposal(propToShare);
+  };
 
   useEffect(() => {
     if (renameModelId) {
@@ -771,6 +806,18 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    handleOpenShareModal(model);
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-sky-400 shadow-lg transition-transform hover:scale-110 hover:border-sky-500 hover:bg-sky-600 hover:text-white active:scale-95"
+                                  title="Compartilhar proposta pública (QR Code e link)"
+                                  aria-label={`Compartilhar proposta com ${model.name}`}
+                                >
+                                  <QrCode className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     void deleteModel(model);
                                   }}
                                   className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-slate-900/90 text-red-400 shadow-lg transition-transform hover:scale-110 hover:border-red-600 hover:bg-red-600 hover:text-white active:scale-95"
@@ -1218,6 +1265,14 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
           </div>
         </form>
       </dialog>
+
+      <ProposalShareModal
+        proposal={sharingProposal}
+        isOpen={Boolean(sharingProposal)}
+        onClose={() => setSharingProposal(null)}
+        theme={currentTheme}
+        onShowToast={onShowToast}
+      />
     </div>
   );
 };

@@ -21,6 +21,7 @@ import {
   Building2,
   User,
   Zap,
+  QrCode,
 } from 'lucide-react';
 import {
   ClientProposal,
@@ -30,11 +31,13 @@ import {
   deleteClientProposal,
   PROPOSALS_UPDATED_EVENT,
   isDemoProposal,
+  getPublicProposalUrl,
 } from '../services/proposals';
 import { fetchClients } from '../services/clients';
 import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
 import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
+import { ProposalShareModal } from './ProposalShareModal';
 import { formatCurrency } from '../utils/formatters';
 
 interface PropostasViewProps {
@@ -62,6 +65,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   // Modais
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
   const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
+  const [sharingProposal, setSharingProposal] = useState<ClientProposal | null>(null);
 
   // Carrega propostas e clientes
   const loadData = async () => {
@@ -96,8 +100,10 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     };
 
     window.addEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+    window.addEventListener('focus', handleProposalsUpdate);
     return () => {
       window.removeEventListener(PROPOSALS_UPDATED_EVENT, handleProposalsUpdate);
+      window.removeEventListener('focus', handleProposalsUpdate);
     };
   }, []);
 
@@ -148,6 +154,15 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
 
   const handleOpenViewer = (p: ClientProposal) => {
     setViewingProposal(clientPropToSolar(p));
+  };
+
+  const handleOpenPublicLink = (p: ClientProposal) => {
+    const url = getPublicProposalUrl(p.code);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    window.open(url, '_blank');
+    onShowToast(`Link público da proposta ${p.code} aberto e copiado!`);
   };
 
   // Salvar nova proposta criada no NewProposalModal
@@ -674,6 +689,18 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
                       <MessageCircle className="h-3.5 w-3.5" />
                     </button>
 
+                    {/* Botão Compartilhar Proposta (QR Code, Copiar Link e Enviar) */}
+                    <button
+                      type="button"
+                      onClick={() => setSharingProposal(p)}
+                      className="p-2 rounded-xl border text-[var(--dim)] hover:text-sky-400 hover:border-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                      style={{ borderColor: theme.border }}
+                      title="Compartilhar proposta (QR Code, copiar link e enviar)"
+                      aria-label={`Compartilhar proposta ${p.code}`}
+                    >
+                      <QrCode className="h-3.5 w-3.5" />
+                    </button>
+
                     {/* Botão de Exclusão */}
                     <button
                       type="button"
@@ -724,6 +751,15 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         pdfSettings={pdfSettings}
         theme={theme}
         onClose={() => setViewingProposal(null)}
+        onShowToast={onShowToast}
+      />
+
+      {/* Modal de Compartilhamento com QR Code, Copiar Link e Enviar */}
+      <ProposalShareModal
+        proposal={sharingProposal}
+        isOpen={Boolean(sharingProposal)}
+        onClose={() => setSharingProposal(null)}
+        theme={theme}
         onShowToast={onShowToast}
       />
     </div>

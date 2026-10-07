@@ -1,38 +1,724 @@
-import { useEffect, useState } from 'react';
-import { fetchPublicProposal } from '../services/publicProposals';
-import type { PublicProposalDocument } from '../utils/publicProposal';
-import { ProposalViewerModal } from './ProposalViewerModal';
+import React, { useEffect, useState } from 'react';
+import {
+  Printer,
+  MessageCircle,
+  CheckCircle2,
+  XCircle,
+  Share2,
+  Sun,
+  ShieldCheck,
+  AlertCircle,
+  ThumbsDown,
+  X,
+  FileCheck,
+  Phone,
+  User,
+  CreditCard,
+  MessageSquare,
+  Sparkles,
+} from 'lucide-react';
+import {
+  clientProposalToSolarProposal,
+  fetchProposalByCodeOrId,
+  updateProposalStatus,
+} from '../services/proposals';
+import { fetchProposalCompany } from '../services/proposalCompany';
+import { addProposalNotification } from '../services/proposalNotifications';
+import { loadSavedPdfSettings, loadSavedTheme } from '../utils/themeEngine';
+import { formatCurrency } from '../utils/formatters';
+import { ProposalCoverPage } from './ProposalCoverPage';
+import { SolarProposalDocument } from './SolarProposalDocument';
+import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
 
-const noop = () => {};
-
-export function PublicProposalView({ token }: { token: string }) {
-  const [document, setDocument] = useState<PublicProposalDocument | null>(null);
-  const [error, setError] = useState('');
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const referrer = window.document.createElement('meta');
-    referrer.name = 'referrer';
-    referrer.content = 'no-referrer';
-    const robots = window.document.createElement('meta');
-    robots.name = 'robots';
-    robots.content = 'noindex, nofollow';
-    window.document.head.append(referrer, robots);
-    return () => { referrer.remove(); robots.remove(); };
-  }, []);
-  useEffect(() => {
-    const controller = new AbortController();
-    setDocument(null);
-    setError('');
-    fetchPublicProposal(token, controller.signal).then(setDocument).catch(error => {
-      if (!controller.signal.aborted) setError(error.message || 'Não foi possível carregar a proposta.');
-    });
-    return () => controller.abort();
-  }, [token, attempt]);
-  if (document) return <ProposalViewerModal proposal={document.proposal} pdfSettings={document.pdfSettings} theme={document.theme} onClose={noop} onShowToast={noop} publicView />;
-  return <div role="main" className="min-h-screen flex items-center justify-center bg-slate-100 p-6 text-slate-800">
-    <div className="max-w-lg rounded-2xl bg-white p-8 shadow-lg text-center text-slate-800">
-      <h1 className="text-xl font-bold">Proposta comercial</h1>
-      {error ? <><p role="alert" className="mt-4 text-sm">{error}</p><button onClick={() => setAttempt(value => value + 1)} className="mt-6 rounded-lg bg-blue-600 px-4 py-2 text-white">Tentar novamente</button></> : <p role="status" className="mt-4">Carregando proposta...</p>}
-    </div>
-  </div>;
+interface PublicProposalViewProps {
+  proposalCode: string;
 }
+
+const REFUSAL_REASONS = [
+  'Preço / Condições de pagamento',
+  'Decidi adiar o investimento',
+  'Fechei com outro fornecedor',
+  'Potência ou equipamentos não atenderam',
+  'Falta de financiamento bancário',
+  'Outro motivo',
+];
+
+export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposalCode }) => {
+  const [loading, setLoading] = useState(true);
+  const [proposal, setProposal] = useState<SolarProposal | null>(null);
+  const [pdfSettings] = useState<PdfSettingsConfig>(loadSavedPdfSettings);
+  const [theme] = useState<ThemeConfig>(loadSavedTheme);
+  const [coverReady, setCoverReady] = useState(false);
+  const [status, setStatus] = useState<string>('Pendente');
+  const [copied, setCopied] = useState(false);
+
+  // Modais de Aceite e Recusa
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [isRefuseModalOpen, setIsRefuseModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Campos do formulário de aceite
+  const [acceptName, setAcceptName] = useState('');
+  const [acceptDoc, setAcceptDoc] = useState('');
+  const [acceptPhone, setAcceptPhone] = useState('');
+  const [acceptNotes, setAcceptNotes] = useState('');
+  const [acceptAgreed, setAcceptAgreed] = useState(true);
+
+  // Campos do formulário de recusa
+  const [refusalReason, setRefusalReason] = useState(REFUSAL_REASONS[0]);
+  const [refusalNotes, setRefusalNotes] = useState('');
+
+  // Mensagem temporária pós-ação
+  const [feedbackMessage, setFeedbackMessage] = useState<{
+    type: 'success' | 'refused';
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+
+    Promise.all([
+      fetchProposalByCodeOrId(proposalCode),
+      fetchProposalCompany().catch(() => undefined),
+    ])
+      .then(([clientProp, companyInfo]) => {
+        if (!active) return;
+        if (clientProp) {
+          const solar = clientProposalToSolarProposal(clientProp);
+          if (companyInfo) {
+            solar.companyInfo = companyInfo;
+          }
+          setProposal(solar);
+          setStatus(clientProp.status || 'Pendente');
+          setAcceptName(clientProp.clientName || '');
+
+          // Tracking de visualização da proposta pelo cliente
+          try {
+            const viewedSessionKey = `solamigo_viewed_${clientProp.code}`;
+            if (!sessionStorage.getItem(viewedSessionKey)) {
+              sessionStorage.setItem(viewedSessionKey, '1');
+              addProposalNotification({
+                proposalCode: clientProp.code,
+                proposalId: clientProp.id,
+                clientName: clientProp.clientName,
+                totalValue: clientProp.totalValue,
+                type: 'viewed',
+                title: 'Proposta Visualizada',
+                message: `O cliente ${clientProp.clientName} abriu o link público da proposta ${clientProp.code}.`,
+              });
+
+              if (clientProp.status === 'Enviada' || clientProp.status === 'Pendente') {
+                updateProposalStatus(clientProp.code, 'Visualizada', {
+                  viewedAt: new Date().toISOString(),
+                });
+              }
+            }
+          } catch {
+            // ignore
+          }
+        } else {
+          setProposal(null);
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar proposta pública:', err);
+        if (active) setProposal(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [proposalCode]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCopyLink = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }
+  };
+
+  const handleWhatsApp = () => {
+    if (!proposal) return;
+    const phone = proposal.companyInfo?.phone?.replace(/\D/g, '') || '';
+    const message = encodeURIComponent(
+      `Olá! Estou visualizando a proposta comercial (${proposal.code}) de energia solar para ${proposal.clientName} e gostaria de falar com vocês.`
+    );
+    const url = phone ? `https://wa.me/55${phone}?text=${message}` : `https://wa.me/?text=${message}`;
+    window.open(url, '_blank');
+  };
+
+  // Confirmação de Aceite da Proposta
+  const handleConfirmAccept = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proposal) return;
+    if (!acceptAgreed) return;
+
+    setSubmitting(true);
+    const nowIso = new Date().toISOString();
+
+    try {
+      await updateProposalStatus(proposal.code, 'Aprovada', {
+        approvedBy: acceptName.trim() || proposal.clientName,
+        approvedAt: nowIso,
+        approvalDocument: acceptDoc.trim() || undefined,
+        approvalNotes: [
+          acceptNotes.trim(),
+          acceptPhone ? `WhatsApp: ${acceptPhone.trim()}` : '',
+        ].filter(Boolean).join(' • '),
+      });
+
+      addProposalNotification({
+        proposalCode: proposal.code,
+        proposalId: proposal.id,
+        clientName: proposal.clientName,
+        totalValue: proposal.totalValue,
+        type: 'approved',
+        title: '🎉 Proposta Aprovada!',
+        message: `${acceptName.trim() || proposal.clientName} aprovou a proposta comercial ${proposal.code} (${formatCurrency(proposal.totalValue)}).`,
+        notes: acceptNotes.trim() || undefined,
+      });
+
+      setStatus('Aprovada');
+      setIsAcceptModalOpen(false);
+      setFeedbackMessage({
+        type: 'success',
+        text: 'Proposta Aprovada com Sucesso! Seu consultor solar foi notificado e entrará em contato em breve para os próximos passos.',
+      });
+    } catch (err) {
+      console.error('Erro ao aprovar proposta:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Confirmação de Recusa da Proposta
+  const handleConfirmRefuse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proposal) return;
+
+    setSubmitting(true);
+    const nowIso = new Date().toISOString();
+
+    try {
+      await updateProposalStatus(proposal.code, 'Recusada', {
+        refusedAt: nowIso,
+        refusalReason,
+        refusalNotes: refusalNotes.trim() || undefined,
+      });
+
+      addProposalNotification({
+        proposalCode: proposal.code,
+        proposalId: proposal.id,
+        clientName: proposal.clientName,
+        totalValue: proposal.totalValue,
+        type: 'refused',
+        title: '⚠️ Proposta Recusada',
+        message: `O cliente ${proposal.clientName} recusou a proposta ${proposal.code}. Motivo: ${refusalReason}.`,
+        reason: refusalReason,
+        notes: refusalNotes.trim() || undefined,
+      });
+
+      setStatus('Recusada');
+      setIsRefuseModalOpen(false);
+      setFeedbackMessage({
+        type: 'refused',
+        text: 'Agradecemos pelo seu retorno! Sua resposta foi registrada com sucesso.',
+      });
+    } catch (err) {
+      console.error('Erro ao recusar proposta:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0B1522] text-white">
+        <div className="text-center space-y-3">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-3 border-amber-400 border-t-transparent" />
+          <p className="text-sm font-semibold text-slate-300">Carregando proposta comercial...</p>
+          <p className="text-xs font-mono text-slate-400">{proposalCode}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0B1522] text-white p-4">
+        <div className="max-w-md w-full bg-[#132030] border border-slate-700/60 rounded-2xl p-6 text-center space-y-4 shadow-xl">
+          <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
+          <h2 className="text-lg font-bold">Proposta não encontrada</h2>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Não foi possível localizar os dados da proposta <span className="font-mono font-bold text-white">"{proposalCode}"</span>. Verifique se o link está correto ou entre em contato com a integradora.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const companyName = proposal.companyInfo?.companyName || 'Sol Amigo Energia Solar';
+  const isApproved = status === 'Aprovada';
+  const isRefused = status === 'Recusada';
+
+  return (
+    <div className="min-h-screen bg-[#08101A] text-slate-100 flex flex-col font-sans antialiased pb-24 md:pb-0">
+      {/* Barra Superior Fixa do Cliente (Oculta na Impressão) */}
+      <header className="sticky top-0 z-40 bg-[#0E1B2C]/95 backdrop-blur-md border-b border-slate-800 shadow-md px-3 sm:px-6 py-2.5 print:hidden">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          {/* Identificação da Empresa e Proposta */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Sun className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-white truncate">{companyName}</span>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-semibold">
+                  <ShieldCheck className="w-3 h-3" /> Verificada
+                </span>
+                {isApproved && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold">
+                    <CheckCircle2 className="w-3 h-3" /> Aprovada
+                  </span>
+                )}
+                {isRefused && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">
+                    <XCircle className="w-3 h-3" /> Recusada
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono truncate">
+                Proposta {proposal.code} • {proposal.clientName}
+              </div>
+            </div>
+          </div>
+
+          {/* Botões de Ação para o Cliente no Topo */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-200 font-semibold transition-colors cursor-pointer"
+              title="Copiar link da proposta"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{copied ? 'Copiado!' : 'Compartilhar'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleWhatsApp}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95"
+              title="Tirar dúvidas com o consultor solar via WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Falar no</span> WhatsApp
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95"
+              title="Imprimir ou salvar PDF da proposta"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Imprimir / PDF</span>
+            </button>
+
+            {/* Botão de Recusa */}
+            {!isApproved && !isRefused && (
+              <button
+                type="button"
+                onClick={() => setIsRefuseModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 text-xs font-bold transition-all cursor-pointer active:scale-95"
+                title="Recusar proposta comercial"
+              >
+                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                <span>Recusar</span>
+              </button>
+            )}
+
+            {/* Botão de Aceite */}
+            {!isApproved && !isRefused ? (
+              <button
+                type="button"
+                onClick={() => setIsAcceptModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-md cursor-pointer active:scale-95 bg-emerald-500 hover:bg-emerald-400 text-slate-950"
+                title="Aprovar e aceitar esta proposta comercial"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Aceitar Proposta</span>
+              </button>
+            ) : isApproved ? (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Proposta Aprovada</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/40">
+                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                <span>Proposta Recusada</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Banner de Feedback (Sucesso ou Recusa) */}
+      {feedbackMessage && (
+        <div
+          className={`px-4 py-3 text-center text-xs font-bold flex items-center justify-center gap-2 print:hidden animate-in fade-in slide-in-from-top-2 ${
+            feedbackMessage.type === 'success'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-slate-800 text-slate-200 border-b border-slate-700'
+          }`}
+        >
+          {feedbackMessage.type === 'success' ? (
+            <Sparkles className="w-4 h-4 text-amber-300" />
+          ) : (
+            <ThumbsDown className="w-4 h-4 text-red-400" />
+          )}
+          <span>{feedbackMessage.text}</span>
+        </div>
+      )}
+
+      {/* Corpo da Proposta: Capa e Folhas A4 */}
+      <main className="flex-1 py-4 sm:py-8 px-2 sm:px-4 flex justify-center print:p-0 print:m-0 print:bg-white">
+        <div
+          id="printable-solar-proposal"
+          className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-700/40 overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-w-none print:w-full"
+          style={{ fontFamily: `${pdfSettings.font}, sans-serif` }}
+        >
+          {/* Capa personalizada do modelo selecionado */}
+          <ProposalCoverPage
+            proposal={proposal}
+            settings={pdfSettings}
+            onReady={setCoverReady}
+          />
+
+          {/* Folhas da proposta comercial (geração, economia, equipamentos, retorno) */}
+          <SolarProposalDocument
+            proposal={proposal}
+            pdfSettings={pdfSettings}
+            theme={theme}
+          />
+        </div>
+      </main>
+
+      {/* Barra Flutuante Inferior para Ações Rápidas (Aprovar / Recusar) */}
+      {!isApproved && !isRefused && (
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-[#0E1B2C]/95 backdrop-blur-lg border-t border-slate-800 p-3 shadow-2xl print:hidden flex items-center justify-between gap-3 max-w-4xl mx-auto md:rounded-t-2xl">
+          <div className="min-w-0">
+            <div className="text-[11px] text-slate-400 truncate">
+              Investimento total da proposta:
+            </div>
+            <div className="text-sm font-black text-white font-mono">
+              {formatCurrency(proposal.totalValue)} • <span className="text-amber-400">{proposal.systemPowerKWp} kWp</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsRefuseModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Recusar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAcceptModalOpen(true)}
+              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-lg transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Aceitar Proposta</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rodapé do Visualizador Público (Oculto na impressão) */}
+      <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-800/80 bg-[#070D16] print:hidden">
+        <p>Proposta comercial emitida por <strong className="text-slate-300">{companyName}</strong>.</p>
+        <p className="mt-1 text-[11px] text-slate-400">Validade da proposta sujeita às condições técnicas e comerciais especificadas.</p>
+      </footer>
+
+      {/* Modal de Aceite / Aprovação da Proposta */}
+      {isAcceptModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) setIsAcceptModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-[#111C2E] border border-slate-700 shadow-2xl text-white overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/80 bg-slate-900/60">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Aceitar Proposta Comercial</h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {proposal.code} • {formatCurrency(proposal.totalValue)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !submitting && setIsAcceptModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário */}
+            <form onSubmit={handleConfirmAccept} className="p-5 space-y-4">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-start gap-2.5">
+                <FileCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  Ao confirmar o aceite, sua decisão será registrada de imediato no sistema da integradora, atualizando o status da proposta para <strong>Aprovada</strong>.
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  Nome completo do titular / aprovador *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={acceptName}
+                  onChange={(e) => setAcceptName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                    CPF ou CNPJ (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={acceptDoc}
+                    onChange={(e) => setAcceptDoc(e.target.value)}
+                    placeholder="000.000.000-00"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    Telefone / WhatsApp (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={acceptPhone}
+                    onChange={(e) => setAcceptPhone(e.target.value)}
+                    placeholder="(00) 00000-0000"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                  Observações ou melhor horário para contato (opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={acceptNotes}
+                  onChange={(e) => setAcceptNotes(e.target.value)}
+                  placeholder="Ex: Entrar em contato após às 14h; tirar dúvidas sobre forma de pagamento..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-900/40 border border-slate-800 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={acceptAgreed}
+                  onChange={(e) => setAcceptAgreed(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-700 text-emerald-500 focus:ring-0"
+                />
+                <span className="text-[11px] text-slate-300 leading-relaxed">
+                  Declaro que revisei a proposta comercial, estou ciente da potência instalada ({proposal.systemPowerKWp} kWp), equipamentos propostos e concordo com o valor de {formatCurrency(proposal.totalValue)}.
+                </span>
+              </label>
+
+              {/* Botões do Modal */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => setIsAcceptModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-700 text-xs font-bold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting || !acceptAgreed || !acceptName.trim()}
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 text-xs font-black shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <span>Registrando aceite...</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirmar e Aprovar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Recusa da Proposta */}
+      {isRefuseModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) setIsRefuseModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-[#111C2E] border border-slate-700 shadow-2xl text-white overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/80 bg-slate-900/60">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Recusar Proposta Comercial</h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {proposal.code} • {proposal.clientName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !submitting && setIsRefuseModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário */}
+            <form onSubmit={handleConfirmRefuse} className="p-5 space-y-4">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Sentimos muito que a proposta não tenha atendido perfeitamente às suas necessidades. Selecione o motivo principal da recusa para que possamos aprimorar nossas condições:
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">
+                  Motivo da recusa *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {REFUSAL_REASONS.map((r) => (
+                    <label
+                      key={r}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer transition-all select-none ${
+                        refusalReason === r
+                          ? 'border-red-500 bg-red-500/15 text-white font-bold'
+                          : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="refusalReason"
+                        value={r}
+                        checked={refusalReason === r}
+                        onChange={() => setRefusalReason(r)}
+                        className="text-red-500 focus:ring-0"
+                      />
+                      <span className="truncate">{r}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                  Comentários adicionais (opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={refusalNotes}
+                  onChange={(e) => setRefusalNotes(e.target.value)}
+                  placeholder="Conte-nos o que poderia ser diferente (ex: valor da parcela, outra marca de inversor, etc.)..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white outline-none focus:border-red-500 resize-none"
+                />
+              </div>
+
+              {/* Botões do Modal */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => setIsRefuseModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-700 text-xs font-bold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Voltar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-black shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <span>Registrando...</span>
+                  ) : (
+                    <>
+                      <XCircle className="w-4 h-4" />
+                      <span>Confirmar Recusa</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
