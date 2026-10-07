@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { buildPublicProposalUrl, createPublicProposalDocument, createPublicProposalToken, hashPublicProposalToken, PUBLIC_PROPOSAL_TOKEN } from '../src/utils/publicProposal';
 import type { SolarProposal } from '../src/types';
 import { DEFAULT_PDF_SETTINGS, DEFAULT_THEME } from '../src/utils/themeEngine';
+import { validatePublicProposalResponse } from '../supabase/functions/_shared/publicProposalResponse';
+import { mergePublicProposalSignals } from '../src/utils/publicProposalSignals';
+import type { ClientProposal } from '../src/services/proposals';
+import type { PublicProposalSignal } from '../src/services/publicProposals';
 
 test('public links use unguessable tokens and preserve the published subpath', async () => {
   const token = createPublicProposalToken();
@@ -43,4 +47,32 @@ test('public document keeps proposal outputs but excludes internal costs and CRM
   assert.equal(document.pdfSettings.template, DEFAULT_PDF_SETTINGS.template);
   document.theme.primary = '#000000';
   assert.notEqual(DEFAULT_THEME.primary, '#000000');
+});
+
+test('public approval requires consent and uses the server timestamp, ignoring caller-controlled fields', () => {
+  const at = '2026-10-07T21:20:00Z';
+  const response = validatePublicProposalResponse({ status: 'Aprovada', name: '  Cliente real  ', agreed: true, respondedAt: '1900-01-01', user_id: 'other-owner', totalValue: 1 }, at);
+  assert.equal(response.name, 'Cliente real');
+  assert.equal(response.respondedAt, at);
+  assert.equal('user_id' in response, false);
+  assert.equal('totalValue' in response, false);
+  assert.throws(() => validatePublicProposalResponse({ status: 'Aprovada', name: 'Cliente', agreed: false }, at));
+  assert.throws(() => validatePublicProposalResponse({ status: 'Recusada', reason: '' }, at));
+  assert.throws(() => validatePublicProposalResponse({ status: 'Recusada', reason: 'Prazo', notes: 'x'.repeat(2001) }, at));
+  assert.throws(() => validatePublicProposalResponse({ status: 'Visualizada' }, at));
+});
+
+test('public signals identify the proposal by source ID, keep decisions and avoid reapplying processed events', () => {
+  const proposal = { id: 'local-real', code: 'PROP-2026-998', status: 'Pendente', clientName: 'Cliente real', createdAt: '2026-10-07' } as ClientProposal;
+  const viewed = { id: 'share-id', source_id: 'local-real', code: proposal.code, viewed_at: '2026-10-07T21:00:00Z', response: null, responded_at: null } as PublicProposalSignal;
+  const visible = mergePublicProposalSignals([proposal], [viewed])[0];
+  assert.equal(visible.status, 'Visualizada');
+  assert.equal(mergePublicProposalSignals([proposal], [{ ...viewed, source_id: 'another-proposal' }])[0], proposal);
+  const decision = { ...viewed, responded_at: '2026-10-07T21:10:00Z', response: { status: 'Aprovada', name: 'Cliente', respondedAt: '2026-10-07T21:10:00Z', notes: 'Confirmado' } } as PublicProposalSignal;
+  const approved = mergePublicProposalSignals([visible], [decision])[0];
+  assert.equal(approved.status, 'Aprovada');
+  assert.equal(approved.approvalDetails?.approvalNotes, 'Confirmado');
+  assert.equal(mergePublicProposalSignals([approved], [viewed])[0], approved);
+  const manuallyUpdated = { ...approved, status: 'Em negociação' } as ClientProposal;
+  assert.equal(mergePublicProposalSignals([manuallyUpdated], [decision])[0], manuallyUpdated);
 });

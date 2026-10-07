@@ -1,10 +1,14 @@
 import type { PdfSettingsConfig, ProposalEquipmentOutput, SolarProposal, ThemeConfig } from '../types';
+import type { PublicProposalResponse } from '../../supabase/functions/_shared/publicProposalResponse';
+export type { PublicProposalResponse } from '../../supabase/functions/_shared/publicProposalResponse';
 
 export interface PublicProposalDocument {
   proposal: SolarProposal;
   pdfSettings: PdfSettingsConfig;
   theme: ThemeConfig;
+  response?: PublicProposalResponse | null;
 }
+
 
 export const PUBLIC_PROPOSAL_TOKEN = /^[a-f0-9]{64}$/;
 

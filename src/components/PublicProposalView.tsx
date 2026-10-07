@@ -6,7 +6,6 @@ import {
   XCircle,
   Share2,
   Sun,
-  ShieldCheck,
   AlertCircle,
   ThumbsDown,
   X,
@@ -17,21 +16,15 @@ import {
   MessageSquare,
   Sparkles,
 } from 'lucide-react';
-import {
-  clientProposalToSolarProposal,
-  fetchProposalByCodeOrId,
-  updateProposalStatus,
-} from '../services/proposals';
-import { fetchProposalCompany } from '../services/proposalCompany';
-import { addProposalNotification } from '../services/proposalNotifications';
-import { loadSavedPdfSettings, loadSavedTheme } from '../utils/themeEngine';
+import { fetchPublicProposal, respondToPublicProposal } from '../services/publicProposals';
+import { DEFAULT_PDF_SETTINGS, DEFAULT_THEME } from '../utils/themeEngine';
 import { formatCurrency } from '../utils/formatters';
 import { ProposalCoverPage } from './ProposalCoverPage';
 import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
 
 interface PublicProposalViewProps {
-  proposalCode: string;
+  token: string;
 }
 
 const REFUSAL_REASONS = [
@@ -43,14 +36,16 @@ const REFUSAL_REASONS = [
   'Outro motivo',
 ];
 
-export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposalCode }) => {
+export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [proposal, setProposal] = useState<SolarProposal | null>(null);
-  const [pdfSettings] = useState<PdfSettingsConfig>(loadSavedPdfSettings);
-  const [theme] = useState<ThemeConfig>(loadSavedTheme);
+  const [pdfSettings, setPdfSettings] = useState<PdfSettingsConfig>(DEFAULT_PDF_SETTINGS);
+  const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
   const [coverReady, setCoverReady] = useState(false);
   const [status, setStatus] = useState<string>('Pendente');
   const [copied, setCopied] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Modais de Aceite e Recusa
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
@@ -62,7 +57,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
   const [acceptDoc, setAcceptDoc] = useState('');
   const [acceptPhone, setAcceptPhone] = useState('');
   const [acceptNotes, setAcceptNotes] = useState('');
-  const [acceptAgreed, setAcceptAgreed] = useState(true);
+  const [acceptAgreed, setAcceptAgreed] = useState(false);
 
   // Campos do formulário de recusa
   const [refusalReason, setRefusalReason] = useState(REFUSAL_REASONS[0]);
@@ -75,74 +70,49 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
   } | null>(null);
 
   useEffect(() => {
-    let active = true;
+    const referrer = document.createElement('meta');
+    referrer.name = 'referrer'; referrer.content = 'no-referrer';
+    const robots = document.createElement('meta');
+    robots.name = 'robots'; robots.content = 'noindex, nofollow';
+    document.head.append(referrer, robots);
+    return () => { referrer.remove(); robots.remove(); };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
-
-    Promise.all([
-      fetchProposalByCodeOrId(proposalCode),
-      fetchProposalCompany().catch(() => undefined),
-    ])
-      .then(([clientProp, companyInfo]) => {
-        if (!active) return;
-        if (clientProp) {
-          const solar = clientProposalToSolarProposal(clientProp);
-          if (companyInfo) {
-            solar.companyInfo = companyInfo;
-          }
-          setProposal(solar);
-          setStatus(clientProp.status || 'Pendente');
-          setAcceptName(clientProp.clientName || '');
-
-          // Tracking de visualização da proposta pelo cliente
-          try {
-            const viewedSessionKey = `solamigo_viewed_${clientProp.code}`;
-            if (!sessionStorage.getItem(viewedSessionKey)) {
-              sessionStorage.setItem(viewedSessionKey, '1');
-              addProposalNotification({
-                proposalCode: clientProp.code,
-                proposalId: clientProp.id,
-                clientName: clientProp.clientName,
-                totalValue: clientProp.totalValue,
-                type: 'viewed',
-                title: 'Proposta Visualizada',
-                message: `O cliente ${clientProp.clientName} abriu o link público da proposta ${clientProp.code}.`,
-              });
-
-              if (clientProp.status === 'Enviada' || clientProp.status === 'Pendente') {
-                updateProposalStatus(clientProp.code, 'Visualizada', {
-                  viewedAt: new Date().toISOString(),
-                });
-              }
-            }
-          } catch {
-            // ignore
-          }
-        } else {
-          setProposal(null);
-        }
-      })
-      .catch((err) => {
-        console.error('Erro ao carregar proposta pública:', err);
-        if (active) setProposal(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [proposalCode]);
+    setLoadError('');
+    setProposal(null);
+    setCoverReady(false);
+    setFeedbackMessage(null);
+    fetchPublicProposal(token, controller.signal).then(document => {
+      if (controller.signal.aborted) return;
+      setProposal(document.proposal);
+      setPdfSettings(document.pdfSettings);
+      setTheme(document.theme);
+      setStatus(document.response?.status || document.proposal.status || 'Pendente');
+      setAcceptName(document.proposal.clientName || '');
+      setAcceptDoc(document.proposal.clientDocument || '');
+      setAcceptPhone(document.proposal.clientPhone || '');
+    }).catch(error => {
+      if (!controller.signal.aborted) setLoadError(error.message || 'Não foi possível carregar a proposta.');
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [token]);
 
   const handlePrint = () => {
-    window.print();
+    if (coverReady) window.print();
   };
 
-  const handleCopyLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
+    } catch {
+      setActionError('Copie o endereço da proposta na barra do navegador.');
     }
   };
 
@@ -156,85 +126,38 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
     window.open(url, '_blank');
   };
 
-  // Confirmação de Aceite da Proposta
   const handleConfirmAccept = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proposal) return;
-    if (!acceptAgreed) return;
-
+    if (!proposal || !acceptAgreed || submitting) return;
     setSubmitting(true);
-    const nowIso = new Date().toISOString();
-
+    setActionError('');
     try {
-      await updateProposalStatus(proposal.code, 'Aprovada', {
-        approvedBy: acceptName.trim() || proposal.clientName,
-        approvedAt: nowIso,
-        approvalDocument: acceptDoc.trim() || undefined,
-        approvalNotes: [
-          acceptNotes.trim(),
-          acceptPhone ? `WhatsApp: ${acceptPhone.trim()}` : '',
-        ].filter(Boolean).join(' • '),
+      const response = await respondToPublicProposal(token, {
+        status: 'Aprovada', agreed: acceptAgreed, name: acceptName.trim() || proposal.clientName,
+        document: acceptDoc.trim(), phone: acceptPhone.trim(), notes: acceptNotes.trim(),
       });
-
-      addProposalNotification({
-        proposalCode: proposal.code,
-        proposalId: proposal.id,
-        clientName: proposal.clientName,
-        totalValue: proposal.totalValue,
-        type: 'approved',
-        title: '🎉 Proposta Aprovada!',
-        message: `${acceptName.trim() || proposal.clientName} aprovou a proposta comercial ${proposal.code} (${formatCurrency(proposal.totalValue)}).`,
-        notes: acceptNotes.trim() || undefined,
-      });
-
-      setStatus('Aprovada');
+      setStatus(response.status);
       setIsAcceptModalOpen(false);
-      setFeedbackMessage({
-        type: 'success',
-        text: 'Proposta Aprovada com Sucesso! Seu consultor solar foi notificado e entrará em contato em breve para os próximos passos.',
-      });
-    } catch (err) {
-      console.error('Erro ao aprovar proposta:', err);
+      setFeedbackMessage({ type: 'success', text: 'Sua aprovação foi registrada e ficará disponível para a integradora.' });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível registrar sua aprovação. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Confirmação de Recusa da Proposta
   const handleConfirmRefuse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proposal) return;
-
+    if (!proposal || submitting) return;
     setSubmitting(true);
-    const nowIso = new Date().toISOString();
-
+    setActionError('');
     try {
-      await updateProposalStatus(proposal.code, 'Recusada', {
-        refusedAt: nowIso,
-        refusalReason,
-        refusalNotes: refusalNotes.trim() || undefined,
-      });
-
-      addProposalNotification({
-        proposalCode: proposal.code,
-        proposalId: proposal.id,
-        clientName: proposal.clientName,
-        totalValue: proposal.totalValue,
-        type: 'refused',
-        title: '⚠️ Proposta Recusada',
-        message: `O cliente ${proposal.clientName} recusou a proposta ${proposal.code}. Motivo: ${refusalReason}.`,
-        reason: refusalReason,
-        notes: refusalNotes.trim() || undefined,
-      });
-
-      setStatus('Recusada');
+      const response = await respondToPublicProposal(token, { status: 'Recusada', reason: refusalReason, notes: refusalNotes.trim() });
+      setStatus(response.status);
       setIsRefuseModalOpen(false);
-      setFeedbackMessage({
-        type: 'refused',
-        text: 'Agradecemos pelo seu retorno! Sua resposta foi registrada com sucesso.',
-      });
-    } catch (err) {
-      console.error('Erro ao recusar proposta:', err);
+      setFeedbackMessage({ type: 'refused', text: 'Agradecemos pelo retorno. Sua resposta foi registrada para a integradora.' });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível registrar sua resposta. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -246,7 +169,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
         <div className="text-center space-y-3">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-3 border-amber-400 border-t-transparent" />
           <p className="text-sm font-semibold text-slate-300">Carregando proposta comercial...</p>
-          <p className="text-xs font-mono text-slate-400">{proposalCode}</p>
+          <p className="text-xs font-mono text-slate-400">Proposta comercial FV</p>
         </div>
       </div>
     );
@@ -258,9 +181,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
         <div className="max-w-md w-full bg-[#132030] border border-slate-700/60 rounded-2xl p-6 text-center space-y-4 shadow-xl">
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
           <h2 className="text-lg font-bold">Proposta não encontrada</h2>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Não foi possível localizar os dados da proposta <span className="font-mono font-bold text-white">"{proposalCode}"</span>. Verifique se o link está correto ou entre em contato com a integradora.
-          </p>
+          <p role="alert" className="text-xs text-slate-300 leading-relaxed">{loadError || 'Não foi possível carregar a proposta. Solicite um novo link à integradora.'}</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -273,7 +194,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
     );
   }
 
-  const companyName = proposal.companyInfo?.companyName || 'Sol Amigo Energia Solar';
+  const companyName = proposal.companyInfo?.name || 'Integradora solar';
   const isApproved = status === 'Aprovada';
   const isRefused = status === 'Recusada';
 
@@ -290,9 +211,6 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black text-white truncate">{companyName}</span>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-semibold">
-                  <ShieldCheck className="w-3 h-3" /> Verificada
-                </span>
                 {isApproved && (
                   <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold">
                     <CheckCircle2 className="w-3 h-3" /> Aprovada
@@ -335,6 +253,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
             <button
               type="button"
               onClick={handlePrint}
+              disabled={!coverReady}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95"
               title="Imprimir ou salvar PDF da proposta"
             >
@@ -346,7 +265,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
             {!isApproved && !isRefused && (
               <button
                 type="button"
-                onClick={() => setIsRefuseModalOpen(true)}
+                onClick={() => { setActionError(''); setIsRefuseModalOpen(true); }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 text-xs font-bold transition-all cursor-pointer active:scale-95"
                 title="Recusar proposta comercial"
               >
@@ -359,7 +278,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
             {!isApproved && !isRefused ? (
               <button
                 type="button"
-                onClick={() => setIsAcceptModalOpen(true)}
+                onClick={() => { setActionError(''); setIsAcceptModalOpen(true); }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all shadow-md cursor-pointer active:scale-95 bg-emerald-500 hover:bg-emerald-400 text-slate-950"
                 title="Aprovar e aceitar esta proposta comercial"
               >
@@ -400,7 +319,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
       )}
 
       {/* Corpo da Proposta: Capa e Folhas A4 */}
-      <main className="flex-1 py-4 sm:py-8 px-2 sm:px-4 flex justify-center print:p-0 print:m-0 print:bg-white">
+      <div role="main" className="flex-1 py-4 sm:py-8 px-2 sm:px-4 flex justify-center print:p-0 print:m-0 print:bg-white">
         <div
           id="printable-solar-proposal"
           className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-700/40 overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-w-none print:w-full"
@@ -420,7 +339,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
             theme={theme}
           />
         </div>
-      </main>
+      </div>
 
       {/* Barra Flutuante Inferior para Ações Rápidas (Aprovar / Recusar) */}
       {!isApproved && !isRefused && (
@@ -437,7 +356,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setIsRefuseModalOpen(true)}
+              onClick={() => { setActionError(''); setIsRefuseModalOpen(true); }}
               className="px-3.5 py-2 rounded-xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
             >
               <XCircle className="w-3.5 h-3.5" />
@@ -446,7 +365,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
 
             <button
               type="button"
-              onClick={() => setIsAcceptModalOpen(true)}
+              onClick={() => { setActionError(''); setIsAcceptModalOpen(true); }}
               className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-lg transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -498,6 +417,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
 
             {/* Formulário */}
             <form onSubmit={handleConfirmAccept} className="p-5 space-y-4">
+              {actionError && <p role="alert" className="text-sm text-red-300">{actionError}</p>}
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-start gap-2.5">
                 <FileCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
@@ -643,6 +563,7 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ proposal
 
             {/* Formulário */}
             <form onSubmit={handleConfirmRefuse} className="p-5 space-y-4">
+              {actionError && <p role="alert" className="text-sm text-red-300">{actionError}</p>}
               <p className="text-xs text-slate-300 leading-relaxed">
                 Sentimos muito que a proposta não tenha atendido perfeitamente às suas necessidades. Selecione o motivo principal da recusa para que possamos aprimorar nossas condições:
               </p>

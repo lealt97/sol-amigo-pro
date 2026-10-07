@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import {
   X,
@@ -11,8 +11,9 @@ import {
   QrCode as QrCodeIcon,
   Sparkles,
 } from 'lucide-react';
-import { ClientProposal, getPublicProposalUrl } from '../services/proposals';
-import { ThemeConfig } from '../types';
+import { ClientProposal, clientProposalToSolarProposal } from '../services/proposals';
+import { PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
+import { publishPublicProposal } from '../services/publicProposals';
 import { formatCurrency } from '../utils/formatters';
 
 interface ProposalShareModalProps {
@@ -20,6 +21,8 @@ interface ProposalShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   theme: ThemeConfig;
+  pdfSettings: PdfSettingsConfig;
+  solarProposal?: SolarProposal | null;
   onShowToast: (msg: string) => void;
 }
 
@@ -28,43 +31,46 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
   isOpen,
   onClose,
   theme,
+  pdfSettings,
+  solarProposal,
   onShowToast,
 }) => {
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [loadingQr, setLoadingQr] = useState(false);
 
-  const publicUrl = proposal ? getPublicProposalUrl(proposal.code) : '';
+  const [publicUrl, setPublicUrl] = useState('');
+  const [publishError, setPublishError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const documentProposal = useMemo(() => solarProposal || (proposal ? clientProposalToSolarProposal(proposal) : null), [proposal, solarProposal]);
+  const publication = useRef<{ proposal: SolarProposal; settings: PdfSettingsConfig; theme: ThemeConfig; attempt: number; promise: Promise<string> } | null>(null);
 
   useEffect(() => {
-    if (!proposal || !isOpen || !publicUrl) return;
-
+    setPublicUrl('');
+    setQrDataUrl('');
+    setCopied(false);
+    setPublishError('');
+    if (!documentProposal || !isOpen) {
+      publication.current = null;
+      return;
+    }
     let active = true;
     setLoadingQr(true);
-
-    QRCode.toDataURL(publicUrl, {
-      width: 400,
-      margin: 2,
-      color: {
-        dark: '#0B1522',
-        light: '#FFFFFF',
-      },
-      errorCorrectionLevel: 'M',
-    })
-      .then((url) => {
-        if (active) setQrDataUrl(url);
-      })
-      .catch((err) => {
-        console.error('Erro ao gerar QR Code:', err);
-      })
-      .finally(() => {
-        if (active) setLoadingQr(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [proposal, isOpen, publicUrl]);
+    const previous = publication.current;
+    if (!previous || previous.proposal !== documentProposal || previous.settings !== pdfSettings || previous.theme !== theme || previous.attempt !== attempt) {
+      publication.current = { proposal: documentProposal, settings: pdfSettings, theme, attempt, promise: publishPublicProposal(documentProposal, pdfSettings, theme) };
+    }
+    publication.current!.promise.then(async link => {
+      if (!active) return;
+      const qr = await QRCode.toDataURL(link, { width: 400, margin: 2, color: { dark: '#0B1522', light: '#FFFFFF' }, errorCorrectionLevel: 'M' });
+      if (active) { setPublicUrl(link); setQrDataUrl(qr); }
+    }).catch(error => {
+      if (active) setPublishError(error instanceof Error ? error.message : 'Não foi possível publicar a proposta.');
+    }).finally(() => {
+      if (active) setLoadingQr(false);
+    });
+    return () => { active = false; };
+  }, [documentProposal, isOpen, pdfSettings, theme, attempt]);
 
   // Fechar com ESC
   useEffect(() => {
@@ -78,17 +84,21 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
 
   if (!isOpen || !proposal) return null;
 
-  const handleCopyLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(publicUrl).then(() => {
-        setCopied(true);
-        onShowToast('Link público copiado para a área de transferência!');
-        setTimeout(() => setCopied(false), 3000);
-      });
+  const handleCopyLink = async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setPublishError('');
+      setCopied(true);
+      onShowToast('Link público copiado para a área de transferência!');
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      setPublishError('Selecione e copie o link no campo abaixo.');
     }
   };
 
   const handleSendWhatsApp = () => {
+    if (!publicUrl) return;
     const text = encodeURIComponent(
       `Olá ${proposal.clientName}! Segue o link público para você visualizar a sua proposta de energia solar (${proposal.code}):\n\n` +
         `🔗 ${publicUrl}\n\n` +
@@ -103,7 +113,7 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
   };
 
   const handleOpenLink = () => {
-    window.open(publicUrl, '_blank');
+    if (publicUrl) window.open(publicUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleDownloadQr = () => {
@@ -168,6 +178,8 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
 
         {/* Corpo do Modal */}
         <div className="p-5 overflow-y-auto space-y-5">
+          {publishError && <div role="alert" className="text-sm text-red-300"><p>{publishError}</p>{!publicUrl && <button type="button" onClick={() => setAttempt(value => value + 1)} className="mt-2 underline">Tentar novamente</button>}</div>}
+          {loadingQr && <p role="status" className="text-xs text-center">Publicando proposta e preparando QR Code...</p>}
           {/* Cartão do QR Code Central */}
           <div className="flex flex-col items-center text-center">
             <div className="relative p-3 rounded-2xl bg-white shadow-xl border border-slate-200">
@@ -194,6 +206,7 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
             <button
               type="button"
               onClick={handleDownloadQr}
+              disabled={!qrDataUrl}
               className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
@@ -211,6 +224,8 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
                 type="text"
                 readOnly
                 value={publicUrl}
+                aria-label="Link público da proposta"
+                placeholder={loadingQr ? "Publicando proposta..." : "Link disponível após a publicação"}
                 onFocus={(e) => e.target.select()}
                 className="flex-1 px-3 py-2 rounded-xl border text-xs font-mono bg-black/25 text-slate-200 outline-none truncate"
                 style={{ borderColor: theme.border }}
@@ -219,6 +234,7 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyLink}
+                disabled={!publicUrl}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 active:scale-95 ${
                   copied
                     ? 'bg-emerald-600 text-white'
@@ -266,6 +282,7 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
           <button
             type="button"
             onClick={handleOpenLink}
+            disabled={!publicUrl}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold hover:bg-white/5 transition-all cursor-pointer"
             style={{ borderColor: theme.border, color: theme.text }}
           >
@@ -276,6 +293,7 @@ export const ProposalShareModal: React.FC<ProposalShareModalProps> = ({
           <button
             type="button"
             onClick={handleSendWhatsApp}
+            disabled={!publicUrl}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md transition-all cursor-pointer active:scale-95"
             title="Enviar resumo e link no WhatsApp do cliente"
           >

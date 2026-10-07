@@ -1,4 +1,7 @@
 import { MaintenancePlanSelection, SolarProposal } from '../types';
+import { buildPublicProposalUrl } from '../utils/publicProposal';
+import { mergePublicProposalSignals } from '../utils/publicProposalSignals';
+import { fetchPublicProposalSignals, type PublicProposalSignal } from './publicProposals';
 
 export interface ProposalApprovalDetails {
   approvedBy?: string;
@@ -159,7 +162,9 @@ export function deleteClientProposal(proposalId: string): ClientProposal[] {
 }
 
 export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
-  const local = getStoredProposalsLocal();
+  let local = getStoredProposalsLocal();
+  let publicSignals: PublicProposalSignal[] = [];
+  try { publicSignals = await fetchPublicProposalSignals(); local = applyPublicProposalSignals(publicSignals); } catch { /* Use the local cache while offline. */ }
   try {
     const { supabase } = await import('../lib/supabase');
     const { data, error } = await supabase
@@ -193,7 +198,7 @@ export async function fetchAllClientProposals(): Promise<ClientProposal[]> {
         }
       }
       const finalClean = combined.filter((p) => !isDemoProposal(p));
-      return finalClean;
+      return mergePublicProposalSignals(finalClean, publicSignals);
     }
   } catch {
     // ignore
@@ -359,20 +364,27 @@ export function updateProposalsClientName(
   }
 }
 
-export function getPublicProposalUrl(codeOrId: string): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  return `${origin}${pathname}?proposta=${encodeURIComponent(codeOrId)}`;
+export function getPublicProposalUrl(publicToken: string): string {
+  return buildPublicProposalUrl(publicToken, import.meta.env.VITE_PUBLIC_APP_URL || undefined);
+}
+
+export function applyPublicProposalSignals(signals: PublicProposalSignal[]): ClientProposal[] {
+  const local = getStoredProposalsLocal();
+  const updated = mergePublicProposalSignals(local, signals);
+  if (updated.some((proposal, index) => proposal !== local[index])) saveStoredProposalsLocal(updated);
+  return updated;
 }
 
 export function clientProposalToSolarProposal(
   p: ClientProposal,
-  clientExtra?: { document?: string; street?: string; addressNumber?: string; city?: string; state?: string; concessionaria?: string }
+  clientExtra?: { document?: string; street?: string; addressNumber?: string; city?: string; state?: string; concessionaria?: string; email?: string; phone?: string }
 ): SolarProposal {
   return {
     id: p.id,
     code: p.code,
     clientName: p.clientName,
+    clientEmail: clientExtra?.email,
+    clientPhone: clientExtra?.phone,
     clientDocument: clientExtra?.document,
     clientAddress: [clientExtra?.street, clientExtra?.addressNumber].filter(Boolean).join(', '),
     clientCity: clientExtra?.city || 'Campinas',

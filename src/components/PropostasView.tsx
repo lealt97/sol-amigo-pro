@@ -31,7 +31,7 @@ import {
   deleteClientProposal,
   PROPOSALS_UPDATED_EVENT,
   isDemoProposal,
-  getPublicProposalUrl,
+  clientProposalToSolarProposal,
 } from '../services/proposals';
 import { fetchClients } from '../services/clients';
 import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
@@ -125,44 +125,11 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   }, [initialFilterCode]);
 
   // Conversor para SolarProposal (para o ProposalViewerModal)
-  const clientPropToSolar = (p: ClientProposal): SolarProposal => ({
-    id: p.id,
-    code: p.code,
-    clientName: p.clientName,
-    clientDocument: clients.find(client => client.id === p.clientId)?.document,
-    clientAddress: [clients.find(client => client.id === p.clientId)?.street, clients.find(client => client.id === p.clientId)?.addressNumber].filter(Boolean).join(", "),
-    clientCity: 'Campinas',
-    clientState: 'SP',
-    concessionaria: 'CPFL Paulista',
-    monthlyConsumptionKWh: p.estimatedMonthlyGenKWh || 1200,
-    systemPowerKWp: p.systemPowerKWp,
-    systemType: p.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
-    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh || Math.round(p.systemPowerKWp * 120),
-    modulesCount: p.modulesCount || Math.ceil((p.systemPowerKWp * 1000) / 585),
-    moduleModel: p.moduleModel || 'Canadian Solar 585W TOPCon Bi-facial',
-    inverterModel: p.inverterModel || 'Inversor Deye Trifásico',
-    batteryModel: p.batteryModel,
-    batteryCount: p.batteryCount,
-    totalValue: p.totalValue,
-    estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
-    paybackYears: p.estimatedMonthlySavings && p.estimatedMonthlySavings > 0 ? p.totalValue / (p.estimatedMonthlySavings * 12) : 0,
-    ...p.documentSnapshot,
-    status: p.status,
-    maintenancePlan: p.maintenancePlan,
-    createdAt: p.createdAt,
-  });
+  const clientPropToSolar = (p: ClientProposal): SolarProposal => clientProposalToSolarProposal(p, clients.find(client => client.id === p.clientId));
+  const sharingSolarProposal = useMemo(() => sharingProposal ? clientPropToSolar(sharingProposal) : null, [sharingProposal, clients]);
 
   const handleOpenViewer = (p: ClientProposal) => {
     setViewingProposal(clientPropToSolar(p));
-  };
-
-  const handleOpenPublicLink = (p: ClientProposal) => {
-    const url = getPublicProposalUrl(p.code);
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).catch(() => {});
-    }
-    window.open(url, '_blank');
-    onShowToast(`Link público da proposta ${p.code} aberto e copiado!`);
   };
 
   // Salvar nova proposta criada no NewProposalModal
@@ -757,6 +724,8 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       {/* Modal de Compartilhamento com QR Code, Copiar Link e Enviar */}
       <ProposalShareModal
         proposal={sharingProposal}
+        solarProposal={sharingSolarProposal}
+        pdfSettings={pdfSettings}
         isOpen={Boolean(sharingProposal)}
         onClose={() => setSharingProposal(null)}
         theme={theme}

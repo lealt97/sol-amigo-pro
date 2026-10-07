@@ -23,7 +23,6 @@ import { ProposalShareModal } from './ProposalShareModal';
 import {
   ClientProposal,
   getStoredProposalsLocal,
-  saveStoredProposalsLocal,
 } from '../services/proposals';
 import {
   getPdfCoverAssetUrl,
@@ -116,31 +115,20 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
   const renameDialogRef = useRef<HTMLDialogElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
+  const [sharingSettings, setSharingSettings] = useState<PdfSettingsConfig>(currentPdfSettings);
+  const [shareSelection, setShareSelection] = useState<{ model: PdfCoverModel; proposals: ClientProposal[] } | null>(null);
+  const [shareSelectionId, setShareSelectionId] = useState('');
+  const startSharing = (proposal: ClientProposal, settings: PdfSettingsConfig) => {
+    setSharingSettings(settings);
+    setSharingProposal(proposal);
+    setShareSelection(null);
+  };
   const handleOpenShareModal = (model: PdfCoverModel) => {
     const existing = getStoredProposalsLocal();
-    let propToShare = existing[0];
-    if (!propToShare) {
-      const codeNum = Math.floor(100 + Math.random() * 899);
-      propToShare = {
-        id: `prop-${Date.now()}`,
-        code: `PROP-2026-${codeNum}`,
-        clientId: 'cli-sample',
-        clientName: 'Carlos Eduardo Ferreira',
-        title: `Proposta Residencial Solar (12.5 kWp)`,
-        systemPowerKWp: 12.5,
-        systemType: 'On-Grid',
-        totalValue: 46800,
-        status: 'Pendente',
-        modulesCount: 22,
-        moduleModel: 'Canadian Solar 585W TOPCon',
-        inverterModel: 'Inversor Deye 12kW',
-        estimatedMonthlyGenKWh: 1580,
-        estimatedMonthlySavings: 1350,
-        createdAt: new Date().toISOString(),
-      };
-      saveStoredProposalsLocal([propToShare]);
-    }
-    setSharingProposal(propToShare);
+    if (!existing.length) { onShowToast('Crie uma proposta na aba Propostas antes de gerar um link público.'); return; }
+    if (existing.length === 1) { startSharing(existing[0], model.settings); return; }
+    setShareSelectionId('');
+    setShareSelection({ model, proposals: existing });
   };
 
   useEffect(() => {
@@ -1266,8 +1254,23 @@ export const PdfCustomizacoesView: React.FC<PdfCustomizacoesViewProps> = ({
         </form>
       </dialog>
 
+      {shareSelection && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-labelledby="select-share-proposal-title" onKeyDown={event => { if (event.key === 'Escape') setShareSelection(null); }}>
+        <div className="w-full max-w-md rounded-xl border p-5" style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border, color: currentTheme.text }}>
+          <h2 id="select-share-proposal-title" className="text-sm font-bold">Qual proposta deseja compartilhar?</h2>
+          <p className="mt-2 text-xs">Capa selecionada: {shareSelection.model.name}</p>
+          <select autoFocus aria-label="Proposta para compartilhar" value={shareSelectionId} onChange={event => setShareSelectionId(event.target.value)} className="crm-input mt-4">
+            <option value="">Selecione uma proposta</option>
+            {shareSelection.proposals.map(item => <option key={item.id} value={item.id}>{item.code} — {item.clientName}</option>)}
+          </select>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setShareSelection(null)} className="rounded-lg border px-3 py-2 text-xs">Cancelar</button>
+            <button type="button" disabled={!shareSelectionId} onClick={() => { const selected = shareSelection.proposals.find(item => item.id === shareSelectionId); if (selected) startSharing(selected, shareSelection.model.settings); }} className="rounded-lg bg-blue-600 px-3 py-2 text-xs text-white">Compartilhar</button>
+          </div>
+        </div>
+      </div>}
       <ProposalShareModal
         proposal={sharingProposal}
+        pdfSettings={sharingSettings}
         isOpen={Boolean(sharingProposal)}
         onClose={() => setSharingProposal(null)}
         theme={currentTheme}
