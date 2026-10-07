@@ -215,6 +215,8 @@ export interface SolarProposal {
     modulePowerW?: number;
     energyTariff?: number;
     backupAutonomyHours?: number;
+    estimatedAreaM2?: number;
+    inverterCount?: number;
   };
   id: string;
   code: string;
