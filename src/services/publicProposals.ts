@@ -1,9 +1,11 @@
+import { assertPublishableProposal } from '../features/proposals/document';
 import { supabase, SUPABASE_URL } from '../lib/supabase';
 import type { PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
 import { companyInfoFromUser } from './proposalCompany';
 import { buildPublicProposalUrl, createPublicProposalDocument, createPublicProposalToken, hashPublicProposalToken, PUBLIC_PROPOSAL_TOKEN, type PublicProposalDocument, type PublicProposalResponse } from '../utils/publicProposal';
 
 export async function publishPublicProposal(proposal: SolarProposal, pdfSettings: PdfSettingsConfig, theme: ThemeConfig): Promise<string> {
+  assertPublishableProposal(proposal);
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) throw new Error('Entre na sua conta para gerar o link público.');
   const token = createPublicProposalToken();

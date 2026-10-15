@@ -1,10 +1,11 @@
+import { accountStorage } from '../platform/workspace/workspace';
 const STORAGE_KEY = 'solamigo_lead_notes_overrides';
 export const LEAD_NOTES_CHANGED_EVENT = 'solamigo:lead-notes-changed';
 
 function getNotesMap(): Record<string, string> {
   if (typeof window === 'undefined' || !window.localStorage) return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = accountStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -14,7 +15,7 @@ function getNotesMap(): Record<string, string> {
 function saveNotesMap(map: Record<string, string>): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    accountStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
     // Ignora potenciais restrições de cota no localStorage
   }

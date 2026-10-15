@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { supabase } from '../lib/supabase';
 import { Lead, LeadStage } from '../types';
 import { parseLeadNotes } from '../utils/leadNotes';
@@ -24,7 +25,7 @@ export function isValidUuid(id: string): boolean {
 export function getStoredManualLeads(): Lead[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(MANUAL_LEADS_STORAGE_KEY);
+    const raw = accountStorage.getItem(MANUAL_LEADS_STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -34,7 +35,7 @@ export function getStoredManualLeads(): Lead[] {
 export function saveStoredManualLeads(leads: Lead[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(MANUAL_LEADS_STORAGE_KEY, JSON.stringify(leads));
+    accountStorage.setItem(MANUAL_LEADS_STORAGE_KEY, JSON.stringify(leads));
   } catch {
     // Non-blocking
   }
@@ -44,10 +45,8 @@ export type ProposalSystemType = 'On-Grid' | 'Híbrido';
 
 export const LEADS_UPDATED_EVENT = 'solamigo:leads-updated';
 
-export const isLeadConverted = (lead?: Lead | Partial<Lead> | null): boolean => {
-  if (!lead) return false;
-  return Boolean(lead.clientId || (lead.status as string) === 'Cliente' || lead.status === 'ganho');
-};
+export { isLeadConverted } from '../features/crm/leadSelectors';
+import { isLeadConverted } from '../features/crm/leadSelectors';
 
 export const isActiveLead = (lead: Lead): boolean => {
   return !isLeadConverted(lead);

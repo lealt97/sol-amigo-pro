@@ -16,7 +16,7 @@ export interface CommercialPricingInput {
   additionalSaleValue?: number;
 }
 
-const nonNegative = (value: number) => Math.max(0, Number(value) || 0);
+const nonNegative = (value: number) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 
 export const calculateCommercialPricing = (input: CommercialPricingInput) => {
   const equipmentCost = input.equipmentItems.reduce(
@@ -31,11 +31,14 @@ export const calculateCommercialPricing = (input: CommercialPricingInput) => {
   const directCost = baseDirectCost + additionalDirectCost;
   const deductionsPercent = nonNegative(input.taxesPercent) + nonNegative(input.commissionPercent)
     + nonNegative(input.targetMarginPercent);
-  const divisor = Math.max(0.05, 1 - deductionsPercent / 100);
-  const baseGrossSalePrice = baseDirectCost > 0 ? baseDirectCost / divisor : 0;
+  const invalidPercent = [input.taxesPercent, input.commissionPercent, input.targetMarginPercent].some(value => !Number.isFinite(value) || value < 0 || value > 100);
+  const validationError = invalidPercent || deductionsPercent >= 100
+    ? 'A soma de impostos, comissão e margem deve ser menor que 100%, com percentuais válidos.' : '';
+  const divisor = 1 - deductionsPercent / 100;
+  const baseGrossSalePrice = !validationError && baseDirectCost > 0 ? baseDirectCost / divisor : 0;
   const grossSalePrice = baseGrossSalePrice + additionalSaleValue;
   const discountValue = Math.min(nonNegative(input.discountValue), grossSalePrice * 0.5);
-  const finalSalePrice = Math.max(0, grossSalePrice - discountValue);
+  const finalSalePrice = validationError ? 0 : Math.max(0, grossSalePrice - discountValue);
   const taxesValue = finalSalePrice * nonNegative(input.taxesPercent) / 100;
   const commissionValue = finalSalePrice * nonNegative(input.commissionPercent) / 100;
   const totalCost = directCost + taxesValue + commissionValue;
@@ -44,7 +47,7 @@ export const calculateCommercialPricing = (input: CommercialPricingInput) => {
   const installedPowerWp = nonNegative(input.installedPowerKWp) * 1000;
 
   return {
-    equipmentCost, fixedCosts, additionalDirectCost, additionalSaleValue,
+    validationError, equipmentCost, fixedCosts, additionalDirectCost, additionalSaleValue,
     grossSalePrice, discountValue, finalSalePrice,
     taxesValue, commissionValue, totalCost, profit, marginPercent,
     pricePerWp: installedPowerWp > 0 ? finalSalePrice / installedPowerWp : 0,

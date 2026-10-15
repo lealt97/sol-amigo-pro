@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { SolarKit, SolarSystemType } from '../types';
 
 export const KITS_STORAGE_KEY = 'solarmarket_kits_catalog_v1';
@@ -53,14 +54,14 @@ const LEGACY_MOCK_KIT_IDS = new Set([
 export function getStoredKits(): SolarKit[] {
   try {
     if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-      const raw = window.localStorage.getItem(KITS_STORAGE_KEY);
+      const raw = accountStorage.getItem(KITS_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const userKits = parsed
             .filter(
               (k): k is SolarKit =>
-                Boolean(k && typeof k === 'object' && !LEGACY_MOCK_KIT_IDS.has(k.id))
+                Boolean(k && typeof k === 'object')
             )
             .map((k, idx) => {
               const kwp = Number(k.powerKWp) || Number(k.maxPowerKWp) || 5.0;
@@ -68,7 +69,7 @@ export function getStoredKits(): SolarKit[] {
                 id: k.id || `kit-custom-${idx}`,
                 name: k.name || `Kit Solar ${kwp} kWp`,
                 sku: k.sku || `KIT-${idx + 1}`,
-                systemType: (k.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid') as SolarSystemType,
+                systemType: (['On-Grid','Híbrido','Off-Grid'].includes(k.systemType) ? k.systemType : 'On-Grid') as SolarSystemType,
                 minPowerKWp: Number(k.minPowerKWp) || Number((kwp * 0.9).toFixed(2)),
                 maxPowerKWp: Number(k.maxPowerKWp) || Number((kwp * 1.1).toFixed(2)),
                 powerKWp: kwp,
@@ -86,9 +87,9 @@ export function getStoredKits(): SolarKit[] {
                 utilityFee: Number(k.utilityFee) || 0,
                 freightCost: Number(k.freightCost) || 0,
                 otherCosts: Number(k.otherCosts) || 0,
-                taxesPercent: Number(k.taxesPercent) || 4.5,
-                commissionPercent: Number(k.commissionPercent) || 5.0,
-                targetMarginPercent: Number(k.targetMarginPercent) || 22.0,
+                taxesPercent: Number(k.taxesPercent ?? 0),
+                commissionPercent: Number(k.commissionPercent ?? 0),
+                targetMarginPercent: Number(k.targetMarginPercent ?? 0),
                 warrantyTerms: k.warrantyTerms || '',
                 notes: k.notes || '',
                 suggestedPrice: Number(k.suggestedPrice) || 0,
@@ -98,7 +99,7 @@ export function getStoredKits(): SolarKit[] {
               };
             });
           if (userKits.length !== parsed.length) {
-            window.localStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(userKits));
+            accountStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(userKits));
           }
           return userKits;
         }
@@ -115,7 +116,7 @@ export const KITS_UPDATED_EVENT = 'solar_kits_updated';
 export function saveStoredKits(kits: SolarKit[]): void {
   try {
     if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-      window.localStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(kits));
+      accountStorage.setItem(KITS_STORAGE_KEY, JSON.stringify(kits));
       window.dispatchEvent(new CustomEvent(KITS_UPDATED_EVENT, { detail: kits }));
     }
   } catch (err) {
@@ -188,7 +189,7 @@ export function deleteCustomKit(kitId: string): void {
 export function restoreDefaultKits(): SolarKit[] {
   try {
     if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-      window.localStorage.removeItem(KITS_STORAGE_KEY);
+      accountStorage.removeItem(KITS_STORAGE_KEY);
       window.dispatchEvent(new CustomEvent(KITS_UPDATED_EVENT, { detail: [] }));
     }
   } catch (err) {

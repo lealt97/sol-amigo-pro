@@ -17,7 +17,7 @@ interface NewProposalModalProps {
   onClose: () => void;
   clients: Client[];
   theme: ThemeConfig;
-  onSaveProposal: (proposal: SolarProposal) => void;
+  onSaveProposal: (proposal: SolarProposal) => void | Promise<void>;
   onShowToast: (msg: string) => void;
 }
 
@@ -71,7 +71,7 @@ export const NewProposalModal: React.FC<NewProposalModalProps> = ({
     }
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const codeNum = Math.floor(1000 + Math.random() * 9000);
     const newProposal: SolarProposal = {
@@ -97,9 +97,8 @@ export const NewProposalModal: React.FC<NewProposalModalProps> = ({
       validUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
     };
 
-    onSaveProposal(newProposal);
-    onClose();
-    onShowToast(`Proposta ${newProposal.code} dimensionada com sucesso!`);
+    try { await onSaveProposal(newProposal); onClose(); }
+    catch (error) { onShowToast(error instanceof Error ? error.message : 'Não foi possível salvar a proposta.'); }
   };
 
   if (!isOpen) return null;

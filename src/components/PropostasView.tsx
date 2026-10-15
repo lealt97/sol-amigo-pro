@@ -1,3 +1,4 @@
+import { saveWorkspace } from '../platform/workspace/workspace';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
@@ -107,9 +108,9 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     };
   }, []);
 
-  const handleDeleteProposal = (p: ClientProposal) => {
+  const handleDeleteProposal = async (p: ClientProposal) => {
     try {
-      const updated = deleteClientProposal(p.id);
+      const updated = await deleteClientProposal(p.id);
       setProposals(updated);
       onShowToast(`Proposta ${p.code} excluída.`);
     } catch {
@@ -133,11 +134,11 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   };
 
   // Salvar nova proposta criada no NewProposalModal
-  const handleSaveNewProposal = (newSolar: SolarProposal) => {
+  const handleSaveNewProposal = async (newSolar: SolarProposal) => {
     const newClientProp: ClientProposal = {
       id: newSolar.id,
       code: newSolar.code,
-      clientId: `cli-${Date.now()}`,
+      clientId: newSolar.clientId || newSolar.leadId || '',
       clientName: newSolar.clientName,
       title: `${newSolar.systemPowerKWp} kWp • ${newSolar.clientName}`,
       systemPowerKWp: newSolar.systemPowerKWp,
@@ -159,6 +160,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     const updated = [newClientProp, ...proposals];
     setProposals(updated);
     saveStoredProposalsLocal(updated);
+    await saveWorkspace();
     setIsNewProposalModalOpen(false);
     onShowToast(`Proposta ${newSolar.code} criada com sucesso!`);
   };

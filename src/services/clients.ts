@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { Client, Lead } from '../types';
 import { INITIAL_CLIENTS } from '../data/initialData';
 import { serializeLeadNotes, parseLeadNotes, LeadNote } from '../utils/leadNotes';
@@ -12,7 +13,7 @@ export const CLIENTS_UPDATED_EVENT = 'solamigo:clients-updated';
 export function getDeletedClientIds(): Set<string> {
   if (typeof window === 'undefined' || !window.localStorage) return new Set();
   try {
-    const raw = localStorage.getItem(DELETED_CLIENTS_KEY);
+    const raw = accountStorage.getItem(DELETED_CLIENTS_KEY);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return new Set(Array.isArray(arr) ? arr : []);
@@ -33,7 +34,7 @@ export function markClientAsDeleted(id: string): void {
       set.add(`cli-${bare}`);
       set.add(`lead-${bare}`);
     }
-    localStorage.setItem(DELETED_CLIENTS_KEY, JSON.stringify(Array.from(set)));
+    accountStorage.setItem(DELETED_CLIENTS_KEY, JSON.stringify(Array.from(set)));
   } catch {}
 }
 
@@ -79,7 +80,7 @@ export function fetchClientsLocal(): Client[] {
   }
 
   try {
-    const raw = localStorage.getItem(CLIENTS_STORAGE_KEY);
+    const raw = accountStorage.getItem(CLIENTS_STORAGE_KEY);
     if (!raw) {
       return [];
     }
@@ -88,11 +89,10 @@ export function fetchClientsLocal(): Client[] {
       const clean = parsed.filter(
         (c: any) =>
           c &&
-          !LEGACY_MOCK_CLIENT_IDS.has(c.id) &&
           !isClientMarkedDeleted(c.id, c.sourceLeadId)
       );
       if (clean.length !== parsed.length) {
-        localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clean));
+        accountStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clean));
       }
       return clean;
     }
@@ -106,7 +106,7 @@ export function fetchClientsLocal(): Client[] {
 export function saveClientsLocal(clients: Client[], emitEvent = true): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
+    accountStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
     if (emitEvent) {
       window.dispatchEvent(new CustomEvent(CLIENTS_UPDATED_EVENT, { detail: clients }));
     }
@@ -124,6 +124,7 @@ export async function fetchClients(): Promise<Client[]> {
       .order('created_at', { ascending: false });
 
     if (!error && Array.isArray(data)) {
+      const localClients = fetchClientsLocal();
       const mappedDbClients: Client[] = data.map((row: any) => ({
         id: row.id,
         userId: row.user_id,
@@ -400,7 +401,7 @@ export async function deleteClient(clientId: string, sourceLeadId?: string): Pro
 
   // Also remove or unlink from stored manual leads so it does not resurrect
   try {
-    const rawLeads = localStorage.getItem('solamigo.manual-leads.v1');
+    const rawLeads = accountStorage.getItem('solamigo.manual-leads.v1');
     if (rawLeads) {
       const leads = JSON.parse(rawLeads);
       if (Array.isArray(leads)) {
@@ -422,7 +423,7 @@ export async function deleteClient(clientId: string, sourceLeadId?: string): Pro
           return l;
         });
         if (changed) {
-          localStorage.setItem('solamigo.manual-leads.v1', JSON.stringify(updatedLeads));
+          accountStorage.setItem('solamigo.manual-leads.v1', JSON.stringify(updatedLeads));
         }
       }
     }

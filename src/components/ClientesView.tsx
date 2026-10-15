@@ -1,3 +1,5 @@
+import { clientProposalToSolarProposal } from '../features/proposals/document';
+import { saveWorkspace } from '../platform/workspace/workspace';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
@@ -553,7 +555,7 @@ export function ClientesView({
   };
 
   // Salvar proposta gerada
-  const handleSaveProposalFromModal = (proposal: SolarProposal) => {
+  const handleSaveProposalFromModal = async (proposal: SolarProposal) => {
     const newProp: ClientProposal = {
       id: proposal.id,
       code: proposal.code,
@@ -578,37 +580,14 @@ export function ClientesView({
     const currentProps = getStoredProposalsLocal();
     const updated = [newProp, ...currentProps];
     saveStoredProposalsLocal(updated);
+    await saveWorkspace();
     setAllProposals(updated);
     setIsNewProposalModalOpen(false);
     onShowToast(`Proposta ${proposal.code} criada com sucesso para ${proposal.clientName}!`);
   };
 
   // Converter ClientProposal para SolarProposal para visualização
-  const convertToSolarProposal = (p: ClientProposal, client?: Client): SolarProposal => ({
-    id: p.id,
-    code: p.code,
-    clientName: p.clientName,
-    clientDocument: client?.document,
-    clientAddress: [client?.street, client?.addressNumber].filter(Boolean).join(", "),
-    clientCity: client?.city || 'Campinas',
-    clientState: client?.state || 'SP',
-    concessionaria: client?.concessionaria || 'CPFL Paulista',
-    monthlyConsumptionKWh: p.estimatedMonthlyGenKWh || 1200,
-    systemPowerKWp: p.systemPowerKWp,
-    systemType: p.systemType === 'Híbrido' ? 'Híbrido' : 'On-Grid',
-    estimatedMonthlyGenKWh: p.estimatedMonthlyGenKWh || Math.round(p.systemPowerKWp * 120),
-    modulesCount: p.modulesCount || Math.ceil((p.systemPowerKWp * 1000) / 585),
-    moduleModel: p.moduleModel || 'Canadian Solar 585W TOPCon Bi-facial',
-    inverterModel: p.inverterModel || 'Inversor Deye Trifásico',
-    batteryModel: p.batteryModel,
-    batteryCount: p.batteryCount,
-    totalValue: p.totalValue,
-    estimatedMonthlySavings: p.estimatedMonthlySavings || Math.round(p.totalValue * 0.025),
-    paybackYears: p.estimatedMonthlySavings && p.estimatedMonthlySavings > 0 ? p.totalValue / (p.estimatedMonthlySavings * 12) : 0,
-    ...p.documentSnapshot,
-    status: p.status,
-    createdAt: p.createdAt,
-  });
+  const convertToSolarProposal = clientProposalToSolarProposal;
 
   return (
     <section id="clientes-page" className="space-y-5">

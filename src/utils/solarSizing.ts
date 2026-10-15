@@ -34,6 +34,7 @@ const assertFiniteRange = (label: string, value: number, min: number, max: numbe
 };
 
 export const validateSolarSizingInputs = (inputs: SolarSizingInputs) => {
+  if (inputs.systemType === 'Off-Grid') throw new Error('O dimensionamento off-grid exige um motor próprio. Este cálculo atende sistemas on-grid e híbridos.');
   if (inputs.monthlyConsumptionKWh.length !== 12 || inputs.monthlySunHours.length !== 12) {
     throw new Error('Informe os 12 meses de consumo e de HSP.');
   }

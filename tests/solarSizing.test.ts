@@ -122,3 +122,12 @@ test('dimensionamento rejeita perdas combinadas superiores a 80%', () => {
     notes: '',
   }), /A soma das perdas não pode ultrapassar 80%/);
 });
+
+test('referência da planilha: perdas são tratadas como eficiência e geração cobre o objetivo', () => {
+  // Planilha de Dimensionamento.xlsx, Análise Técnica C3/C5/C9/C14/C19.
+  // A planilha usa (1 + perdas) em C16; o motor usa 1 / (1 - perdas), sem replicar essa aproximação.
+  const result=calculateOnGridMonthlySizing({monthlyConsumptionKWh:1016.6666666666666,connectionType:'Bifásica',hsp:5.320058333333334,performanceRatioPercent:78.612,targetCoveragePercent:100,modulePowerW:320});
+  assert.equal(result.modulesCount,25);assert.equal(result.installedPowerKWp,8);
+  assert.ok(result.estimatedMonthlyGenerationKWh>=result.designConsumptionKWh);
+  assert.ok(Math.abs(result.requiredPowerKWp-7.7046)<0.0001);
+});

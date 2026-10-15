@@ -97,19 +97,19 @@ test('comparação percentual trata base zero sem inventar crescimento', () => {
 });
 
 test('período de 30 dias cobre exatamente 30 dias e gera cinco barras', () => {
-  const now = new Date('2026-10-01T12:00:00.000Z');
+  const now = new Date('2026-10-01T12:00:00.000');
   const range = getDashboardDateRange('30d', now);
-  assert.equal(range.start?.toISOString().slice(0, 10), '2026-09-02');
-  assert.equal(range.end.toISOString().slice(0, 10), '2026-10-01');
+  assert.equal(range.start?.toLocaleDateString('sv-SE'), '2026-09-02');
+  assert.equal(range.end.toLocaleDateString('sv-SE'), '2026-10-01');
 
   const buckets = buildDashboardBuckets('30d', now);
   assert.equal(buckets.length, 5);
-  assert.equal(buckets[0].start.toISOString().slice(0, 10), '2026-09-02');
-  assert.equal(buckets[4].end.toISOString().slice(0, 10), '2026-10-01');
+  assert.equal(buckets[0].start.toLocaleDateString('sv-SE'), '2026-09-02');
+  assert.equal(buckets[4].end.toLocaleDateString('sv-SE'), '2026-10-01');
 });
 
 test('ano gera doze barras mensais', () => {
-  const buckets = buildDashboardBuckets('year', new Date('2026-10-01T12:00:00.000Z'));
+  const buckets = buildDashboardBuckets('year', new Date('2026-10-01T12:00:00.000'));
   assert.equal(buckets.length, 12);
   assert.equal(buckets.at(-1)?.label.toLocaleLowerCase('pt-BR'), 'out');
 });

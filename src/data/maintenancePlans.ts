@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { MaintenancePlanSelection } from '../types';
 import {
   estimateMaintenanceVisitsPerYear,
@@ -118,17 +119,12 @@ const normalizePlan = (plan: Partial<MaintenancePlanSelection>, index = 0): Main
 export function getStoredMaintenancePlans(): MaintenancePlanSelection[] {
   if (typeof window === 'undefined' || !window.localStorage) return DEFAULT_MAINTENANCE_PLANS;
   try {
-    const raw = localStorage.getItem(MAINTENANCE_PLANS_STORAGE_KEY);
+    const raw = accountStorage.getItem(MAINTENANCE_PLANS_STORAGE_KEY);
     if (!raw) {
-      saveStoredMaintenancePlans(DEFAULT_MAINTENANCE_PLANS);
       return DEFAULT_MAINTENANCE_PLANS;
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_MAINTENANCE_PLANS;
-    if (parsed.length === 2 && parsed.every((p) => p.id === 'maintenance-semiannual' || p.id === 'maintenance-annual')) {
-      saveStoredMaintenancePlans(DEFAULT_MAINTENANCE_PLANS);
-      return DEFAULT_MAINTENANCE_PLANS;
-    }
+    if (!Array.isArray(parsed)) return DEFAULT_MAINTENANCE_PLANS;
     return parsed.map(normalizePlan);
   } catch (err) {
     console.warn('Erro ao carregar planos de manutenção:', err);
@@ -139,7 +135,7 @@ export function getStoredMaintenancePlans(): MaintenancePlanSelection[] {
 export function saveStoredMaintenancePlans(plans: MaintenancePlanSelection[]): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   const normalized = plans.map(normalizePlan);
-  localStorage.setItem(MAINTENANCE_PLANS_STORAGE_KEY, JSON.stringify(normalized));
+  accountStorage.setItem(MAINTENANCE_PLANS_STORAGE_KEY, JSON.stringify(normalized));
   window.dispatchEvent(new CustomEvent(MAINTENANCE_PLANS_UPDATED_EVENT, { detail: normalized }));
 }
 

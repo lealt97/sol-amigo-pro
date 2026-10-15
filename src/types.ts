@@ -205,6 +205,8 @@ export interface ProposalEquipmentOutput {
 }
 
 export interface SolarProposal {
+  clientId?: string;
+  leadId?: string;
   companyInfo?: ProposalCompanyInfo;
   clientDocument?: string;
   clientAddress?: string;
@@ -232,7 +234,7 @@ export interface SolarProposal {
   concessionaria: string;
   monthlyConsumptionKWh: number;
   systemPowerKWp: number;
-  systemType?: 'On-Grid' | 'Híbrido';
+  systemType?: 'On-Grid' | 'Híbrido' | 'Off-Grid';
   estimatedMonthlyGenKWh: number;
   modulesCount: number;
   moduleModel: string;
@@ -566,7 +568,7 @@ export interface EnergySurvey {
 
 export type SizingStatus = 'rascunho' | 'concluido';
 export type SolarConnectionType = 'Monofásica' | 'Bifásica' | 'Trifásica';
-export type SolarSystemType = 'On-Grid' | 'Híbrido';
+export type SolarSystemType = 'On-Grid' | 'Híbrido' | 'Off-Grid';
 
 export interface HybridPriorityLoad {
   id: string;
@@ -692,6 +694,7 @@ export interface AdditionalProjectCost {
 }
 
 export interface OpportunityKitCosts {
+  validationError?: string;
   equipmentItems: KitEquipmentItem[];
   installationCost: number;
   engineeringCost: number;

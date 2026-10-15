@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: Validate types and CRM contracts
-        run: npm run lint && npm test && npm run check:crm
+        run: npm run lint && npm test && npm run test:db && npm run test:timezones && npm run check:crm
 
       - name: Build
         run: npm run build

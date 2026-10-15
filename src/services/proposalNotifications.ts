@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { fetchPublicProposalSignals } from './publicProposals';
 import { applyPublicProposalSignals } from './proposals';
 
@@ -28,7 +29,7 @@ const listeners = new Set<NotificationListener>();
 export function getProposalNotifications(): ProposalNotificationItem[] {
   if (typeof window === 'undefined' || !window.localStorage) return [];
   try {
-    const raw = localStorage.getItem(STORAGE_NOTIFS_KEY);
+    const raw = accountStorage.getItem(STORAGE_NOTIFS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -43,7 +44,7 @@ export function getProposalNotifications(): ProposalNotificationItem[] {
 export function saveProposalNotifications(items: ProposalNotificationItem[]): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    localStorage.setItem(STORAGE_NOTIFS_KEY, JSON.stringify(items));
+    accountStorage.setItem(STORAGE_NOTIFS_KEY, JSON.stringify(items));
     window.dispatchEvent(
       new CustomEvent(PROPOSAL_NOTIFICATIONS_EVENT, { detail: items })
     );

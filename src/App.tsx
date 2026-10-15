@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { ResetPasswordView } from './components/ResetPasswordView';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { workspace } from './platform/workspace/workspace';
 import { CheckCircle2 } from 'lucide-react';
 import { PageKey, PdfSettingsConfig, ThemeConfig } from './types';
 import { applyThemeToDOM, getContrastFg, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
@@ -9,32 +12,34 @@ import { Topbar } from './components/Topbar';
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { MfaChallengeView } from './components/MfaChallengeView';
-import { SecurityView } from './components/SecurityView';
-import { ProfileView } from './components/ProfileView';
-import { RiskAreaView } from './components/RiskAreaView';
-import { PersonalizacaoView } from './components/PersonalizacaoView';
-import { PdfCustomizacoesView } from './components/PdfCustomizacoesView';
 import { HelpModal } from './components/HelpModal';
-import { PublicLeadFormView } from './components/PublicLeadFormView';
-import { PublicProposalView } from './components/PublicProposalView';
-import { WebsiteFormIntegrationView } from './components/WebsiteFormIntegrationView';
-import { LeadsView } from './components/LeadsView';
-import { ClientesView } from './components/ClientesView';
-import { AnotacoesView } from './components/AnotacoesView';
-import { PropostasView } from './components/PropostasView';
-import { KitsView } from './components/KitsView';
-import { PosVendaView } from './components/PosVendaView';
-import { CalendarView } from './components/CalendarView';
-import { DashboardView } from './components/DashboardView';
 
-type AuthScreen = 'login' | 'register' | 'mfa';
+const WorkspaceGate = lazy(() => import('./components/workspace/WorkspaceGate').then(module => ({ default: module.WorkspaceGate })));
+const SecurityView = lazy(() => import('./components/SecurityView').then(module => ({ default: module.SecurityView })));
+const ProfileView = lazy(() => import('./components/ProfileView').then(module => ({ default: module.ProfileView })));
+const RiskAreaView = lazy(() => import('./components/RiskAreaView').then(module => ({ default: module.RiskAreaView })));
+const PersonalizacaoView = lazy(() => import('./components/PersonalizacaoView').then(module => ({ default: module.PersonalizacaoView })));
+const PdfCustomizacoesView = lazy(() => import('./components/PdfCustomizacoesView').then(module => ({ default: module.PdfCustomizacoesView })));
+const PublicLeadFormView = lazy(() => import('./components/PublicLeadFormView').then(module => ({ default: module.PublicLeadFormView })));
+const PublicProposalView = lazy(() => import('./components/PublicProposalView').then(module => ({ default: module.PublicProposalView })));
+const WebsiteFormIntegrationView = lazy(() => import('./components/WebsiteFormIntegrationView').then(module => ({ default: module.WebsiteFormIntegrationView })));
+const LeadsView = lazy(() => import('./components/LeadsView').then(module => ({ default: module.LeadsView })));
+const ClientesView = lazy(() => import('./components/ClientesView').then(module => ({ default: module.ClientesView })));
+const AnotacoesView = lazy(() => import('./components/AnotacoesView').then(module => ({ default: module.AnotacoesView })));
+const PropostasView = lazy(() => import('./components/PropostasView').then(module => ({ default: module.PropostasView })));
+const KitsView = lazy(() => import('./components/KitsView').then(module => ({ default: module.KitsView })));
+const PosVendaView = lazy(() => import('./components/PosVendaView').then(module => ({ default: module.PosVendaView })));
+const CalendarView = lazy(() => import('./components/CalendarView').then(module => ({ default: module.CalendarView })));
+const DashboardView = lazy(() => import('./components/DashboardView').then(module => ({ default: module.DashboardView })));
+
+type AuthScreen = 'login' | 'register' | 'mfa' | 'recovery';
 
 const getBlankPageId = (page: PageKey) => {
   if (page === 'dashboard') return 'dashboard-view';
   return `${page}-page`;
 };
 
-export default function App() {
+function AppContent() {
   const publicProposalParams = new URLSearchParams(window.location.search);
   const publicProposalToken = publicProposalParams.get('proposta') ?? publicProposalParams.get('prop') ?? publicProposalParams.get('p');
   const publicLeadFormToken =
@@ -42,7 +47,7 @@ export default function App() {
     new URLSearchParams(window.location.search).get('formToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
+  const [authScreen, setAuthScreen] = useState<AuthScreen>(new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery' ? 'recovery' : 'login');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaError, setMfaError] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
@@ -62,21 +67,30 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
+    const pending = workspace.getStatus().pending;
+    const displayed = pending && /sucesso|criad|salv|excluíd|atualizad|registrad|adicionad/i.test(msg) ? 'Alteração preparada. Aguardando confirmação do servidor.' : msg;
+    setToastMessage(displayed);
     setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
+      setToastMessage((prev) => (prev === displayed ? null : prev));
     }, 4000);
   };
+
+  useEffect(() => {
+    const restorePreferences = () => { setCurrentTheme(loadSavedTheme()); setCurrentPdfSettings(loadSavedPdfSettings()); };
+    window.addEventListener('solamigo:workspace-ready', restorePreferences);
+    return () => window.removeEventListener('solamigo:workspace-ready', restorePreferences);
+  }, []);
 
   useEffect(() => {
     applyThemeToDOM(currentTheme);
   }, [currentTheme]);
 
   const resolveMfaRequirement = async (): Promise<boolean> => {
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError) throw new Error('Não foi possível verificar a autenticação em duas etapas. Tente novamente.');
     if (assurance?.currentLevel === 'aal1' && assurance?.nextLevel === 'aal2') {
       const { data: factorData, error } = await supabase.auth.mfa.listFactors();
-      if (error) return false;
+      if (error) throw new Error('Não foi possível verificar seus fatores de autenticação.');
 
       const factor =
         factorData?.totp?.find((item) => item.status === 'verified') ??
@@ -91,6 +105,7 @@ export default function App() {
         setIsAuthenticated(false);
         return true;
       }
+      throw new Error('Não foi possível localizar o fator de autenticação exigido.');
     }
 
     return false;
@@ -130,7 +145,10 @@ export default function App() {
     void restoreSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') { workspace.close(); setAuthScreen('recovery'); setAuthLoading(false); return; }
+      if (session && workspace.getStatus().owner && workspace.getStatus().owner !== session.user.id) { workspace.close(); window.location.reload(); return; }
       if (event === 'SIGNED_OUT' || !session) {
+        workspace.close();
         setIsAuthenticated(false);
         setMfaFactorId(null);
         setAuthScreen('login');
@@ -152,8 +170,10 @@ export default function App() {
     }
     if (remember) localStorage.setItem('solamigo.login.email', email);
     else localStorage.removeItem('solamigo.login.email');
-    const needsMfa = await resolveMfaRequirement();
+    let needsMfa: boolean;
+    try { needsMfa = await resolveMfaRequirement(); } catch (error) { return error instanceof Error ? error.message : 'Não foi possível verificar sua autenticação.'; }
     if (!needsMfa) {
+      window.location.reload();
       setIsAuthenticated(true);
       setAuthScreen('login');
     }
@@ -167,6 +187,7 @@ export default function App() {
       return { error: error.message };
     }
     if (data.session) {
+      window.location.reload();
       setIsAuthenticated(true);
       setAuthScreen('login');
       return {};
@@ -198,6 +219,7 @@ export default function App() {
       setMfaLoading(false);
       return;
     }
+    window.location.reload();
     setMfaFactorId(null);
     setIsAuthenticated(true);
     setAuthScreen('login');
@@ -221,6 +243,8 @@ export default function App() {
 
   if (publicProposalToken !== null) return <PublicProposalView token={publicProposalToken} />;
   if (publicLeadFormToken) return <PublicLeadFormView formToken={publicLeadFormToken} />;
+
+  if (authScreen === 'recovery') return <ResetPasswordView />;
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white"><div className="text-center"><div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" /><p className="text-sm font-semibold">Carregando sua conta...</p></div></div>;
@@ -325,6 +349,7 @@ export default function App() {
   };
 
   return (
+    <WorkspaceGate>
     <div className="min-h-screen flex flex-col font-sans antialiased transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-5 font-mono text-xs" style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border, color: getContrastFg(currentTheme.primary) }}>
@@ -340,5 +365,10 @@ export default function App() {
       </div>
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
+    </WorkspaceGate>
   );
+}
+
+export default function App() {
+  return <ErrorBoundary><Suspense fallback={<div className="min-h-screen bg-[#0E2337] text-white p-8" role="status">Carregando...</div>}><AppContent /></Suspense></ErrorBoundary>;
 }

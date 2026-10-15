@@ -1,5 +1,5 @@
+import { accountStorage, workspace, saveWorkspace } from '../platform/workspace/workspace';
 import type { PdfCoverModel } from '../types';
-import { supabase } from '../lib/supabase';
 import {
   clonePdfSettingsForModel,
   createPdfCoverModel,
@@ -18,19 +18,15 @@ export {
 const STORAGE_PREFIX = 'solamigo.pdf-cover-models.v1';
 
 const getStorageKey = async (): Promise<string> => {
-  try {
-    const { data } = await supabase.auth.getUser();
-    if (data.user?.id) return `${STORAGE_PREFIX}.${data.user.id}`;
-  } catch {
-    // Fallback local: mantém a biblioteca utilizável mesmo se a sessão ainda estiver sincronizando.
-  }
-  return `${STORAGE_PREFIX}.local`;
+  const owner = workspace.getStatus().owner;
+  if (!owner) throw new Error('Entre na conta para carregar os modelos de capa.');
+  return `${STORAGE_PREFIX}.${owner}`;
 };
 
 export const fetchPdfCoverModels = async (): Promise<PdfCoverModel[]> => {
   const key = await getStorageKey();
   try {
-    const raw = localStorage.getItem(key);
+    const raw = accountStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -49,5 +45,6 @@ export const fetchPdfCoverModels = async (): Promise<PdfCoverModel[]> => {
 
 export const savePdfCoverModels = async (models: PdfCoverModel[]): Promise<void> => {
   const key = await getStorageKey();
-  localStorage.setItem(key, JSON.stringify(models));
+  accountStorage.setItem(key, JSON.stringify(models));
+  await saveWorkspace();
 };

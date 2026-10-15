@@ -343,8 +343,8 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ token })
 
       {/* Barra Flutuante Inferior para Ações Rápidas (Aprovar / Recusar) */}
       {!isApproved && !isRefused && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-[#0E1B2C]/95 backdrop-blur-lg border-t border-slate-800 p-3 shadow-2xl print:hidden flex items-center justify-between gap-3 max-w-4xl mx-auto md:rounded-t-2xl">
-          <div className="min-w-0">
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-[#0E1B2C]/95 backdrop-blur-lg border-t border-slate-800 p-3 shadow-2xl print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 max-w-4xl mx-auto md:rounded-t-2xl">
+          <div className="min-w-0 w-full sm:w-auto">
             <div className="text-[11px] text-slate-400 truncate">
               Investimento total da proposta:
             </div>

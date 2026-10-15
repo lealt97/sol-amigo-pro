@@ -26,5 +26,7 @@ jobs:
           fi
       - run: npm run lint
       - run: npm test
+      - run: npm run test:db
+      - run: npm run test:timezones
       - run: npm run check:crm
       - run: npm run build
