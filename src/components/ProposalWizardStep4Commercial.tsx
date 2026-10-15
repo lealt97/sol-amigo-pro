@@ -171,6 +171,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
 
   return (
     <div className="space-y-5 animate-fadeIn">
+      {pricing.validationError && <p role="alert" className="text-sm text-red-500">{pricing.validationError}</p>}
       <div className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: theme.border }}>
         <div>
           <div className="flex items-center gap-2">

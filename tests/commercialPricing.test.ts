@@ -45,3 +45,8 @@ test('plano de manutenção soma custo interno e preço de venda sem alterar a r
   assert.equal(result.profit, 3100);
   assert.ok(Math.abs(result.marginPercent - (3100 / 13500 * 100)) < 0.0001);
 });
+
+test('percentuais impossíveis não geram preço usando margem fictícia', () => {
+  const result=calculateCommercialPricing({equipmentItems:[],installationCost:1000,engineeringCost:0,utilityFee:0,freightCost:0,otherCosts:0,taxesPercent:30,commissionPercent:30,targetMarginPercent:40,discountValue:0,installedPowerKWp:5});
+  assert.equal(result.finalSalePrice,0);assert.ok(result.validationError);
+});

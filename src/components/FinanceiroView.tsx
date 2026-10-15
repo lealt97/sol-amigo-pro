@@ -50,7 +50,7 @@ export const FinanceiroView: React.FC<FinanceiroViewProps> = ({
         </div>
 
         <button
-          onClick={() => onShowToast('Lançamento financeiro registrado com sucesso!')}
+          disabled title="Recurso ainda não disponível"
           className="flex items-center gap-2 px-5 py-3 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:brightness-105 active:scale-95 shrink-0"
           style={{
             backgroundColor: theme.secondary,

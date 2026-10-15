@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { ThemeConfig, PdfSettingsConfig } from '../types';
 
 export const THEME_STORAGE_KEY = 'solamigo.theme.v2';
@@ -280,7 +281,7 @@ export function getLeadClienteBadgeStyle(isLead: boolean, surfaceBg: string): Ba
 
 export function loadSavedTheme(): ThemeConfig {
   try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    const saved = accountStorage.getItem(THEME_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (
@@ -370,12 +371,12 @@ export function loadSavedTheme(): ThemeConfig {
 }
 
 export function saveTheme(theme: ThemeConfig) {
-  localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+  accountStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
 }
 
 export function loadSavedPdfSettings(): PdfSettingsConfig {
   try {
-    const saved = localStorage.getItem('solamigo.pdf');
+    const saved = accountStorage.getItem('solamigo.pdf');
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
@@ -404,7 +405,7 @@ export function loadSavedPdfSettings(): PdfSettingsConfig {
 }
 
 export function savePdfSettings(settings: PdfSettingsConfig) {
-  localStorage.setItem('solamigo.pdf', JSON.stringify(settings));
+  accountStorage.setItem('solamigo.pdf', JSON.stringify(settings));
 }
 
 export function createScrollbarArrowSvg(color: string, direction: 'up' | 'down' | 'left' | 'right'): string {

@@ -12,23 +12,23 @@ const baseEvent: CalendarEvent = {
   id: 'event-1',
   title: 'Manutenção preventiva',
   type: 'Manutenção',
-  startAt: '2026-10-01T12:00:00.000Z',
+  startAt: '2026-10-01T12:00:00.000',
   allDay: false,
   status: 'Agendado',
   priority: 'Média',
   clientName: 'Cliente Teste',
-  createdAt: '2026-09-01T12:00:00.000Z',
-  updatedAt: '2026-09-01T12:00:00.000Z',
+  createdAt: '2026-09-01T12:00:00.000',
+  updatedAt: '2026-09-01T12:00:00.000',
 };
 
 test('alerta do calendário classifica hoje, amanhã, próximos dias e atraso', () => {
-  const now = new Date('2026-09-29T12:00:00.000Z');
+  const now = new Date('2026-09-29T12:00:00.000');
   const events: CalendarEvent[] = [
-    { ...baseEvent, id: 'overdue', startAt: '2026-09-28T12:00:00.000Z' },
-    { ...baseEvent, id: 'today', startAt: '2026-09-29T15:00:00.000Z' },
-    { ...baseEvent, id: 'tomorrow', startAt: '2026-09-30T15:00:00.000Z' },
-    { ...baseEvent, id: 'soon', startAt: '2026-10-04T15:00:00.000Z' },
-    { ...baseEvent, id: 'later', startAt: '2026-10-20T15:00:00.000Z' },
+    { ...baseEvent, id: 'overdue', startAt: '2026-09-28T12:00:00.000' },
+    { ...baseEvent, id: 'today', startAt: '2026-09-29T15:00:00.000' },
+    { ...baseEvent, id: 'tomorrow', startAt: '2026-09-30T15:00:00.000' },
+    { ...baseEvent, id: 'soon', startAt: '2026-10-04T15:00:00.000' },
+    { ...baseEvent, id: 'later', startAt: '2026-10-20T15:00:00.000' },
   ];
 
   const result = buildCalendarNotifications(events, new Set(), now);
@@ -41,17 +41,17 @@ test('alerta do calendário classifica hoje, amanhã, próximos dias e atraso', 
 });
 
 test('evento concluído ou cancelado não gera notificação', () => {
-  const now = new Date('2026-09-29T12:00:00.000Z');
+  const now = new Date('2026-09-29T12:00:00.000');
   const result = buildCalendarNotifications([
-    { ...baseEvent, id: 'done', status: 'Concluído', startAt: '2026-09-29T15:00:00.000Z' },
-    { ...baseEvent, id: 'cancelled', status: 'Cancelado', startAt: '2026-09-29T15:00:00.000Z' },
+    { ...baseEvent, id: 'done', status: 'Concluído', startAt: '2026-09-29T15:00:00.000' },
+    { ...baseEvent, id: 'cancelled', status: 'Cancelado', startAt: '2026-09-29T15:00:00.000' },
   ], new Set(), now);
 
   assert.equal(result.length, 0);
 });
 
 test('recorrência mensal preserva o dia quando possível', () => {
-  const result = addMonthsKeepingDay('2026-01-31T12:00:00.000Z', 1);
+  const result = addMonthsKeepingDay('2026-01-31T12:00:00.000', 1);
   assert.equal(result.getMonth(), 1);
   assert.equal(result.getDate(), 28);
 });
@@ -81,7 +81,7 @@ test('série quinzenal cria visitas a cada 15 dias', () => {
   assert.equal(series[0].recurrenceInterval, 15);
   assert.equal(series[0].recurrenceUnit, 'days');
 
-  const dates = series.map((item) => new Date(item.startAt).toISOString().slice(0, 10));
+  const dates = series.map((item) => [new Date(item.startAt).getFullYear(), String(new Date(item.startAt).getMonth()+1).padStart(2,'0'), String(new Date(item.startAt).getDate()).padStart(2,'0')].join('-'));
   assert.deepEqual(dates, [
     '2026-10-01',
     '2026-10-16',
@@ -96,16 +96,16 @@ test('mesma data e mesma prioridade preserva a ordem de criação', () => {
     {
       ...baseEvent,
       id: 'created-later',
-      startAt: '2026-10-10T09:00:00.000Z',
+      startAt: '2026-10-10T09:00:00.000',
       priority: 'Média',
-      createdAt: '2026-10-02T12:00:00.000Z',
+      createdAt: '2026-10-02T12:00:00.000',
     },
     {
       ...baseEvent,
       id: 'created-first',
-      startAt: '2026-10-10T16:00:00.000Z',
+      startAt: '2026-10-10T16:00:00.000',
       priority: 'Média',
-      createdAt: '2026-10-01T12:00:00.000Z',
+      createdAt: '2026-10-01T12:00:00.000',
     },
   ];
 
@@ -118,23 +118,23 @@ test('na mesma data a prioridade vem antes da ordem de criação', () => {
     {
       ...baseEvent,
       id: 'low-created-first',
-      startAt: '2026-10-10T08:00:00.000Z',
+      startAt: '2026-10-10T08:00:00.000',
       priority: 'Baixa',
-      createdAt: '2026-09-20T12:00:00.000Z',
+      createdAt: '2026-09-20T12:00:00.000',
     },
     {
       ...baseEvent,
       id: 'high-created-later',
-      startAt: '2026-10-10T18:00:00.000Z',
+      startAt: '2026-10-10T18:00:00.000',
       priority: 'Alta',
-      createdAt: '2026-10-02T12:00:00.000Z',
+      createdAt: '2026-10-02T12:00:00.000',
     },
     {
       ...baseEvent,
       id: 'medium',
-      startAt: '2026-10-10T10:00:00.000Z',
+      startAt: '2026-10-10T10:00:00.000',
       priority: 'Média',
-      createdAt: '2026-10-01T12:00:00.000Z',
+      createdAt: '2026-10-01T12:00:00.000',
     },
   ];
 
@@ -151,16 +151,16 @@ test('datas diferentes continuam em ordem cronológica por dia', () => {
     {
       ...baseEvent,
       id: 'tomorrow-high',
-      startAt: '2026-10-11T08:00:00.000Z',
+      startAt: '2026-10-11T08:00:00.000',
       priority: 'Alta',
-      createdAt: '2026-09-01T12:00:00.000Z',
+      createdAt: '2026-09-01T12:00:00.000',
     },
     {
       ...baseEvent,
       id: 'today-low',
-      startAt: '2026-10-10T18:00:00.000Z',
+      startAt: '2026-10-10T18:00:00.000',
       priority: 'Baixa',
-      createdAt: '2026-10-02T12:00:00.000Z',
+      createdAt: '2026-10-02T12:00:00.000',
     },
   ];
 
@@ -174,16 +174,16 @@ test('horário agendado não desempata eventos com mesma data prioridade e cria�
     {
       ...baseEvent,
       id: 'listed-first',
-      startAt: '2026-10-10T18:00:00.000Z',
+      startAt: '2026-10-10T18:00:00.000',
       priority: 'Média',
-      createdAt: '2026-10-01T12:00:00.000Z',
+      createdAt: '2026-10-01T12:00:00.000',
     },
     {
       ...baseEvent,
       id: 'listed-second',
-      startAt: '2026-10-10T08:00:00.000Z',
+      startAt: '2026-10-10T08:00:00.000',
       priority: 'Média',
-      createdAt: '2026-10-01T12:00:00.000Z',
+      createdAt: '2026-10-01T12:00:00.000',
     },
   ];
 

@@ -350,6 +350,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
+    try {
     const plan = selectedProposal?.maintenancePlan;
     if (!isExisting && repeatPlan && base.type === 'Manutenção' && plan?.enabled) {
       const frequency = getMaintenanceFrequency(plan);
@@ -373,6 +374,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     setEditorOpen(false);
     await reload();
+    } catch (error) { onShowToast?.(error instanceof Error ? error.message : 'Não foi possível salvar o evento.'); }
   };
 
   const handleDelete = async () => {

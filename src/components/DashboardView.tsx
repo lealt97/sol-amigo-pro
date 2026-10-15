@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
@@ -116,7 +117,7 @@ const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
 const readLayout = (): CardLayoutItem[] => {
   try {
-    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    const raw = accountStorage.getItem(LAYOUT_STORAGE_KEY);
     if (!raw) return DEFAULT_LAYOUT;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_LAYOUT;
@@ -137,7 +138,7 @@ const readLayout = (): CardLayoutItem[] => {
 
 const saveLayout = (layout: CardLayoutItem[]) => {
   try {
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+    accountStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
   } catch {
     // layout persistence is optional
   }

@@ -45,23 +45,8 @@ import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
 import { BRAZIL_STATE_HSP } from '../data/initialKits';
 import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
-export interface ProposalTargetSelection {
-  id: string;
-  name: string;
-  type: 'client' | 'lead';
-  phone?: string;
-  email?: string;
-  city?: string;
-  state?: string;
-  document?: string;
-  street?: string;
-  addressNumber?: string;
-  propertyType?: string;
-  concessionaria?: string;
-  monthlyConsumptionKWh?: number;
-  sourceLeadId?: string;
-  clientId?: string;
-}
+import { buildWizardProposal, type ProposalTargetSelection } from '../features/proposals/buildProposal';
+export type { ProposalTargetSelection } from '../features/proposals/buildProposal';
 
 interface ProposalWizardModalProps {
   isOpen: boolean;
@@ -80,7 +65,7 @@ interface ProposalWizardModalProps {
     concessionaria?: string;
     monthlyConsumptionKWh?: number;
   } | null;
-  onSaveProposal: (proposal: SolarProposal) => void;
+  onSaveProposal: (proposal: SolarProposal) => void | Promise<void>;
   onShowToast: (msg: string) => void;
 }
 
@@ -157,11 +142,11 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   const [performanceRatio, setPerformanceRatio] = useState<number>(80);
   const [targetCoveragePercent, setTargetCoveragePercent] = useState<number>(100);
   const [modulePowerW, setModulePowerW] = useState<number>(550);
-  const [moduleModel, setModuleModel] = useState<string>('Canadian Solar 550W TOPCon Bifacial');
+  const [moduleModel, setModuleModel] = useState<string>('');
   const [modulesCount, setModulesCount] = useState<number>(10);
   const [installedPowerKWp, setInstalledPowerKWp] = useState<number>(5.5);
-  const [inverterModel, setInverterModel] = useState<string>('Deye SUN-5K-G04 Monofásico/Bifásico 220V');
-  const [batteryModel, setBatteryModel] = useState<string>('Bateria Lítio LiFePO4 5.12kWh 48V');
+  const [inverterModel, setInverterModel] = useState<string>('');
+  const [batteryModel, setBatteryModel] = useState<string>('');
   const [batteryCount, setBatteryCount] = useState<number>(1);
   const [batteryCapacityKWh, setBatteryCapacityKWh] = useState<number>(5.12);
   const [selectedKit, setSelectedKit] = useState<SolarKit | null>(null);
@@ -509,90 +494,16 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     }
   };
 
-  const handleGenerateProposalFinal = () => {
-    if (!selectedTarget) {
-      onShowToast?.('Selecione um cliente ou interessado.');
-      return;
-    }
-    const propCode = `PROP-${new Date().getFullYear()}-${String(Math.floor(100 + Math.random() * 900))}`;
-    const consKWh = effectiveAverageKWh > 0 ? effectiveAverageKWh : (selectedTarget.monthlyConsumptionKWh || 450);
-
-    const isHybrid = systemType === 'Híbrido';
-    const finalKWp = installedPowerKWp > 0 ? Number(installedPowerKWp.toFixed(2)) : Number((consKWh / 115).toFixed(2));
-    const finalModules = modulesCount > 0 ? modulesCount : Math.max(4, Math.ceil((finalKWp * 1000) / modulePowerW));
-
-    const finalValue = commercialPricing?.finalSalePrice && commercialPricing.finalSalePrice > 0
-      ? commercialPricing.finalSalePrice
-      : totalKitPrice > 0
-        ? totalKitPrice
-        : Math.round(finalKWp * 2950) + (isHybrid ? (batteryCount || 1) * 9800 + 3500 : 0);
-
-    const finalMonthlyGen = estimatedMonthlyGenKWh > 0
-      ? estimatedMonthlyGenKWh
-      : Math.round(finalKWp * hsp * 30 * (performanceRatio / 100));
-
-    const monthlySavings = Math.min(finalMonthlyGen, consKWh) * energyTariff;
-    const simplePaybackYears = monthlySavings > 0
-      ? Number((finalValue / (monthlySavings * 12)).toFixed(2))
-      : 0;
-
-    const newProp: SolarProposal = {
-      id: `prop-${Date.now()}`,
-      code: propCode,
-      clientName: selectedTarget.name,
-      companyInfo,
-      clientDocument: selectedTarget.document || clientsList.find(client => client.id === selectedTarget.id || client.id === selectedTarget.clientId)?.document,
-      clientAddress: [selectedTarget.street, selectedTarget.addressNumber].filter(Boolean).join(', '),
-      technicalOutput: { connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours: isHybrid ? backupAutonomyHours : undefined },
-      equipmentOutput: selectedKit?.items?.length ? selectedKit.items.map(item => ({
-        id: item.id, description: item.product.name, category: item.product.category,
-        quantity: item.quantity, brand: item.product.brand, model: item.product.model,
-        warrantyYears: item.product.warrantyYears, powerW: item.product.powerW, capacityKWh: item.product.capacityKWh,
-      })) : [
-        { id: 'modules', description: moduleModel, category: 'Módulo FV', quantity: finalModules, powerW: modulePowerW },
-        { id: 'inverter', description: inverterModel, category: 'Inversor', quantity: 1 },
-        ...(isHybrid ? [{ id: 'battery', description: batteryModel, category: 'Bateria', quantity: batteryCount, capacityKWh: batteryCapacityKWh }] : []),
-      ],
-      clientEmail: selectedTarget.email,
-      clientPhone: selectedTarget.phone,
-      propertyType: selectedTarget.propertyType || 'Residencial',
-      clientCity: selectedTarget.city || 'Campinas',
-      clientState: selectedTarget.state || 'SP',
-      concessionaria: concessionaria || selectedTarget.concessionaria || 'CPFL Paulista',
-      monthlyConsumptionKWh: consKWh,
-      systemPowerKWp: finalKWp,
-      modulesCount: finalModules,
-      moduleModel: moduleModel || `Painel Solar Canadian ${modulePowerW}W Bifacial TOPCon`,
-      inverterModel: inverterModel || (isHybrid
-        ? `Inversor Híbrido Deye ${Math.max(5, Math.ceil(finalKWp))}kW com ATS / Backup`
-        : `Inversor Deye ${Math.max(5, Math.ceil(finalKWp))}kW Monofásico/Bifásico`),
-      batteryModel: isHybrid ? batteryModel : undefined,
-      batteryCount: isHybrid ? batteryCount : undefined,
-      batteryCapacityKWh: isHybrid ? Number((batteryCapacityKWh * (batteryCount || 1)).toFixed(2)) : undefined,
-      estimatedMonthlyGenKWh: finalMonthlyGen,
-      estimatedMonthlySavings: Math.round(monthlySavings),
-      paybackYears: simplePaybackYears,
-      totalValue: finalValue,
-      hsp: hsp,
-      performanceRatio: performanceRatio,
-      selectedKitId: selectedKit?.id,
-      selectedKitName: selectedKit?.name,
-      pricing: commercialPricing || undefined,
-      maintenancePlan,
-      commercialConditions: {
-        paymentMethods: paymentMethods.trim(),
-        cashPaymentTerms: cashPaymentTerms.trim(),
-        installmentPaymentTerms: installmentPaymentTerms.trim(),
-        deliveryTimeframe: deliveryTimeframe.trim(),
-        warrantyTerms: warrantyTerms.trim(),
-        notes: commercialNotes.trim(),
-      },
-      status: 'Rascunho',
-      createdAt: new Date().toISOString(),
-      systemType: systemType,
-    };
-    onSaveProposal(newProp);
-    onClose();
+  const [savingProposal, setSavingProposal] = useState(false);
+  const handleGenerateProposalFinal = async () => {
+    if (!selectedTarget || savingProposal) return;
+    setSavingProposal(true);
+    try {
+      const newProp = buildWizardProposal({ selectedTarget, companyInfo, clientsList, connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours, selectedKit, moduleModel, inverterModel, batteryModel, batteryCount, batteryCapacityKWh, concessionaria, hsp, performanceRatio, commercialPricing, maintenancePlan, paymentMethods, cashPaymentTerms, installmentPaymentTerms, deliveryTimeframe, warrantyTerms, commercialNotes, systemType, effectiveAverageKWh, installedPowerKWp, modulesCount, estimatedMonthlyGenKWh });
+      await onSaveProposal(newProp);
+      onClose();
+    } catch (error) { onShowToast(error instanceof Error ? error.message : 'Não foi possível salvar a proposta.'); }
+    finally { setSavingProposal(false); }
   };
 
   // Definição das etapas do Wizard
@@ -1825,7 +1736,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
               <div className="pt-2 flex justify-center">
                 <button
                   type="button"
-                  onClick={handleGenerateProposalFinal}
+                  disabled={savingProposal} onClick={() => { void handleGenerateProposalFinal(); }}
                   className="px-6 py-3 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer inline-flex items-center gap-2"
                   style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
                 >
@@ -1945,7 +1856,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             {currentStep === 'review_save' && (
               <button
                 type="button"
-                onClick={handleGenerateProposalFinal}
+                disabled={savingProposal} onClick={() => { void handleGenerateProposalFinal(); }}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >

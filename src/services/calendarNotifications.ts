@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { CalendarNotificationItem, buildCalendarNotifications } from '../utils/calendar';
 import { CALENDAR_EVENTS_UPDATED_EVENT, fetchCalendarEvents } from './calendarEvents';
 
@@ -12,7 +13,7 @@ let started = false;
 
 function getReadKeys(): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_READ_KEY);
+    const raw = accountStorage.getItem(STORAGE_READ_KEY);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     return new Set(Array.isArray(parsed) ? parsed : []);
@@ -23,7 +24,7 @@ function getReadKeys(): Set<string> {
 
 function saveReadKeys(keys: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_READ_KEY, JSON.stringify(Array.from(keys)));
+    accountStorage.setItem(STORAGE_READ_KEY, JSON.stringify(Array.from(keys)));
   } catch {
     // non-blocking
   }

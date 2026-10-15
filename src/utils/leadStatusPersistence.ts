@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { LeadStage } from '../types';
 
 const STORAGE_KEY = 'solamigo_lead_status_overrides';
@@ -6,7 +7,7 @@ export const LEAD_STATUS_CHANGED_EVENT = 'solamigo:lead-status-changed';
 function getOverridesMap(): Record<string, LeadStage> {
   if (typeof window === 'undefined' || !window.localStorage) return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = accountStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -16,7 +17,7 @@ function getOverridesMap(): Record<string, LeadStage> {
 function saveOverridesMap(map: Record<string, LeadStage>): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    accountStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
     // Ignora potenciais restrições de cota no localStorage
   }

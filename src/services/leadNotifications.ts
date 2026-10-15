@@ -1,3 +1,4 @@
+import { accountStorage } from '../platform/workspace/workspace';
 import { supabase } from '../lib/supabase';
 import { Lead } from '../types';
 
@@ -20,7 +21,7 @@ const STORAGE_INIT_KEY = 'sol_amigo_notif_initialized';
 
 function getStoredReadIds(): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_READ_KEY);
+    const raw = accountStorage.getItem(STORAGE_READ_KEY);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     return new Set(Array.isArray(parsed) ? parsed : []);
@@ -31,7 +32,7 @@ function getStoredReadIds(): Set<string> {
 
 function saveStoredReadIds(ids: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_READ_KEY, JSON.stringify(Array.from(ids)));
+    accountStorage.setItem(STORAGE_READ_KEY, JSON.stringify(Array.from(ids)));
   } catch {
     // ignore
   }
@@ -132,7 +133,7 @@ export async function fetchAndSyncLeadNotifications(): Promise<void> {
     if (error || !data) return;
 
     const readIds = getStoredReadIds();
-    const isFirstRun = !localStorage.getItem(STORAGE_INIT_KEY);
+    const isFirstRun = !accountStorage.getItem(STORAGE_INIT_KEY);
 
     if (isFirstRun) {
       // No primeiro acesso: leads em status 'novo' iniciam como não lidos (notificações ativas).
@@ -142,7 +143,7 @@ export async function fetchAndSyncLeadNotifications(): Promise<void> {
           readIds.add(row.id);
         }
       });
-      localStorage.setItem(STORAGE_INIT_KEY, 'true');
+      accountStorage.setItem(STORAGE_INIT_KEY, 'true');
       saveStoredReadIds(readIds);
     }
 

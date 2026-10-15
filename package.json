@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "sol-amigo-pro",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,10 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "check:crm": "node scripts/check-crm-integrity.mjs"
+    "check:crm": "node scripts/check-crm-integrity.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:db": "node scripts/test-platform-schema.mjs",
+    "test:timezones": "node scripts/test-timezones.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -27,6 +30,7 @@
     "react-dom": "^19.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
