@@ -20,7 +20,9 @@ O cache `solamigo.workspace.v1:<proprietário>` protege a fila pendente. Não li
 
 ## Assinaturas — preparado, ainda não ativado
 
-A migration `20261014235908_account_subscription_access.sql` está versionada, mas NÃO foi aplicada em produção: o conector retornou `Invalid or expired requestState` em duas tentativas. A sintaxe e as regras foram testadas em banco local isolado com `npm run test:db`.
+A migration `20261015003136_account_subscription_access.sql` foi aplicada em produção em 15/10/2026, após recuperação do conector. A cobrança permanece desativada. A verificação confirmou que usuários anônimos não leem assinaturas e que o navegador autenticado não pode gravar assinaturas nem executar o RPC de eventos; apenas `service_role` pode executar esse RPC. Nenhuma assinatura foi criada. A sintaxe e as regras também foram testadas em banco local isolado com `npm run test:db`.
+
+A auditoria de segurança sinaliza `billing_events` sem políticas: isso é intencional, pois a tabela é exclusiva de `service_role`, sem acesso de clientes. Permanecem os avisos anteriores sobre a função de exclusão com verificação explícita de proprietário e a proteção contra senhas vazadas desativada. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
 
 Ela mantém `billing_enforced=false` por padrão, cria assinaturas com leitura apenas pelo proprietário e gravação somente por serviço confiável. O RPC `apply_billing_event` é reservado a `service_role`; valida eventos e ignora duplicados e antigos. Não recebe decisões de pagamento do navegador.
 
@@ -29,7 +31,7 @@ Antes de ativar cobrança:
 - Implemente o adaptador usando autenticação oficial dos webhooks e consulta de reconciliação ao provedor.
 - Configure credenciais somente no servidor, em ambiente de teste.
 - Teste contratação, renovação, cancelamento com período pago, inadimplência, tolerância, reembolso, contestação e eventos duplicados/fora de ordem.
-- Aplique a migration, verifique RLS/advisors e faça um piloto com contas de teste.
+- Confira as migrations aplicadas, revalide RLS/advisors e faça um piloto com contas de teste.
 - Só então habilite a flag pelo servidor. Não use `user_metadata`, parâmetros de URL ou redirecionamento do checkout para liberar acesso.
 
 Assinatura vencida deve preservar leitura e exportação; cancelamento de renovação preserva um período ainda pago. Reembolso e contestação suspendem gravação. Nenhuma dessas operações apaga documentos.
