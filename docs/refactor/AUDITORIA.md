@@ -48,7 +48,13 @@ A leitura inicial exige conexão com o servidor. Depois de carregada a conta, al
 
 A nova tabela de workspace tem RLS e não concede acesso anônimo. A coluna de revisão é validada no servidor. Teste transacional real confirmou leitura própria, negação entre proprietários, negação de proprietário forjado e rejeição de salto de revisão; a transação foi revertida.
 
-Advisors mantiveram apenas os dois avisos preexistentes: função `delete_owned_lead` com SECURITY DEFINER (corpo verificado: exige usuário e limita por proprietário) e proteção contra senhas vazadas desativada. Não foi removida a função de exclusão, pois isso alteraria uma regra existente sem necessidade.
+Na primeira entrega, os advisors mantiveram os dois avisos preexistentes: função `delete_owned_lead` com SECURITY DEFINER (corpo verificado: exige usuário e limita por proprietário) e proteção contra senhas vazadas desativada. Não foi removida a função de exclusão, pois isso alteraria uma regra existente sem necessidade.
+
+Após a aplicação da estrutura de assinaturas em 15/10/2026, o advisor também informa `billing_events` sem políticas. Isso é intencional: a tabela não concede acesso a clientes e é exclusiva do serviço. A cobrança continua desativada.
+
+## Melhorias operacionais de 16/10/2026
+
+A exportação de documentos do workspace também fica disponível quando os dados estão sincronizados. O diagnóstico técnico exportável mantém até 50 eventos em memória, sem conteúdo de clientes, URLs ou mensagens de erro. Não substitui monitoramento remoto ou backup integral. As dependências e evoluções estão discriminadas em [PENDENCIAS.md](PENDENCIAS.md).
 
 ## Comparação pontual com as planilhas fornecidas
 
