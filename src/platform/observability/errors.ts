@@ -1,7 +1,22 @@
-/** Hook for a monitoring adapter. Never emits messages, stack traces, tokens or user payloads. */
+export interface OperationError { operation: string; name: string; code: string; at: string }
+const recentErrors: OperationError[] = [];
+const identifier = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,60}$/.test(value) ? value : 'unknown';
+
+/** Bounded, in-memory diagnostics. Never collects messages, stacks, URLs or user payloads. */
 export function reportOperationError(operation: string, error: unknown) {
-  const candidate = error && typeof error === 'object' ? error as { name?: unknown; code?: unknown } : {};
-  const identifier = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,60}$/.test(value) ? value : 'unknown';
-  const detail = { operation: identifier(operation), name: identifier(candidate.name), code: identifier(candidate.code), at: new Date().toISOString() };
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('solamigo:error', { detail }));
+  let name: unknown; let code: unknown;
+  // Third-party errors can contain throwing getters; diagnostics must not break recovery.
+  try {
+    if (error && typeof error === 'object') {
+      name = (error as { name?: unknown }).name;
+      code = (error as { code?: unknown }).code;
+    }
+  } catch { /* Keep unknown identifiers. */ }
+  const detail: OperationError = { operation: identifier(operation), name: identifier(name), code: identifier(code), at: new Date().toISOString() };
+  recentErrors.push(detail);
+  if (recentErrors.length > 50) recentErrors.shift();
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('solamigo:error', { detail: { ...detail } }));
+}
+export function exportDiagnostics() {
+  return JSON.stringify({ format: 'solamigo-diagnostics', version: 1, exportedAt: new Date().toISOString(), errors: recentErrors }, null, 2);
 }
