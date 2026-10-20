@@ -14,6 +14,7 @@ import {
 import { supabase } from '../lib/supabase';
 import type { ThemeConfig } from '../types';
 import { formatPhone } from '../utils/formatters';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 
 interface ProfileViewProps {
   theme: ThemeConfig;
@@ -276,10 +277,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ theme, onShowToast }) 
       )}
 
       {loading ? (
-        <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
-          <div className="flex min-h-52 items-center justify-center gap-2 text-sm opacity-70">
-            <Loader2 className="h-5 w-5 animate-spin" /> Carregando perfil...
-          </div>
+        <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
+          <SaaSLoadingScreen
+            theme={theme}
+            title="Perfil"
+            message="Carregando perfil e empresa..."
+            hint="Sincronizando dados cadastrais com o banco..."
+          />
         </section>
       ) : (
         <>

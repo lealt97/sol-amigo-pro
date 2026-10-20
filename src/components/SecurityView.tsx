@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase, validateCurrentPassword } from '../lib/supabase';
 import type { ThemeConfig } from '../types';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 
 interface SecurityViewProps {
   theme: ThemeConfig;
@@ -373,11 +374,14 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ theme, onShowToast, 
 
       {error && <div className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
 
-      <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border }}>
+      <section className="rounded-2xl border p-5 md:p-6" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
         {loading ? (
-          <div className="flex min-h-48 items-center justify-center gap-2 text-sm opacity-70">
-            <Loader2 className="h-5 w-5 animate-spin" /> Carregando...
-          </div>
+          <SaaSLoadingScreen
+            theme={theme}
+            title="Segurança"
+            message="Carregando segurança da conta..."
+            hint="Verificando fatores MFA e sessões ativas..."
+          />
         ) : enrollment ? (
           <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
             <div className="rounded-2xl bg-white p-4">

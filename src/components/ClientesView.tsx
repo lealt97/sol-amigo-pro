@@ -926,27 +926,8 @@ export function ClientesView({
                       </p>
                     </div>
 
-                    {/* Ações do Card: Botão de exclusão direto + Menu de 3 Pontos */}
+                    {/* Ações do Card: Menu de 3 Pontos */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        data-delete-btn="true"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuId(null);
-                          setDeleteClientTarget(client);
-                        }}
-                        className="btn-delete flex h-9 w-9 items-center justify-center rounded-lg border text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-all cursor-pointer"
-                        style={{
-                          backgroundColor: theme.background,
-                          borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)',
-                        }}
-                        title={`Excluir cliente ${client.name}`}
-                        aria-label={`Excluir cliente ${client.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-
                       {/* Menu de 3 Pontos com Propostas */}
                       <div
                         ref={openMenuId === client.id ? menuRef : undefined}

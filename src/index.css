@@ -104,12 +104,12 @@ label:has(input[type="file"]:not(:disabled)),
   3) Botões de exclusão/perigo mantêm a cor semântica de perigo (vermelho).
   4) Botões de apenas texto / Cancelar alteram apenas a cor da fonte com a cor secundária.
 */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-color-swatch]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover,
-input[type="button"]:not(:disabled):not(.btn-cancel):not(.btn-text):not(#area-risco-page *):hover,
-input[type="submit"]:not(:disabled):not(#area-risco-page *):hover,
-input[type="reset"]:not(:disabled):not(.btn-cancel):not(#area-risco-page *):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-color-swatch]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover,
+input[type="button"]:not(:disabled):not(.btn-cancel):not(.btn-text):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover,
+input[type="submit"]:not(:disabled):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover,
+input[type="reset"]:not(:disabled):not(.btn-cancel):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover,
 label:has(input[type="file"]:not(:disabled)):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):hover {
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not([data-sol-amigo-text-hover]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover {
   background-color: var(--button-outline-hover-bg) !important;
   border-color: var(--button-outline-hover-bg) !important;
   color: var(--button-outline-hover-fg) !important;
@@ -117,10 +117,10 @@ label:has(input[type="file"]:not(:disabled)):hover,
 }
 
 /* Ícones de botões padrão no hover com fundo preenchido ficam brancos */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg *,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):hover svg,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):hover svg * {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not(.btn-outline-cancel):not([data-text-only]):not(.btn-danger):not(.btn-danger-outline):not(.btn-danger-solid):not(.btn-delete):not([data-delete-btn]):not(.lead-menu-item-danger):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):not(:has(svg.lucide-trash-2)):not(:has(svg.lucide-trash)):hover svg *,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover svg,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-sol-amigo-text-hover]):not(.btn-cancel):not(.btn-text):not([data-text-only]):not(.btn-danger):not(.btn-delete):not([data-delete-btn]):not(.btn-danger-text):not([data-danger-text]):not([data-status-badge]):not(.status-badge):not(.status-filter-chip):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover svg * {
   color: var(--button-outline-hover-fg, #ffffff) !important;
   stroke: var(--button-outline-hover-fg, #ffffff) !important;
 }
@@ -298,13 +298,13 @@ button[data-danger-text]:not(:disabled):hover svg {
 }
 
 /* Botões com preenchimento via style inline do React ou classes utilitárias: preservam a cor preenchida com brilho e realce */
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[style*="background-color"]:hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[style*="background-color"]:hover,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
-button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
-[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
-.btn-filled:not(:disabled):not(.btn-danger-solid):not(#area-risco-page *):hover {
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[style*="background-color"]:hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not(.lead-actions-button):not(.btn-outline):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[style*="background-color"]:hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+button:not(:disabled):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not(.btn-danger):not(.btn-danger-solid):not(.btn-danger-outline):not(.btn-delete):not([data-delete-btn]):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[class^="bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+[role="button"]:not([aria-disabled="true"]):not([data-sol-amigo-floating-btn]):not([data-sol-amigo-close-btn]):not([data-status-badge]):not(.status-badge):not([id^="lead-status-btn"]):not([id^="client-status-btn"]):not([data-status-option]):not(.status-option-btn):not(.lead-status-dropdown button):not([data-target-choice]):not([data-no-override-hover]):not([data-theme-preset]):not(.theme-preset-card):not([data-calendar-event]):not(.calendar-event-pill):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *)[class*=" bg-"]:not([class*="bg-transparent"]):not([class*="bg-red-"]):hover,
+.btn-filled:not(:disabled):not(.btn-danger-solid):not(#area-risco-page *):not(#login-page *):not(#register-page *):not([data-auth-page] *):not(.auth-view *):hover {
   background-color: var(--button-filled-hover-bg) !important;
   border-color: var(--button-filled-hover-bg) !important;
   color: var(--button-filled-hover-fg, #ffffff) !important;
@@ -847,4 +847,136 @@ main,
   filter: none !important;
   box-shadow: none !important;
 }
+
+/* ==========================================================================
+   ISOLAMENTO TOTAL DA PÁGINA DE LOGIN E AUTENTICAÇÃO
+   O motor de cores do sistema NUNCA deve influenciar na página de login.
+   Usa sempre a paleta padrão oficial da Sol Amigo Pro.
+   ========================================================================== */
+#login-page,
+#register-page,
+[data-auth-page],
+.auth-view {
+  --primary: #183956 !important;
+  --primary-fg: #FFFFFF !important;
+  --secondary: #0076DD !important;
+  --secondary-fg: #FFFFFF !important;
+  --button-filled-hover-bg: #0E2337 !important;
+  --button-filled-hover-fg: #FFFFFF !important;
+  --button-outline-hover-bg: transparent !important;
+  --button-outline-hover-fg: #005EAF !important;
+}
+
+#login-page *,
+#register-page *,
+[data-auth-page] *,
+.auth-view * {
+  --button-filled-hover-bg: #0E2337 !important;
+  --button-outline-hover-bg: transparent !important;
+}
+
+/* Links na página de login e cadastro (Esqueci minha senha, Criar conta, etc.) */
+#login-page .auth-link,
+#register-page .auth-link,
+[data-auth-page] .auth-link,
+.auth-view .auth-link {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  color: #0076DD !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: color 150ms ease, text-decoration 150ms ease !important;
+}
+
+#login-page .auth-link:hover,
+#register-page .auth-link:hover,
+[data-auth-page] .auth-link:hover,
+.auth-view .auth-link:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  color: #005EAF !important;
+  text-decoration: underline !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Ícone do olho (mostrar/ocultar senha): muda APENAS a cor do ícone no hover, sem alterar fundo */
+#login-page .auth-eye-btn,
+#register-page .auth-eye-btn,
+[data-auth-page] .auth-eye-btn,
+.auth-view .auth-eye-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  color: #718496 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+
+#login-page .auth-eye-btn svg,
+#register-page .auth-eye-btn svg,
+[data-auth-page] .auth-eye-btn svg,
+.auth-view .auth-eye-btn svg {
+  color: #718496 !important;
+  stroke: #718496 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  transition: color 150ms ease, stroke 150ms ease !important;
+}
+
+#login-page .auth-eye-btn:hover,
+#register-page .auth-eye-btn:hover,
+[data-auth-page] .auth-eye-btn:hover,
+.auth-view .auth-eye-btn:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  color: #0076DD !important;
+}
+
+#login-page .auth-eye-btn:hover svg,
+#register-page .auth-eye-btn:hover svg,
+[data-auth-page] .auth-eye-btn:hover svg,
+.auth-view .auth-eye-btn:hover svg {
+  color: #0076DD !important;
+  stroke: #0076DD !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Botão de envio padrão Sol Amigo Pro */
+#login-page .auth-submit-btn,
+#register-page .auth-submit-btn,
+[data-auth-page] .auth-submit-btn,
+.auth-view .auth-submit-btn {
+  background-color: #183956 !important;
+  border-color: #183956 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 10px 24px rgba(24, 57, 86, 0.20) !important;
+  transition: background-color 150ms ease, transform 100ms ease, opacity 150ms ease !important;
+}
+
+#login-page .auth-submit-btn:hover:not(:disabled),
+#register-page .auth-submit-btn:hover:not(:disabled),
+[data-auth-page] .auth-submit-btn:hover:not(:disabled),
+.auth-view .auth-submit-btn:hover:not(:disabled) {
+  background-color: #0E2337 !important;
+  border-color: #0E2337 !important;
+  color: #FFFFFF !important;
+  filter: none !important;
+}
+
 
