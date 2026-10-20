@@ -42,7 +42,7 @@ import {
 } from './ProposalWizardStep2';
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
 import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
-import { BRAZIL_STATE_HSP } from '../data/initialKits';
+import { useProposalTargetDefaults } from '../features/proposals/useProposalTargetDefaults';
 import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
 
 import { buildWizardProposal, type ProposalTargetSelection } from '../features/proposals/buildProposal';
@@ -165,23 +165,7 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     notes: '',
   });
 
-  // Sincroniza dados do titular selecionado com a Etapa 2 e Etapa 3
-  useEffect(() => {
-    if (selectedTarget) {
-      if (selectedTarget.monthlyConsumptionKWh && selectedTarget.monthlyConsumptionKWh > 0) {
-        setDirectAvgKWh(selectedTarget.monthlyConsumptionKWh);
-      }
-      if (selectedTarget.concessionaria) {
-        setConcessionaria(selectedTarget.concessionaria);
-      }
-      if (selectedTarget.state) {
-        const uf = selectedTarget.state.toUpperCase().trim();
-        if (BRAZIL_STATE_HSP[uf]) {
-          setHsp(BRAZIL_STATE_HSP[uf]);
-        }
-      }
-    }
-  }, [selectedTarget]);
+  useProposalTargetDefaults(selectedTarget, setDirectAvgKWh, setConcessionaria, setHsp);
 
   // Consumo médio adotado dependendo do modo ativo na Etapa 2
   const effectiveAverageKWh = useMemo(() => {
