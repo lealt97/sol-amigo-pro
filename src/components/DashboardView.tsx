@@ -145,10 +145,10 @@ const saveLayout = (layout: CardLayoutItem[]) => {
 };
 
 const sizeClass: Record<CardSize, string> = {
-  compact: 'col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-2',
-  small: 'col-span-12 sm:col-span-6 xl:col-span-3',
-  medium: 'col-span-12 md:col-span-6',
-  large: 'col-span-12',
+  compact: 'flex-1 min-w-[260px] basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(33.333%-0.75rem)] xl:basis-[calc(25%-0.75rem)]',
+  small: 'flex-1 min-w-[280px] basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(33.333%-0.75rem)]',
+  medium: 'flex-1 min-w-[320px] basis-full md:basis-[calc(50%-0.5rem)]',
+  large: 'flex-1 min-w-full basis-full',
 };
 
 const nextSize = (size: CardSize, direction: 1 | -1): CardSize => {
@@ -247,13 +247,13 @@ const CardShell: React.FC<CardShellProps> = ({
       onDragOver={(event) => event.preventDefault()}
       onDrop={() => onDrop(layout.id)}
       data-dashboard-card-size={layout.size}
-      className={`${sizeClass[layout.size]} min-w-0 overflow-hidden rounded-2xl border shadow-xs transition-all duration-200 ${
+      className={`${sizeClass[layout.size]} min-w-0 overflow-hidden rounded-2xl border shadow-xs transition-all duration-200 flex flex-col justify-between ${
         draggedId === layout.id ? 'opacity-50 scale-[0.99]' : ''
       }`}
       style={{ backgroundColor: theme.primary, borderColor: theme.border }}
     >
       <div
-        className={`flex items-center justify-between gap-2 border-b ${
+        className={`flex items-center justify-between gap-2 border-b shrink-0 ${
           compact ? 'min-h-10 px-3 py-2' : 'min-h-12 px-4 py-2.5'
         }`}
         style={{ borderColor: theme.border }}
@@ -305,7 +305,7 @@ const CardShell: React.FC<CardShellProps> = ({
           </button>
         </div>
       </div>
-      <div className={`min-w-0 max-w-full overflow-hidden ${compact ? 'p-3' : 'p-4'}`}>{children}</div>
+      <div className={`min-w-0 max-w-full overflow-hidden flex-1 flex flex-col justify-between ${compact ? 'p-3' : 'p-4'}`}>{children}</div>
     </section>
   );
 };
@@ -1061,7 +1061,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <div className="grid min-w-0 grid-cols-12 gap-4">
+      <div className="flex flex-wrap items-stretch gap-4 min-w-0 w-full">
         {layout.map((item) => {
           const meta = cardMeta[item.id];
           return (

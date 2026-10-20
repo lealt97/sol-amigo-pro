@@ -36,6 +36,7 @@ import {
 } from '../services/proposals';
 import { fetchClients } from '../services/clients';
 import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
 import { ProposalShareModal } from './ProposalShareModal';
@@ -450,10 +451,12 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
 
       {/* Grid de Propostas ou Estado Vazio */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-[var(--secondary)]" />
-          <p className="text-sm font-medium text-[var(--dim)]">Carregando propostas...</p>
-        </div>
+        <SaaSLoadingScreen
+          theme={theme}
+          title="Propostas Comerciais"
+          message="Carregando propostas..."
+          hint="Calculando valores, potências e status das propostas..."
+        />
       ) : filteredProposals.length === 0 ? (
         <div
           className="rounded-2xl border p-12 text-center flex flex-col items-center justify-center gap-2 shadow-sm"

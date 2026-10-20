@@ -43,6 +43,7 @@ import {
 } from '../services/proposals';
 import { LeadNote, parseLeadNotes, serializeLeadNotes, compressImageFile } from '../utils/leadNotes';
 import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 import { LEAD_NOTES_CHANGED_EVENT } from '../utils/leadNotesPersistence';
@@ -946,10 +947,14 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
 
       {/* Grid de Anotações */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-16 rounded-2xl border space-y-3" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
-          <RefreshCw className="h-7 w-7 animate-spin text-[var(--secondary)]" />
-          <p className="text-sm font-semibold text-[var(--dim)]">Carregando anotações de Leads e Clientes...</p>
-        </div>
+        <section className="rounded-2xl border" style={{ borderColor: theme.border, backgroundColor: theme.primary }}>
+          <SaaSLoadingScreen
+            theme={theme}
+            title="Anotações"
+            message="Carregando anotações de leads e clientes..."
+            hint="Sincronizando registros, fotos e observações..."
+          />
+        </section>
       ) : filteredNotes.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center text-center p-12 sm:p-16 rounded-2xl border space-y-4 shadow-sm"

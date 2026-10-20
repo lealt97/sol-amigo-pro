@@ -22,6 +22,7 @@ import { formatCurrency } from '../utils/formatters';
 import { ProposalCoverPage } from './ProposalCoverPage';
 import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 
 interface PublicProposalViewProps {
   token: string;
@@ -165,13 +166,12 @@ export const PublicProposalView: React.FC<PublicProposalViewProps> = ({ token })
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B1522] text-white">
-        <div className="text-center space-y-3">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-3 border-amber-400 border-t-transparent" />
-          <p className="text-sm font-semibold text-slate-300">Carregando proposta comercial...</p>
-          <p className="text-xs font-mono text-slate-400">Proposta comercial FV</p>
-        </div>
-      </div>
+      <SaaSLoadingScreen
+        fullScreen
+        title="Sol Amigo Pro"
+        message="Carregando proposta comercial..."
+        hint="Preparando os dados e dimensionamentos do sistema fotovoltaico..."
+      />
     );
   }
 

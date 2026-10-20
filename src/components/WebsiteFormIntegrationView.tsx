@@ -24,6 +24,7 @@ import {
 } from '../utils/formSuccess';
 import { createFormBorderRadiusTokens, normalizeFormBorderRadius } from '../utils/formRadius';
 import { ResponsiveColorField } from './ResponsiveColorField';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 
 interface WebsiteFormIntegrationViewProps {
   theme: ThemeConfig;
@@ -480,8 +481,13 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
 
   if (loading) {
     return (
-      <div id="integracoes-page" className="mx-auto flex min-h-72 max-w-6xl items-center justify-center gap-2 text-sm opacity-70">
-        <Loader2 className="h-5 w-5 animate-spin" /> Carregando integração...
+      <div id="integracoes-page" className="w-full">
+        <SaaSLoadingScreen
+          theme={theme}
+          title="Formulário no site"
+          message="Carregando integração..."
+          hint="Sincronizando configurações do formulário e domínio permitido."
+        />
       </div>
     );
   }
@@ -1672,11 +1678,6 @@ export const WebsiteFormIntegrationView: React.FC<WebsiteFormIntegrationViewProp
                   <label className={activeEditorTab === 'text' && textSection === 'form' ? '' : 'hidden'}>
                     <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold">
                       <span>Texto do botão {hasButton ? '/ balão flutuante' : ''}</span>
-                      {hasButton && (
-                        <span className="text-[10px] font-semibold text-emerald-400">
-                          Exibido no balãozinho ao pairar
-                        </span>
-                      )}
                     </span>
                     <input
                       className="crm-input"

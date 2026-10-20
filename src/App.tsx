@@ -4,7 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { workspace } from './platform/workspace/workspace';
 import { CheckCircle2 } from 'lucide-react';
 import { PageKey, PdfSettingsConfig, ThemeConfig } from './types';
-import { applyThemeToDOM, getContrastFg, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
+import { DEFAULT_THEME, applyThemeToDOM, getContrastFg, loadSavedPdfSettings, loadSavedTheme } from './utils/themeEngine';
 import { supabase } from './lib/supabase';
 
 import { Sidebar } from './components/Sidebar';
@@ -13,6 +13,7 @@ import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { MfaChallengeView } from './components/MfaChallengeView';
 import { HelpModal } from './components/HelpModal';
+import { SaaSLoadingScreen } from './components/SaaSLoadingScreen';
 
 const WorkspaceGate = lazy(() => import('./components/workspace/WorkspaceGate').then(module => ({ default: module.WorkspaceGate })));
 const SecurityView = lazy(() => import('./components/SecurityView').then(module => ({ default: module.SecurityView })));
@@ -82,8 +83,13 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    applyThemeToDOM(currentTheme);
-  }, [currentTheme]);
+    if (!isAuthenticated) {
+      applyThemeToDOM(DEFAULT_THEME);
+      document.body.style.backgroundColor = '#F7F8F5';
+    } else {
+      applyThemeToDOM(currentTheme);
+    }
+  }, [currentTheme, isAuthenticated]);
 
   const resolveMfaRequirement = async (): Promise<boolean> => {
     const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -247,7 +253,7 @@ function AppContent() {
   if (authScreen === 'recovery') return <ResetPasswordView />;
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#0E2337] text-white"><div className="text-center"><div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" /><p className="text-sm font-semibold">Carregando sua conta...</p></div></div>;
+    return <SaaSLoadingScreen fullScreen message="Carregando sua conta..." hint="Verificando credenciais e sincronizando sessão..." />;
   }
 
   if (!isAuthenticated) {
@@ -350,17 +356,19 @@ function AppContent() {
 
   return (
     <WorkspaceGate>
-    <div className="min-h-screen flex flex-col font-sans antialiased transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
+    <div className="h-screen flex flex-col font-sans antialiased overflow-hidden transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-5 font-mono text-xs" style={{ backgroundColor: currentTheme.primary, borderColor: currentTheme.border, color: getContrastFg(currentTheme.primary) }}>
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-medium">{toastMessage}</span><button onClick={() => setToastMessage(null)} className="text-xs ml-2 cursor-pointer opacity-70 hover:opacity-100" style={{ color: getContrastFg(currentTheme.primary) }}>✕</button>
         </div>
       )}
       <Sidebar activePage={activePage} onNavigate={(page) => handleNavigate(page)} onSelectPage={(page) => handleNavigate(page)} theme={currentTheme} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-all duration-200 ${sidebarCollapsed ? 'md:pl-[64px]' : 'md:pl-64'}`}>
         <Topbar activePage={activePage} theme={currentTheme} onOpenMobileMenu={() => setMobileMenuOpen(true)} onOpenHelp={() => setIsHelpModalOpen(true)} onNavigate={handleNavigate} />
         <main id="app-main-content" className="flex-1 overflow-y-auto p-4 md:p-6 transition-colors" style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}>
-          {renderCurrentView()}
+          <Suspense fallback={<SaaSLoadingScreen theme={currentTheme} message="Carregando módulo..." hint="Sincronizando dados em tempo real..." />}>
+            {renderCurrentView()}
+          </Suspense>
         </main>
       </div>
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
@@ -370,5 +378,11 @@ function AppContent() {
 }
 
 export default function App() {
-  return <ErrorBoundary><Suspense fallback={<div className="min-h-screen bg-[#0E2337] text-white p-8" role="status">Carregando...</div>}><AppContent /></Suspense></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<SaaSLoadingScreen fullScreen message="Iniciando plataforma..." hint="Carregando componentes do sistema..." />}>
+        <AppContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
 }

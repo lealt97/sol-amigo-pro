@@ -33,6 +33,7 @@ import {
   normalizeFormBorderRadius,
 } from '../utils/formRadius';
 import { formatPhone } from '../utils/formatters';
+import { SaaSLoadingScreen } from './SaaSLoadingScreen';
 
 interface PublicLeadFormViewProps {
   formToken: string;
@@ -475,7 +476,12 @@ export const PublicLeadFormView: React.FC<PublicLeadFormViewProps> = ({ formToke
   if (configLoading) {
     return (
       <div id="public-lead-form-page" data-sol-amigo-form className={`flex items-center justify-center ${queryContext.embedded ? 'min-h-0 py-6' : 'min-h-screen'}`} style={formThemeStyle}>
-        <div className="flex items-center gap-2 text-sm font-semibold"><Loader2 className="h-5 w-5 animate-spin" /> Preparando formulário...</div>
+        <SaaSLoadingScreen
+          size="sm"
+          title="Captação Solar"
+          message="Preparando formulário..."
+          hint="Carregando campos e configurações..."
+        />
       </div>
     );
   }
