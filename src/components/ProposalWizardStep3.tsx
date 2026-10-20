@@ -207,6 +207,15 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
     };
   }, [effectiveAverageKWh, connectionType, hsp, performanceRatio, targetCoveragePercent, modulePowerW]);
 
+  // A selected kit fixes hardware, but generation still follows the current HSP/PR.
+  useEffect(() => {
+    if (!selectedKit) return;
+    const power = selectedKit.powerKWp || selectedKit.maxPowerKWp || 5.0;
+    const sunHours = Math.max(0.5, Number(hsp) || 5.0);
+    const efficiency = Math.max(10, Math.min(100, Number(performanceRatio) || 80)) / 100;
+    setEstimatedMonthlyGenKWh(Math.round(power * sunHours * 30 * efficiency));
+  }, [selectedKit, hsp, performanceRatio, setEstimatedMonthlyGenKWh]);
+
   // Se nenhum kit estiver selecionado, sincroniza os cálculos teóricos com as variáveis do pai
   useEffect(() => {
     if (!selectedKit) {
