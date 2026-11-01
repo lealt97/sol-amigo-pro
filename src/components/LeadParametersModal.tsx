@@ -43,7 +43,7 @@ import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
 import { LeadNotesManager } from './LeadNotesManager';
 import { parseLeadNotes } from '../utils/leadNotes';
 import { getContrastFg } from '../utils/themeEngine';
-import { getLeadStatusStyle, LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE } from '../utils/leadStatus';
+import { getLeadStatusStyle, LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, normalizeLeadStage } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 import { PROPOSALS_UPDATED_EVENT } from '../services/proposals';
 import { ProposalWizardModal } from './ProposalWizardModal';
@@ -104,7 +104,7 @@ export function LeadParametersModal({
   const [addressNumber, setAddressNumber] = useState(lead.addressNumber || '');
   const [city, setCity] = useState(lead.city || '');
   const [state, setState] = useState(lead.state || '');
-  const [status, setStatus] = useState<LeadStage>(lead.status || 'novo');
+  const [status, setStatus] = useState<LeadStage>(normalizeLeadStage(lead.status));
   const [propertyType, setPropertyType] = useState<Lead['propertyType']>(lead.propertyType || 'Residencial');
   const [propertyStatus, setPropertyStatus] = useState(lead.propertyStatus || '');
   const [distributor, setDistributor] = useState(lead.distributor || '');
@@ -147,7 +147,7 @@ export function LeadParametersModal({
     const handleStatusEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ leadId: string; status: LeadStage }>;
       if (customEvent.detail && customEvent.detail.leadId === lead.id) {
-        setStatus(customEvent.detail.status);
+        setStatus(normalizeLeadStage(customEvent.detail.status));
       }
     };
     window.addEventListener(LEAD_STATUS_CHANGED_EVENT, handleStatusEvent);

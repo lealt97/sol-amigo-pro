@@ -27,6 +27,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ThemeConfig, Client, Lead, SolarProposal, SolarConnectionType, SolarKit, OpportunityKitCosts, MaintenancePlanSelection } from '../types';
+import { ClientProposal, getStoredProposalsLocal, saveStoredProposalsLocal } from '../services/proposals';
+import { saveWorkspace } from '../platform/workspace/workspace';
 import { fetchProposalCompany } from '../services/proposalCompany';
 import { fetchClients, mergeClientsWithLeads } from '../services/clients';
 import { fetchLeads, createManualLead, isLeadConverted } from '../services/leads';
@@ -42,8 +44,9 @@ import {
 } from './ProposalWizardStep2';
 import { ProposalWizardStep3 } from './ProposalWizardStep3';
 import { ProposalWizardStep4Commercial } from './ProposalWizardStep4Commercial';
-import { useProposalTargetDefaults } from '../features/proposals/useProposalTargetDefaults';
+import { BRAZIL_STATE_HSP } from '../data/initialKits';
 import { formatMaintenanceFrequency, getMaintenanceAnnualSalePrice, getMaintenancePricingMode } from '../utils/maintenance';
+import { calculateCommercialPricing } from '../utils/commercialPricing';
 
 import { buildWizardProposal, type ProposalTargetSelection } from '../features/proposals/buildProposal';
 export type { ProposalTargetSelection } from '../features/proposals/buildProposal';
@@ -65,7 +68,9 @@ interface ProposalWizardModalProps {
     concessionaria?: string;
     monthlyConsumptionKWh?: number;
   } | null;
+  initialProposal?: ClientProposal | SolarProposal | null;
   onSaveProposal: (proposal: SolarProposal) => void | Promise<void>;
+  onSaveDraft?: (proposal: ClientProposal) => void | Promise<void>;
   onShowToast: (msg: string) => void;
 }
 
@@ -77,9 +82,19 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
   onClose,
   theme,
   initialTarget,
+  initialProposal,
   onSaveProposal,
+  onSaveDraft,
   onShowToast,
 }) => {
+  // Identificador único da proposta/rascunho
+  const proposalIdRef = useRef<string>(initialProposal?.id || crypto.randomUUID());
+  const proposalCodeRef = useRef<string>(
+    initialProposal?.code ||
+      `PROP-${new Date().getFullYear()}-${proposalIdRef.current.replaceAll('-', '').slice(0, 12).toUpperCase()}`
+  );
+  const hasCompletedRef = useRef<boolean>(false);
+
   // Etapa atual
   const [cashPaymentTerms, setCashPaymentTerms] = useState('');
   const [installmentPaymentTerms, setInstallmentPaymentTerms] = useState('');
@@ -165,7 +180,112 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     notes: '',
   });
 
-  useProposalTargetDefaults(selectedTarget, setDirectAvgKWh, setConcessionaria, setHsp);
+  const initializedTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    const identity = selectedTarget ? `${selectedTarget.type}:${selectedTarget.id}` : null;
+    if (!selectedTarget) {
+      initializedTargetRef.current = null;
+      return;
+    }
+    if (initializedTargetRef.current === identity) return;
+    initializedTargetRef.current = identity;
+    if (selectedTarget.monthlyConsumptionKWh && selectedTarget.monthlyConsumptionKWh > 0) {
+      setDirectAvgKWh(selectedTarget.monthlyConsumptionKWh);
+    }
+    if (selectedTarget.concessionaria) setConcessionaria(selectedTarget.concessionaria);
+    const hspVal = BRAZIL_STATE_HSP[(selectedTarget.state || '').toUpperCase().trim()];
+    if (hspVal) setHsp(hspVal);
+  }, [selectedTarget]);
+
+  // Restaura estado salvo do rascunho ou proposta em edição
+  useEffect(() => {
+    if (!isOpen) return;
+    hasCompletedRef.current = false;
+
+    if (initialProposal) {
+      proposalIdRef.current = initialProposal.id;
+      proposalCodeRef.current = initialProposal.code;
+
+      const dData = (initialProposal as any).draftData;
+      const snap = (initialProposal as any).documentSnapshot || initialProposal;
+
+      const stepToRestore = dData?.currentStep || (initialProposal as any).draftStep;
+      if (stepToRestore) {
+        setCurrentStep(stepToRestore as WizardStep);
+      } else if (initialProposal.status?.toLowerCase() === 'recusada') {
+        setCurrentStep('sizing_hardware');
+      }
+
+      if (dData?.selectedTarget) {
+        setSelectedTarget(dData.selectedTarget);
+      } else if (initialProposal.clientName) {
+        setSelectedTarget({
+          id: (initialProposal as any).clientId || (initialProposal as any).leadId || initialProposal.id,
+          name: initialProposal.clientName,
+          type: (initialProposal as any).leadId ? 'lead' : 'client',
+          document: snap?.clientDocument,
+          phone: snap?.clientPhone,
+          email: snap?.clientEmail,
+          city: snap?.clientCity,
+          state: snap?.clientState,
+          concessionaria: snap?.concessionaria,
+          monthlyConsumptionKWh: snap?.monthlyConsumptionKWh,
+          clientId: (initialProposal as any).clientId,
+        });
+      }
+
+      if (dData?.systemType || initialProposal.systemType) {
+        setSystemType((dData?.systemType || initialProposal.systemType) as 'On-Grid' | 'Híbrido');
+      }
+      if (dData?.consumptionMode) setConsumptionMode(dData.consumptionMode);
+      if (dData?.directAvgKWh !== undefined) setDirectAvgKWh(dData.directAvgKWh);
+      else if (snap?.monthlyConsumptionKWh) setDirectAvgKWh(snap.monthlyConsumptionKWh);
+      if (dData?.monthlyValues) setMonthlyValues(dData.monthlyValues);
+      if (dData?.loadItems) setLoadItems(dData.loadItems);
+      if (dData?.concessionaria || snap?.concessionaria) setConcessionaria(dData?.concessionaria || snap?.concessionaria);
+      if (dData?.connectionType || snap?.technicalOutput?.connectionType) setConnectionType(dData?.connectionType || snap?.technicalOutput?.connectionType);
+      if (dData?.energyTariff !== undefined) setEnergyTariff(dData.energyTariff);
+      else if (snap?.technicalOutput?.energyTariff !== undefined) setEnergyTariff(snap.technicalOutput.energyTariff);
+      if (dData?.publicLightingTax !== undefined) setPublicLightingTax(dData.publicLightingTax);
+      if (dData?.backupAutonomyHours !== undefined) setBackupAutonomyHours(dData.backupAutonomyHours);
+      else if (snap?.technicalOutput?.backupAutonomyHours !== undefined) setBackupAutonomyHours(snap.technicalOutput.backupAutonomyHours);
+      if (dData?.hsp !== undefined) setHsp(dData.hsp);
+      else if (snap?.hsp !== undefined) setHsp(snap.hsp);
+      if (dData?.performanceRatio !== undefined) setPerformanceRatio(dData.performanceRatio);
+      else if (snap?.performanceRatio !== undefined) setPerformanceRatio(snap.performanceRatio);
+      if (dData?.targetCoveragePercent !== undefined) setTargetCoveragePercent(dData.targetCoveragePercent);
+      else if (snap?.technicalOutput?.targetCoveragePercent !== undefined) setTargetCoveragePercent(snap.technicalOutput.targetCoveragePercent);
+      if (dData?.modulePowerW !== undefined) setModulePowerW(dData.modulePowerW);
+      else if (snap?.technicalOutput?.modulePowerW !== undefined) setModulePowerW(snap.technicalOutput.modulePowerW);
+      if (dData?.moduleModel || initialProposal.moduleModel) setModuleModel(dData?.moduleModel || initialProposal.moduleModel || '');
+      if (dData?.modulesCount !== undefined) setModulesCount(dData.modulesCount);
+      else if (initialProposal.modulesCount !== undefined) setModulesCount(initialProposal.modulesCount);
+      if (dData?.installedPowerKWp !== undefined) setInstalledPowerKWp(dData.installedPowerKWp);
+      else if (initialProposal.systemPowerKWp !== undefined) setInstalledPowerKWp(initialProposal.systemPowerKWp);
+      if (dData?.inverterModel || initialProposal.inverterModel) setInverterModel(dData?.inverterModel || initialProposal.inverterModel || '');
+      if (dData?.batteryModel || initialProposal.batteryModel) setBatteryModel(dData?.batteryModel || initialProposal.batteryModel || '');
+      if (dData?.batteryCount !== undefined) setBatteryCount(dData.batteryCount);
+      else if (initialProposal.batteryCount !== undefined) setBatteryCount(initialProposal.batteryCount);
+      if (dData?.batteryCapacityKWh !== undefined) setBatteryCapacityKWh(dData.batteryCapacityKWh);
+      if (dData?.selectedKit) setSelectedKit(dData.selectedKit);
+      if (dData?.estimatedMonthlyGenKWh !== undefined) setEstimatedMonthlyGenKWh(dData.estimatedMonthlyGenKWh);
+      else if (initialProposal.estimatedMonthlyGenKWh !== undefined) setEstimatedMonthlyGenKWh(initialProposal.estimatedMonthlyGenKWh);
+      if (dData?.totalKitPrice !== undefined) setTotalKitPrice(dData.totalKitPrice);
+      if (dData?.commercialPricing) setCommercialPricing(dData.commercialPricing);
+      else if (snap?.pricing) setCommercialPricing(snap.pricing);
+      if (dData?.maintenancePlan || initialProposal.maintenancePlan) setMaintenancePlan(dData?.maintenancePlan || initialProposal.maintenancePlan!);
+      if (dData?.cashPaymentTerms || snap?.commercialConditions?.cashPaymentTerms) setCashPaymentTerms(dData?.cashPaymentTerms || snap?.commercialConditions?.cashPaymentTerms || '');
+      if (dData?.installmentPaymentTerms || snap?.commercialConditions?.installmentPaymentTerms) setInstallmentPaymentTerms(dData?.installmentPaymentTerms || snap?.commercialConditions?.installmentPaymentTerms || '');
+      if (dData?.paymentMethods || snap?.commercialConditions?.paymentMethods) setPaymentMethods(dData?.paymentMethods || snap?.commercialConditions?.paymentMethods || '');
+      if (dData?.deliveryTimeframe || snap?.commercialConditions?.deliveryTimeframe) setDeliveryTimeframe(dData?.deliveryTimeframe || snap?.commercialConditions?.deliveryTimeframe || '');
+      if (dData?.warrantyTerms || snap?.commercialConditions?.warrantyTerms) setWarrantyTerms(dData?.warrantyTerms || snap?.commercialConditions?.warrantyTerms || '');
+      if (dData?.commercialNotes || snap?.commercialConditions?.notes) setCommercialNotes(dData?.commercialNotes || snap?.commercialConditions?.notes || '');
+    } else {
+      const identity = crypto.randomUUID();
+      proposalIdRef.current = identity;
+      proposalCodeRef.current = `PROP-${new Date().getFullYear()}-${identity.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+    }
+  }, [isOpen, initialProposal]);
 
   // Consumo médio adotado dependendo do modo ativo na Etapa 2
   const effectiveAverageKWh = useMemo(() => {
@@ -478,16 +598,251 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
     }
   };
 
+  const buildCurrentDraft = (): ClientProposal => {
+    const finalKWp = Number((installedPowerKWp || (modulesCount * modulePowerW) / 1000 || 0).toFixed(2));
+    const finalVal = commercialPricing?.finalSalePrice || totalKitPrice || 0;
+    const targetName = selectedTarget?.name?.trim() || 'Titular em preenchimento';
+
+    return {
+      id: proposalIdRef.current,
+      code: proposalCodeRef.current,
+      clientId: selectedTarget?.clientId || (selectedTarget?.type === 'client' ? selectedTarget.id : '') || '',
+      clientName: targetName,
+      title: `${finalKWp > 0 ? `${finalKWp.toFixed(2)} kWp • ` : ''}${targetName}`,
+      systemPowerKWp: finalKWp,
+      systemType: systemType,
+      totalValue: finalVal,
+      status: 'Rascunho',
+      modulesCount: modulesCount || 0,
+      moduleModel: moduleModel || '',
+      inverterModel: inverterModel || '',
+      batteryModel: systemType === 'Híbrido' ? batteryModel : undefined,
+      batteryCount: systemType === 'Híbrido' ? batteryCount : undefined,
+      estimatedMonthlyGenKWh: estimatedMonthlyGenKWh || 0,
+      estimatedMonthlySavings: Math.round(
+        Math.min(estimatedMonthlyGenKWh || 0, effectiveAverageKWh || 0) * (energyTariff || 0.92)
+      ) || 0,
+      maintenancePlan,
+      notes: commercialNotes,
+      draftStep: currentStep,
+      draftData: {
+        currentStep,
+        selectedTarget,
+        systemType,
+        consumptionMode,
+        directAvgKWh,
+        monthlyValues,
+        loadItems,
+        concessionaria,
+        connectionType,
+        energyTariff,
+        publicLightingTax,
+        backupAutonomyHours,
+        hsp,
+        performanceRatio,
+        targetCoveragePercent,
+        modulePowerW,
+        moduleModel,
+        modulesCount,
+        installedPowerKWp: finalKWp,
+        inverterModel,
+        batteryModel,
+        batteryCount,
+        batteryCapacityKWh,
+        selectedKit,
+        estimatedMonthlyGenKWh,
+        totalKitPrice,
+        commercialPricing,
+        maintenancePlan,
+        cashPaymentTerms,
+        installmentPaymentTerms,
+        paymentMethods,
+        deliveryTimeframe,
+        warrantyTerms,
+        commercialNotes,
+      },
+      createdAt: (initialProposal as any)?.createdAt || new Date().toISOString(),
+    };
+  };
+
+  const handleExitWizard = async () => {
+    if (hasCompletedRef.current) {
+      onClose();
+      return;
+    }
+
+    try {
+      const draft = buildCurrentDraft();
+      if (onSaveDraft) {
+        await onSaveDraft(draft);
+      } else {
+        const all = getStoredProposalsLocal();
+        const idx = all.findIndex((p) => p.id === draft.id || p.code === draft.code);
+        let updated: ClientProposal[];
+        if (idx !== -1) {
+          updated = [...all];
+          updated[idx] = { ...updated[idx], ...draft };
+        } else {
+          updated = [draft, ...all];
+        }
+        saveStoredProposalsLocal(updated);
+        void saveWorkspace();
+        onShowToast?.(`Rascunho ${draft.code} salvo com sucesso.`);
+      }
+    } catch (err) {
+      console.warn('Erro ao salvar rascunho:', err);
+    }
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        void handleExitWizard();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentStep, selectedTarget, installedPowerKWp, commercialPricing]);
+
   const [savingProposal, setSavingProposal] = useState(false);
   const handleGenerateProposalFinal = async () => {
     if (!selectedTarget || savingProposal) return;
     setSavingProposal(true);
+    const isFromRejected =
+      initialProposal?.status?.toLowerCase() === 'recusada' ||
+      Boolean((initialProposal as any)?.wasRejected);
+
     try {
-      const newProp = buildWizardProposal({ selectedTarget, companyInfo, clientsList, connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours, selectedKit, moduleModel, inverterModel, batteryModel, batteryCount, batteryCapacityKWh, concessionaria, hsp, performanceRatio, commercialPricing, maintenancePlan, paymentMethods, cashPaymentTerms, installmentPaymentTerms, deliveryTimeframe, warrantyTerms, commercialNotes, systemType, effectiveAverageKWh, installedPowerKWp, modulesCount, estimatedMonthlyGenKWh });
+      const validModulesCount = Math.max(1, Math.round(Number(modulesCount) || 10));
+      const validModulePowerW = Math.max(100, Number(modulePowerW) || 550);
+      const validInstalledPowerKWp = Number(((validModulesCount * validModulePowerW) / 1000).toFixed(2));
+      const validEffectiveAverageKWh = Math.max(1, effectiveAverageKWh || directAvgKWh || 150);
+      const validEnergyTariff = Math.max(0.1, Number(energyTariff) || 0.92);
+      const validHsp = Math.max(0.5, Math.min(10, Number(hsp) || 5.0));
+      const validPR = Math.max(50, Math.min(99, Number(performanceRatio) || 80));
+      const validCoverage = Math.max(1, Math.min(150, Number(targetCoveragePercent) || 100));
+
+      const validModuleModel =
+        (moduleModel || '').trim() ||
+        (selectedKit?.moduleModel?.trim() || `Painel Solar Canadian ${validModulePowerW}W Bifacial TOPCon`);
+
+      const validInverterModel =
+        (inverterModel || '').trim() ||
+        (selectedKit?.inverterModel?.trim() ||
+          (systemType === 'Híbrido'
+            ? `Inversor Híbrido Deye ${Math.max(3, Math.ceil(validInstalledPowerKWp))}kW com Backup EPS`
+            : `Inversor Solar Deye ${Math.max(3, Math.ceil(validInstalledPowerKWp))}kW Monofásico/Bifásico`));
+
+      const validBatteryModel = (batteryModel || '').trim() || (selectedKit?.batteryModel?.trim() || 'Bateria LiFePO4 Deye 5.12 kWh');
+      const validBatteryCount = Math.max(1, Number(batteryCount) || Number(selectedKit?.batteryCount) || 1);
+      const validBatteryCap = Number(batteryCapacityKWh) > 0
+        ? Number(batteryCapacityKWh)
+        : (Number(selectedKit?.batteryCapacityKWh) || 5.12);
+
+      let validPricing = commercialPricing;
+      if (!validPricing || !Number.isFinite(validPricing.finalSalePrice) || validPricing.finalSalePrice <= 0 || validPricing.validationError) {
+        const equipCost = selectedKit && Number(selectedKit.equipmentCost) > 0
+          ? Number(selectedKit.equipmentCost)
+          : Math.round(validInstalledPowerKWp * 2200);
+        const instCost = selectedKit && Number(selectedKit.installationCost) > 0
+          ? Number(selectedKit.installationCost)
+          : Math.round(validInstalledPowerKWp * 500);
+
+        const calc = calculateCommercialPricing({
+          equipmentItems: selectedKit ? [{
+            id: 'equipment-base',
+            description: selectedKit.name,
+            category: 'Kit solar',
+            quantity: 1,
+            unitCost: equipCost,
+          }] : [{
+            id: 'equipment-base',
+            description: `Dimensionamento Customizado ${validInstalledPowerKWp.toFixed(2)} kWp`,
+            category: 'Kit solar',
+            quantity: 1,
+            unitCost: equipCost,
+          }],
+          installationCost: instCost,
+          engineeringCost: Math.max(0, Number(selectedKit?.engineeringCost) || 800),
+          utilityFee: Math.max(0, Number(selectedKit?.utilityFee) || 350),
+          freightCost: Math.max(0, Number(selectedKit?.freightCost) || 500),
+          otherCosts: Math.max(0, Number(selectedKit?.otherCosts) || 300),
+          taxesPercent: 4.5,
+          commissionPercent: 5.0,
+          targetMarginPercent: 22.0,
+          discountValue: 0,
+          installedPowerKWp: validInstalledPowerKWp,
+        });
+
+        validPricing = {
+          equipmentItems: [],
+          installationCost: instCost,
+          engineeringCost: 800,
+          utilityFee: 350,
+          freightCost: 500,
+          otherCosts: 300,
+          taxesPercent: 4.5,
+          commissionPercent: 5.0,
+          targetMarginPercent: 22.0,
+          ...calc,
+          status: 'concluido',
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      const validGen = estimatedMonthlyGenKWh > 0
+        ? estimatedMonthlyGenKWh
+        : Math.round(validInstalledPowerKWp * validHsp * 30 * (validPR / 100));
+
+      const newProp = buildWizardProposal({
+        id: proposalIdRef.current,
+        code: proposalCodeRef.current,
+        status: isFromRejected ? 'Recusada' : 'Pendente',
+        selectedTarget,
+        companyInfo,
+        clientsList,
+        connectionType,
+        targetCoveragePercent: validCoverage,
+        modulePowerW: validModulePowerW,
+        energyTariff: validEnergyTariff,
+        backupAutonomyHours,
+        selectedKit,
+        moduleModel: validModuleModel,
+        inverterModel: validInverterModel,
+        batteryModel: validBatteryModel,
+        batteryCount: validBatteryCount,
+        batteryCapacityKWh: validBatteryCap,
+        concessionaria,
+        hsp: validHsp,
+        performanceRatio: validPR,
+        commercialPricing: validPricing,
+        maintenancePlan,
+        paymentMethods,
+        cashPaymentTerms,
+        installmentPaymentTerms,
+        deliveryTimeframe,
+        warrantyTerms,
+        commercialNotes,
+        systemType,
+        effectiveAverageKWh: validEffectiveAverageKWh,
+        installedPowerKWp: validInstalledPowerKWp,
+        modulesCount: validModulesCount,
+        estimatedMonthlyGenKWh: validGen,
+      });
+
+      if (isFromRejected) {
+        (newProp as any).wasRejected = true;
+      }
+      hasCompletedRef.current = true;
       await onSaveProposal(newProp);
       onClose();
-    } catch (error) { onShowToast(error instanceof Error ? error.message : 'Não foi possível salvar a proposta.'); }
-    finally { setSavingProposal(false); }
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Não foi possível salvar a proposta.');
+    } finally {
+      setSavingProposal(false);
+    }
   };
 
   // Definição das etapas do Wizard
@@ -642,9 +997,9 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
             </div>
 
             <button
-              onClick={onClose}
+              onClick={handleExitWizard}
               className="p-2 rounded-lg text-[var(--dim)] hover:text-[var(--text)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border)]"
-              title="Fechar assistente"
+              title="Fechar e salvar rascunho"
             >
               <X className="w-5 h-5" />
             </button>
@@ -700,14 +1055,14 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                         stepItemRefs.current[s.id] = el;
                       }}
                       onClick={() => {
-                        if (isPassed) setCurrentStep(s.id);
+                        if (isPassed || Boolean(selectedTarget)) setCurrentStep(s.id);
                       }}
                       className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-left transition-all shrink-0 border select-none ${
-                        isPassed ? 'cursor-pointer hover:bg-[var(--neutral)]/20' : ''
+                        isPassed || Boolean(selectedTarget) ? 'cursor-pointer hover:bg-[var(--neutral)]/20' : ''
                       } ${
                         isCurrent
                           ? 'font-bold shadow-xs'
-                          : isPassed
+                          : isPassed || Boolean(selectedTarget)
                           ? 'opacity-85'
                           : 'opacity-40'
                       }`}
@@ -1526,6 +1881,25 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 </div>
               </div>
 
+              {(initialProposal?.status?.toLowerCase() === 'recusada' || Boolean((initialProposal as any)?.wasRejected)) && (
+                <div
+                  className="p-3.5 rounded-xl border flex items-start gap-2.5 text-xs"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, #0ea5e9 12%, transparent)',
+                    borderColor: 'color-mix(in srgb, #0ea5e9 35%, transparent)',
+                    color: '#38bdf8',
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 shrink-0 text-sky-400 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-sky-300">Renegociação de Proposta Recusada:</p>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Ao concluir e reenviar esta proposta para o cliente (no WhatsApp ou compartilhamento), seu status passará automaticamente para <strong>"Em negociação"</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: theme.border, backgroundColor: theme.card }}>
                 <h4 className="font-bold">Condições comerciais para o PDF</h4>
                 {[
@@ -1737,27 +2111,39 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
           className="p-4 sm:p-5 border-t shrink-0 flex items-center justify-between gap-3"
           style={{ borderColor: theme.border, backgroundColor: theme.background }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              if (currentStepIndex > 0) {
-                setCurrentStep(stepsConfig[currentStepIndex - 1].id);
-              } else {
-                onClose();
-              }
-            }}
-            className="btn-cancel btn-text px-4 py-2 rounded-xl text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer flex items-center gap-1.5 !bg-transparent hover:!bg-transparent"
-            data-text-only="true"
-          >
-            {currentStepIndex > 0 ? (
-              <>
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </>
-            ) : (
-              'Cancelar'
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (currentStepIndex > 0) {
+                  setCurrentStep(stepsConfig[currentStepIndex - 1].id);
+                } else {
+                  void handleExitWizard();
+                }
+              }}
+              className="btn-cancel btn-text px-4 py-2 rounded-xl text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer flex items-center gap-1.5 !bg-transparent hover:!bg-transparent"
+              data-text-only="true"
+            >
+              {currentStepIndex > 0 ? (
+                <>
+                  <ArrowLeft className="w-4 h-4" />
+                  Voltar
+                </>
+              ) : (
+                'Cancelar'
+              )}
+            </button>
+            {currentStepIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => { void handleExitWizard(); }}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium text-[var(--dim)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] transition-all cursor-pointer"
+                title="Salvar alterações e sair para continuar mais tarde"
+              >
+                Salvar e Sair
+              </button>
             )}
-          </button>
+          </div>
 
           <div className="flex items-center gap-2">
             {currentStep === 'client_selection' && (
@@ -1845,7 +2231,11 @@ export const ProposalWizardModal: React.FC<ProposalWizardModalProps> = ({
                 style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
               >
                 <FileText className="w-4 h-4" />
-                <span>Emitir Proposta Comercial</span>
+                <span>
+                  {initialProposal?.status?.toLowerCase() === 'recusada' || Boolean((initialProposal as any)?.wasRejected)
+                    ? 'Salvar e Concluir Renegociação'
+                    : 'Emitir Proposta Comercial'}
+                </span>
               </button>
             )}
           </div>

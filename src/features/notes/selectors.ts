@@ -1,6 +1,6 @@
 import type { Lead, Client } from '../../types';
 import { parseLeadNotes } from '../../utils/leadNotes';
-import { LEAD_STAGE_LABELS } from '../../utils/leadStatus';
+import { LEAD_STAGE_LABELS, normalizeLeadStage } from '../../utils/leadStatus';
 import { isLeadConverted } from '../crm/leadSelectors';
 
 export type NoteTargetType = 'lead' | 'client';
@@ -76,7 +76,7 @@ export function collectNotes(leads: Lead[], clients: Client[]): UnifiedNote[] {
           targetPhone: lead.phone,
           targetEmail: lead.email,
           targetLocation: lead.city ? `${lead.city}/${lead.state || 'UF'}` : undefined,
-          targetStatus: isConverted ? 'Ativo' : (LEAD_STAGE_LABELS[lead.status] || lead.status),
+          targetStatus: isConverted ? 'Ativo' : (LEAD_STAGE_LABELS[normalizeLeadStage(lead.status)] || lead.status),
           text: note.text,
           images: note.images || [],
           createdAt: note.createdAt,

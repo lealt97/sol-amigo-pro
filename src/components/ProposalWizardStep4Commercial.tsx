@@ -43,35 +43,49 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
   onPricingChange,
   onShowToast,
 }) => {
+  const kwp = Math.max(0.5, Number(installedPowerKWp) || Number(selectedKit?.powerKWp) || 5.0);
+
   const selectedKitEquipmentCost = useMemo(() => {
-    if (!selectedKit) return 0;
-    const direct = Math.max(0, Number(selectedKit.equipmentCost) || 0);
-    if (direct > 0) return direct;
-    return (selectedKit.items || []).reduce(
-      (sum, item) => sum + Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.product?.unitCost) || 0),
-      0
-    );
-  }, [selectedKit]);
+    if (selectedKit) {
+      const direct = Math.max(0, Number(selectedKit.equipmentCost) || 0);
+      if (direct > 0) return direct;
+      const itemsCost = (selectedKit.items || []).reduce(
+        (sum, item) => sum + Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.product?.unitCost) || 0),
+        0
+      );
+      if (itemsCost > 0) return itemsCost;
+      if (selectedKit.suggestedPrice && selectedKit.suggestedPrice > 0) {
+        return Math.round(selectedKit.suggestedPrice * 0.65);
+      }
+    }
+    return Math.round(kwp * 2200);
+  }, [selectedKit, kwp]);
 
   const selectedKitBaseCosts = useMemo(() => ({
     equipmentCost: selectedKitEquipmentCost,
-    installationCost: Math.max(0, Number(selectedKit?.installationCost) || 0),
-    engineeringCost: Math.max(0, Number(selectedKit?.engineeringCost) || 0),
-    utilityFee: Math.max(0, Number(selectedKit?.utilityFee) || 0),
-    freightCost: Math.max(0, Number(selectedKit?.freightCost) || 0),
-    otherCosts: Math.max(0, Number(selectedKit?.otherCosts) || 0),
-  }), [selectedKit, selectedKitEquipmentCost]);
+    installationCost: Math.max(0, Number(selectedKit?.installationCost) || Math.round(kwp * 500)),
+    engineeringCost: Math.max(0, Number(selectedKit?.engineeringCost) || 800),
+    utilityFee: Math.max(0, Number(selectedKit?.utilityFee) || 350),
+    freightCost: Math.max(0, Number(selectedKit?.freightCost) || 500),
+    otherCosts: Math.max(0, Number(selectedKit?.otherCosts) || 300),
+  }), [selectedKit, selectedKitEquipmentCost, kwp]);
 
-  const [taxesPercent, setTaxesPercent] = useState(selectedKit?.taxesPercent ?? 0);
-  const [commissionPercent, setCommissionPercent] = useState(selectedKit?.commissionPercent ?? 0);
-  const [targetMarginPercent, setTargetMarginPercent] = useState(selectedKit?.targetMarginPercent ?? 0);
+  const [taxesPercent, setTaxesPercent] = useState(
+    selectedKit?.taxesPercent && selectedKit.taxesPercent > 0 ? selectedKit.taxesPercent : 4.5
+  );
+  const [commissionPercent, setCommissionPercent] = useState(
+    selectedKit?.commissionPercent && selectedKit.commissionPercent > 0 ? selectedKit.commissionPercent : 5.0
+  );
+  const [targetMarginPercent, setTargetMarginPercent] = useState(
+    selectedKit?.targetMarginPercent && selectedKit.targetMarginPercent > 0 ? selectedKit.targetMarginPercent : 22.0
+  );
   const [discountValue, setDiscountValue] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalProjectCost[]>([]);
 
   useEffect(() => {
-    setTaxesPercent(selectedKit?.taxesPercent ?? 0);
-    setCommissionPercent(selectedKit?.commissionPercent ?? 0);
-    setTargetMarginPercent(selectedKit?.targetMarginPercent ?? 0);
+    setTaxesPercent(selectedKit?.taxesPercent && selectedKit.taxesPercent > 0 ? selectedKit.taxesPercent : 4.5);
+    setCommissionPercent(selectedKit?.commissionPercent && selectedKit.commissionPercent > 0 ? selectedKit.commissionPercent : 5.0);
+    setTargetMarginPercent(selectedKit?.targetMarginPercent && selectedKit.targetMarginPercent > 0 ? selectedKit.targetMarginPercent : 22.0);
     setDiscountValue(0);
   }, [selectedKit?.id]);
 
@@ -81,14 +95,22 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
   );
 
   const pricing = useMemo(() => {
+    const equipmentItems = selectedKit ? [{
+      id: 'equipment-base',
+      description: selectedKit.name,
+      category: 'Kit solar',
+      quantity: 1,
+      unitCost: selectedKitBaseCosts.equipmentCost,
+    }] : [{
+      id: 'equipment-base',
+      description: `Dimensionamento Customizado ${kwp.toFixed(2)} kWp`,
+      category: 'Kit solar',
+      quantity: 1,
+      unitCost: selectedKitBaseCosts.equipmentCost,
+    }];
+
     const result = calculateCommercialPricing({
-      equipmentItems: selectedKit ? [{
-        id: 'equipment-base',
-        description: selectedKit.name,
-        category: 'Kit solar',
-        quantity: 1,
-        unitCost: selectedKitBaseCosts.equipmentCost,
-      }] : [],
+      equipmentItems,
       installationCost: selectedKitBaseCosts.installationCost,
       engineeringCost: selectedKitBaseCosts.engineeringCost,
       utilityFee: selectedKitBaseCosts.utilityFee,
@@ -98,7 +120,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
       commissionPercent,
       targetMarginPercent,
       discountValue,
-      installedPowerKWp,
+      installedPowerKWp: kwp,
       additionalDirectCost: maintenancePlan.enabled
         ? maintenancePlan.internalCostPerVisit * maintenancePlan.visitsPerYear
         : 0,
@@ -106,13 +128,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     });
 
     return {
-      equipmentItems: selectedKit ? [{
-        id: 'equipment-base',
-        description: selectedKit.name,
-        category: 'Kit solar',
-        quantity: 1,
-        unitCost: selectedKitBaseCosts.equipmentCost,
-      }] : [],
+      equipmentItems,
       installationCost: selectedKitBaseCosts.installationCost,
       engineeringCost: selectedKitBaseCosts.engineeringCost,
       utilityFee: selectedKitBaseCosts.utilityFee,
@@ -131,7 +147,7 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
     additionalCostsTotal,
     commissionPercent,
     discountValue,
-    installedPowerKWp,
+    kwp,
     selectedKit,
     selectedKitBaseCosts,
     targetMarginPercent,
@@ -250,9 +266,36 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
                 )}
               </div>
             ) : (
-              <div className="flex gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-300">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                Nenhum kit foi selecionado. Volte para “Dimensionamento & Kits” e escolha um kit; ele será trazido automaticamente para esta etapa.
+              <div className="rounded-xl border p-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-bold text-[var(--text)]">Dimensionamento Customizado</div>
+                    <div className="mt-0.5 text-[11px] text-[var(--muted)]">
+                      {kwp.toFixed(2)} kWp • {systemType} (Dimensionamento personalizado sem kit fixo)
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] font-bold uppercase text-[var(--muted)]">Custo base estimado</div>
+                    <div className="text-lg font-black" style={{ color: theme.secondary }}>
+                      {money.format(
+                        selectedKitBaseCosts.equipmentCost +
+                        selectedKitBaseCosts.installationCost +
+                        selectedKitBaseCosts.engineeringCost +
+                        selectedKitBaseCosts.utilityFee +
+                        selectedKitBaseCosts.freightCost +
+                        selectedKitBaseCosts.otherCosts
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--muted)] sm:grid-cols-3">
+                  <span>Equipamentos: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.equipmentCost)}</strong></span>
+                  <span>Instalação: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.installationCost)}</strong></span>
+                  <span>Engenharia: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.engineeringCost)}</strong></span>
+                  <span>Concessionária: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.utilityFee)}</strong></span>
+                  <span>Frete: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.freightCost)}</strong></span>
+                  <span>Outros: <strong className="text-[var(--text)]">{money.format(selectedKitBaseCosts.otherCosts)}</strong></span>
+                </div>
               </div>
             )}
           </section>
@@ -391,15 +434,11 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
             </div>
           </div>
 
-          {!selectedKit ? (
-            <div className="rounded-xl border border-dashed p-4 text-center text-xs text-[var(--muted)]" style={{ borderColor: theme.border }}>
-              Selecione um kit em <strong className="text-[var(--text)]">Dimensionamento & Kits</strong> para iniciar o resumo comercial.
-            </div>
-          ) : (
-            <>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between gap-3">
-                  <span className="text-[var(--muted)]">Kit selecionado</span>
+                  <span className="text-[var(--muted)]">
+                    {selectedKit ? 'Kit selecionado' : 'Equipamentos (Base)'}
+                  </span>
                   <strong>{money.format(
                     selectedKitBaseCosts.equipmentCost +
                     selectedKitBaseCosts.installationCost +
@@ -493,8 +532,6 @@ export const ProposalWizardStep4Commercial: React.FC<ProposalWizardStep4Commerci
                   Margem real abaixo da meta de {targetMarginPercent.toFixed(1)}%, principalmente por causa do desconto aplicado.
                 </div>
               )}
-            </>
-          )}
         </aside>
       </div>
     </div>

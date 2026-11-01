@@ -54,7 +54,7 @@ import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
 import { LeadParametersModal } from './LeadParametersModal';
 import { LeadNotesModal } from './LeadNotesModal';
-import { LEAD_STAGE_LABELS, getLeadStatusStyle, LEAD_STATUS_PALETTE } from '../utils/leadStatus';
+import { LEAD_STAGE_LABELS, getLeadStatusStyle, LEAD_STATUS_PALETTE, normalizeLeadStage } from '../utils/leadStatus';
 import { getStoredLeadStatus, setStoredLeadStatus, LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 
 interface ClientesViewProps {
@@ -211,44 +211,15 @@ export function ClientesView({
 
   const isLight = getContrastFg(theme.primary) === '#0F172A';
 
-  // Obter o status no funil para o cliente
+  // Obter o status no funil para o cliente (5 status simplificados)
   const getClientFunnelStatus = (client: Client): LeadStage => {
     const stored = getStoredLeadStatus(client.sourceLeadId || client.id);
-    if (stored) return stored;
+    if (stored) return normalizeLeadStage(stored);
 
     const raw = client.crmStatus as string | undefined;
-    if (!raw) return 'qualificado';
+    if (!raw) return 'ganho';
 
-    switch (raw) {
-      case 'Novo lead':
-      case 'novo':
-        return 'novo';
-      case 'Em contato':
-      case 'em_contato':
-        return 'em_contato';
-      case 'Qualificado':
-      case 'qualificado':
-        return 'qualificado';
-      case 'Em estudo':
-      case 'em_estudo':
-        return 'em_estudo';
-      case 'Proposta enviada':
-      case 'proposta_enviada':
-        return 'proposta_enviada';
-      case 'Negociação':
-      case 'negociacao':
-        return 'negociacao';
-      case 'Contrato assinado':
-      case 'ganho':
-      case 'Cliente':
-        return 'ganho';
-      case 'Perdido':
-      case 'perdido':
-        return 'perdido';
-      default:
-        if (raw in LEAD_STATUS_PALETTE) return raw as LeadStage;
-        return 'qualificado';
-    }
+    return normalizeLeadStage(raw);
   };
 
   // Mudar status rapidamente direto pelo badge na frente do card
@@ -578,7 +549,19 @@ export function ClientesView({
     };
 
     const currentProps = getStoredProposalsLocal();
-    const updated = [newProp, ...currentProps];
+    const existingIdx = currentProps.findIndex((p) => p.id === newProp.id || p.code === newProp.code);
+    let updated: ClientProposal[];
+    if (existingIdx !== -1) {
+      updated = [...currentProps];
+      updated[existingIdx] = {
+        ...updated[existingIdx],
+        ...newProp,
+        draftStep: undefined,
+        draftData: undefined,
+      };
+    } else {
+      updated = [newProp, ...currentProps];
+    }
     saveStoredProposalsLocal(updated);
     await saveWorkspace();
     setAllProposals(updated);

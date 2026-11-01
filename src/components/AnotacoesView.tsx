@@ -44,7 +44,7 @@ import {
 import { LeadNote, parseLeadNotes, serializeLeadNotes, compressImageFile } from '../utils/leadNotes';
 import { formatPhone, formatWhatsAppLink } from '../utils/formatters';
 import { SaaSLoadingScreen } from './SaaSLoadingScreen';
-import { LEAD_STAGE_LABELS } from '../utils/leadStatus';
+import { LEAD_STAGE_LABELS, normalizeLeadStage } from '../utils/leadStatus';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 import { LEAD_NOTES_CHANGED_EVENT } from '../utils/leadNotesPersistence';
 import { getLeadClienteBadgeStyle } from '../utils/themeEngine';
@@ -296,7 +296,7 @@ export const AnotacoesView: React.FC<AnotacoesViewProps> = ({
         phone: l.phone,
         city: l.city,
         state: l.state,
-        badge: LEAD_STAGE_LABELS[l.status] || l.status,
+        badge: LEAD_STAGE_LABELS[normalizeLeadStage(l.status)] || l.status,
         notesCount: parseLeadNotes(l.notes).length,
       }));
     } else {

@@ -33,6 +33,8 @@ export function clientProposalToSolarProposal(
     id: p.id,
     code: p.code,
     status: p.status,
+    wasRejected: p.wasRejected ?? (p as any).documentSnapshot?.wasRejected,
+    renegotiated: p.renegotiated ?? (p as any).documentSnapshot?.renegotiated,
     maintenancePlan: p.maintenancePlan ?? p.documentSnapshot?.maintenancePlan,
     createdAt: p.createdAt,
   };

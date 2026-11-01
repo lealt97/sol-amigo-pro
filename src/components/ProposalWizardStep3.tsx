@@ -5,6 +5,7 @@ import {
   Layers,
   Battery,
   ShieldCheck,
+  Check,
   CheckCircle2,
   Sparkles,
   Search,
@@ -921,7 +922,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
         </div>
 
         {/* LISTA / GRID DE KITS DA ABA KITS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-[460px] overflow-y-auto p-1">
           {filteredKits.length === 0 ? (
             <div
               className="col-span-full py-8 text-center rounded-xl border border-dashed"
@@ -943,24 +944,39 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
               return (
                 <div
                   key={kit.id}
-                  className={`p-3.5 rounded-xl border transition-all relative flex flex-col justify-between ${
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedKit(null);
+                    } else {
+                      handleSelectKit(kit);
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     isSelected
-                      ? 'shadow-md'
-                      : 'hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_3%,transparent)]'
+                      ? 'shadow-lg scale-[1.005]'
+                      : 'opacity-75 hover:opacity-100 hover:border-[var(--dim)]'
                   }`}
                   style={{
                     backgroundColor: isSelected
-                      ? `color-mix(in srgb, var(--secondary) 10%, ${theme.primary})`
-                      : theme.primary,
-                    borderColor: isSelected ? 'var(--secondary)' : theme.border,
-                    boxShadow: isSelected
-                      ? `0 0 0 1.5px var(--secondary), 0 8px 24px color-mix(in srgb, var(--secondary) 18%, transparent)`
-                      : 'none',
+                      ? 'color-mix(in srgb, var(--secondary) 8%, var(--background))'
+                      : theme.background,
+                    borderColor: isSelected
+                      ? theme.secondary
+                      : theme.border,
                   }}
                 >
+                  {isSelected && (
+                    <div
+                      className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center text-white z-10 shadow-xs"
+                      style={{ backgroundColor: theme.secondary }}
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    </div>
+                  )}
+
                   <div className="space-y-2.5">
                     {/* Header do Kit com Badges e Potência */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className={`flex items-center justify-between gap-2 flex-wrap ${isSelected ? 'pr-8' : ''}`}>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -975,19 +991,6 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
                             <span>Compatível com Demanda</span>
-                          </span>
-                        )}
-                        {isSelected && (
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-xs"
-                            style={{
-                              backgroundColor: 'color-mix(in srgb, var(--secondary) 25%, transparent)',
-                              color: 'var(--secondary)',
-                              border: '1px solid color-mix(in srgb, var(--secondary) 50%, transparent)',
-                            }}
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Kit Selecionado</span>
                           </span>
                         )}
                       </div>
@@ -1051,7 +1054,8 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
 
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (isSelected) {
                           setSelectedKit(null);
                         } else {
@@ -1081,7 +1085,7 @@ export const ProposalWizardStep3: React.FC<ProposalWizardStep3Props> = ({
                     >
                       {isSelected ? (
                         <>
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                           <span>Kit Selecionado</span>
                         </>
                       ) : (

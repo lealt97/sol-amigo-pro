@@ -41,7 +41,7 @@ import { LeadNotesModal } from './LeadNotesModal';
 import { ProposalWizardModal } from './ProposalWizardModal';
 import { formatPhone } from '../utils/formatters';
 import { getContrastFg } from '../utils/themeEngine';
-import { LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, getLeadStatusStyle } from '../utils/leadStatus';
+import { LEAD_STAGE_LABELS, LEAD_STATUS_PALETTE, getLeadStatusStyle, normalizeLeadStage } from '../utils/leadStatus';
 import { fetchAndSyncLeadNotifications, markLeadAsRead } from '../services/leadNotifications';
 import { LEAD_STATUS_CHANGED_EVENT } from '../utils/leadStatusPersistence';
 import { BRAZIL_STATE_GROUPS, BRAZIL_STATE_NAMES } from '../data/brazilStates';
@@ -236,11 +236,12 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
       const customEvent = e as CustomEvent<{ leadId: string; status: LeadStage }>;
       if (customEvent.detail) {
         const { leadId, status: newStatus } = customEvent.detail;
+        const normalized = normalizeLeadStage(newStatus);
         setLeads((current) =>
-          current.map((item) => (item.id === leadId ? { ...item, status: newStatus } : item))
+          current.map((item) => (item.id === leadId ? { ...item, status: normalized } : item))
         );
         setParamsLead((current) =>
-          current && current.id === leadId ? { ...current, status: newStatus } : current
+          current && current.id === leadId ? { ...current, status: normalized } : current
         );
       }
     };
@@ -258,26 +259,27 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   }, []);
 
   const handleQuickStatusChange = async (lead: Lead, newStatus: LeadStage) => {
-    if (lead.status === newStatus) {
+    const normalized = normalizeLeadStage(newStatus);
+    if (lead.status === normalized) {
       setOpenStatusMenuId(null);
       return;
     }
 
     const previousStatus = lead.status;
-    const statusLabel = LEAD_STAGE_LABELS[newStatus] || newStatus;
+    const statusLabel = LEAD_STAGE_LABELS[normalized] || normalized;
 
     // Atualização otimista imediata na UI e no lead aberto em parâmetros
     setLeads((current) =>
-      current.map((item) => (item.id === lead.id ? { ...item, status: newStatus } : item))
+      current.map((item) => (item.id === lead.id ? { ...item, status: normalized } : item))
     );
     setParamsLead((current) =>
-      current && current.id === lead.id ? { ...current, status: newStatus } : current
+      current && current.id === lead.id ? { ...current, status: normalized } : current
     );
     setOpenStatusMenuId(null);
     setUpdatingStatusId(lead.id);
 
     try {
-      await updateLeadStatus(lead.id, newStatus);
+      await updateLeadStatus(lead.id, normalized);
       onShowToast(`Status de ${lead.name} alterado para "${statusLabel}".`);
     } catch (err: any) {
       console.warn('Erro ao atualizar status:', err);
@@ -297,7 +299,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-BR');
     return activeLeads.filter((lead) => {
-      if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+      if (statusFilter !== 'all' && normalizeLeadStage(lead.status) !== statusFilter) return false;
       if (!query) return true;
       return [lead.name, lead.phone, lead.email, lead.street, lead.addressNumber, lead.city, lead.state, lead.source]
         .filter(Boolean)
@@ -420,8 +422,8 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, telefone, cidade ou e-mail" className="h-10 w-full rounded-lg border pl-10 pr-4 text-sm outline-none focus:border-[var(--secondary)]" style={{ backgroundColor: theme.background, borderColor: theme.border, color: theme.text }} />
         </div>
 
-        {/* Barra de Filtro Rápido com Cores Semânticas de Cada Status */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 text-xs pt-0.5">
+        {/* Barra de Filtro Rápido com Cores Semânticas de Cada Status (5 status objetivos) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto sm:overflow-x-visible flex-wrap sm:flex-nowrap pb-1.5 text-xs pt-0.5">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
@@ -438,7 +440,7 @@ export function LeadsView({ theme, onShowToast, onNavigate }: LeadsViewProps) {
             </span>
           </button>
           {(Object.keys(LEAD_STAGE_LABELS) as LeadStage[]).map((stKey) => {
-            const count = activeLeads.filter((l) => l.status === stKey).length;
+            const count = activeLeads.filter((l) => normalizeLeadStage(l.status) === stKey).length;
             const st = getLeadStatusStyle(stKey, isLight);
             const isSelected = statusFilter === stKey;
             return (

@@ -13,6 +13,7 @@ import {
   setStoredLeadNotes,
   removeStoredLeadNotes,
 } from '../utils/leadNotesPersistence';
+import { normalizeLeadStage } from '../utils/leadStatus';
 
 type LeadRow = Record<string, any>;
 
@@ -97,7 +98,7 @@ const mapLead = (row: LeadRow): Lead => {
     propertyStatus: row.property_status ?? undefined,
     installationTimeframe: row.installation_timeframe ?? undefined,
     preferredContactTime: row.preferred_contact_time ?? undefined,
-    status: localStatus || row.status,
+    status: normalizeLeadStage(localStatus || row.status),
     responsible: row.responsible ?? undefined,
     source: row.source,
     landingPage: row.landing_page ?? undefined,

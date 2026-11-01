@@ -1,5 +1,6 @@
 import { accountStorage } from '../platform/workspace/workspace';
 import { LeadStage } from '../types';
+import { normalizeLeadStage } from './leadStatus';
 
 const STORAGE_KEY = 'solamigo_lead_status_overrides';
 export const LEAD_STATUS_CHANGED_EVENT = 'solamigo:lead-status-changed';
@@ -25,18 +26,20 @@ function saveOverridesMap(map: Record<string, LeadStage>): void {
 
 export function getStoredLeadStatus(leadId: string): LeadStage | undefined {
   const map = getOverridesMap();
-  return map[leadId];
+  const raw = map[leadId];
+  return raw ? normalizeLeadStage(raw) : undefined;
 }
 
 export function setStoredLeadStatus(leadId: string, status: LeadStage): void {
+  const normalized = normalizeLeadStage(status);
   const map = getOverridesMap();
-  map[leadId] = status;
+  map[leadId] = normalized;
   saveOverridesMap(map);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent(LEAD_STATUS_CHANGED_EVENT, {
-        detail: { leadId, status },
+        detail: { leadId, status: normalized },
       })
     );
   }

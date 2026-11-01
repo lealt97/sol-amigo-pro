@@ -12,10 +12,7 @@ export interface LeadStatusStyle {
 export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   novo: 'Novo',
   em_contato: 'Em contato',
-  qualificado: 'Qualificado',
-  em_estudo: 'Em estudo',
   proposta_enviada: 'Proposta enviada',
-  negociacao: 'Negociação',
   ganho: 'Ganho',
   perdido: 'Perdido',
 };
@@ -38,25 +35,10 @@ export const LEAD_STATUS_PALETTE: Record<
     darkColor: '#fbbf24', // Amber 400
     lightColor: '#d97706', // Amber 600
   },
-  qualificado: {
-    label: 'Qualificado',
-    darkColor: '#c084fc', // Purple 400
-    lightColor: '#7c3aed', // Purple 600
-  },
-  em_estudo: {
-    label: 'Em estudo',
-    darkColor: '#22d3ee', // Cyan 400
-    lightColor: '#0891b2', // Cyan 600
-  },
   proposta_enviada: {
     label: 'Proposta enviada',
     darkColor: '#818cf8', // Indigo 400
     lightColor: '#4f46e5', // Indigo 600
-  },
-  negociacao: {
-    label: 'Negociação',
-    darkColor: '#fb923c', // Orange 400
-    lightColor: '#ea580c', // Orange 600
   },
   ganho: {
     label: 'Ganho',
@@ -70,8 +52,50 @@ export const LEAD_STATUS_PALETTE: Record<
   },
 };
 
+/**
+ * Normaliza qualquer status legado ou variação para os 5 status objetivos do funil:
+ * - novo: Lead recebido
+ * - em_contato: Em atendimento / conversa / qualificação
+ * - proposta_enviada: Proposta calculada e apresentada / negociação
+ * - ganho: Venda fechada / cliente
+ * - perdido: Desistência / inviável
+ */
+export function normalizeLeadStage(status?: string | null): LeadStage {
+  if (!status) return 'novo';
+  const clean = status.toLowerCase().trim();
+  if (clean === 'novo' || clean === 'novo lead' || clean === 'novo_lead') return 'novo';
+  if (
+    clean === 'em_contato' ||
+    clean === 'em contato' ||
+    clean === 'qualificado' ||
+    clean === 'em_estudo' ||
+    clean === 'em estudo' ||
+    clean === 'atendimento' ||
+    clean === 'em_atendimento'
+  ) {
+    return 'em_contato';
+  }
+  if (
+    clean === 'proposta_enviada' ||
+    clean === 'proposta enviada' ||
+    clean === 'negociacao' ||
+    clean === 'negociação' ||
+    clean === 'em_negociacao' ||
+    clean === 'em negociação'
+  ) {
+    return 'proposta_enviada';
+  }
+  if (clean === 'ganho' || clean === 'cliente' || clean === 'contrato assinado' || clean === 'fechado') {
+    return 'ganho';
+  }
+  if (clean === 'perdido' || clean === 'descartado' || clean === 'inviavel' || clean === 'inviável') {
+    return 'perdido';
+  }
+  return 'novo';
+}
+
 export function getLeadStatusStyle(status?: LeadStage | string, isLight = false): LeadStatusStyle {
-  const stage = status && status in LEAD_STATUS_PALETTE ? (status as LeadStage) : 'novo';
+  const stage = normalizeLeadStage(status);
   const item = LEAD_STATUS_PALETTE[stage];
   const color = isLight ? item.lightColor : item.darkColor;
 

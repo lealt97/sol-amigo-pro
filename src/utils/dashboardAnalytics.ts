@@ -110,12 +110,22 @@ export function filterByPeriod<T>(
   return rows.filter((row) => dateInRange(getDate(row), range.start, range.end));
 }
 
-export function normalizeProposalStatus(status: string): 'approved' | 'negotiation' | 'sent' | 'refused' | 'pending' {
+export type NormalizedProposalStatus =
+  | 'approved'
+  | 'negotiation'
+  | 'sent'
+  | 'pending'
+  | 'draft'
+  | 'refused';
+
+export function normalizeProposalStatus(status: string): NormalizedProposalStatus {
   const value = String(status || '').trim().toLocaleLowerCase('pt-BR');
   if (value.includes('aprov')) return 'approved';
   if (value.includes('negocia')) return 'negotiation';
   if (value.includes('recus') || value.includes('cancel')) return 'refused';
+  if (value.includes('rascunh')) return 'draft';
   if (value.includes('enviad') || value.includes('visualiz')) return 'sent';
+  if (value.includes('pendent')) return 'pending';
   return 'pending';
 }
 
@@ -221,10 +231,18 @@ export function revenueInBucket(proposals: ClientProposal[], bucket: DashboardBu
     .reduce((sum, proposal) => sum + Math.max(0, Number(proposal.totalValue) || 0), 0);
 }
 
-export function proposalStatusCounts(proposals: ClientProposal[]) {
-  const counts = { approved: 0, negotiation: 0, sent: 0, refused: 0, pending: 0 };
+export function proposalStatusCounts(proposals: ClientProposal[]): Record<NormalizedProposalStatus, number> {
+  const counts: Record<NormalizedProposalStatus, number> = {
+    approved: 0,
+    negotiation: 0,
+    sent: 0,
+    pending: 0,
+    draft: 0,
+    refused: 0,
+  };
   proposals.forEach((proposal) => {
-    counts[normalizeProposalStatus(proposal.status)] += 1;
+    const key = normalizeProposalStatus(proposal.status);
+    counts[key] = (counts[key] || 0) + 1;
   });
   return counts;
 }

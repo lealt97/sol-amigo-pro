@@ -23,6 +23,7 @@ import {
   User,
   Zap,
   QrCode,
+  Edit3,
 } from 'lucide-react';
 import {
   ClientProposal,
@@ -33,6 +34,7 @@ import {
   PROPOSALS_UPDATED_EVENT,
   isDemoProposal,
   clientProposalToSolarProposal,
+  updateProposalStatus,
 } from '../services/proposals';
 import { fetchClients } from '../services/clients';
 import { Client, PageKey, PdfSettingsConfig, SolarProposal, ThemeConfig } from '../types';
@@ -41,6 +43,7 @@ import { ProposalWizardModal } from './ProposalWizardModal';
 import { ProposalViewerModal } from './ProposalViewerModal';
 import { ProposalShareModal } from './ProposalShareModal';
 import { formatCurrency } from '../utils/formatters';
+import { shareProposalOnWhatsApp } from '../utils/whatsappShare';
 
 interface PropostasViewProps {
   theme: ThemeConfig;
@@ -66,6 +69,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
 
   // Modais
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
+  const [editingProposal, setEditingProposal] = useState<ClientProposal | null>(null);
   const [viewingProposal, setViewingProposal] = useState<SolarProposal | null>(null);
   const [sharingProposal, setSharingProposal] = useState<ClientProposal | null>(null);
 
@@ -119,9 +123,39 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     }
   };
 
-  // Atualiza busca se initialFilterCode mudar
+  // Atualiza busca ou filtro por status se initialFilterCode mudar
   useEffect(() => {
-    if (initialFilterCode) {
+    if (!initialFilterCode) return;
+    const trimmed = initialFilterCode.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === 'aprovada' || lower === 'aprovadas') {
+      setStatusFilter('Aprovada');
+      setSearchQuery('');
+    } else if (lower === 'em negociação' || lower === 'em negociacao') {
+      setStatusFilter('Em negociação');
+      setSearchQuery('');
+    } else if (
+      lower === 'enviada' ||
+      lower === 'enviadas' ||
+      lower === 'visualizada' ||
+      lower === 'visualizadas'
+    ) {
+      setStatusFilter('Enviada');
+      setSearchQuery('');
+    } else if (lower === 'pendente' || lower === 'pendentes') {
+      setStatusFilter('Pendente');
+      setSearchQuery('');
+    } else if (lower === 'rascunho' || lower === 'rascunhos') {
+      setStatusFilter('Rascunho');
+      setSearchQuery('');
+    } else if (lower === 'recusada' || lower === 'recusadas') {
+      setStatusFilter('Recusada');
+      setSearchQuery('');
+    } else if (trimmed.startsWith('status:')) {
+      const rawStatus = trimmed.replace('status:', '').trim();
+      setStatusFilter(rawStatus);
+      setSearchQuery('');
+    } else {
       setSearchQuery(initialFilterCode);
     }
   }, [initialFilterCode]);
@@ -134,8 +168,13 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     setViewingProposal(clientPropToSolar(p));
   };
 
-  // Salvar nova proposta criada no NewProposalModal
+  // Salvar proposta concluída no ProposalWizardModal
   const handleSaveNewProposal = async (newSolar: SolarProposal) => {
+    const wasRejected =
+      editingProposal?.status?.toLowerCase() === 'recusada' ||
+      Boolean((editingProposal as any)?.wasRejected) ||
+      Boolean((newSolar as any)?.wasRejected);
+
     const newClientProp: ClientProposal = {
       id: newSolar.id,
       code: newSolar.code,
@@ -145,7 +184,8 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       systemPowerKWp: newSolar.systemPowerKWp,
       systemType: newSolar.systemType || 'On-Grid',
       totalValue: newSolar.totalValue,
-      status: newSolar.status,
+      status: wasRejected ? 'Recusada' : (newSolar.status || 'Pendente'),
+      wasRejected,
       modulesCount: newSolar.modulesCount,
       moduleModel: newSolar.moduleModel,
       inverterModel: newSolar.inverterModel,
@@ -156,14 +196,99 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       documentSnapshot: newSolar,
       maintenancePlan: newSolar.maintenancePlan,
       createdAt: newSolar.createdAt || new Date().toISOString(),
+      draftStep: undefined,
+      draftData: undefined,
     };
 
-    const updated = [newClientProp, ...proposals];
+    const existingIndex = proposals.findIndex(
+      (p) => p.id === newClientProp.id || p.code === newClientProp.code
+    );
+    let updated: ClientProposal[];
+    if (existingIndex !== -1) {
+      updated = [...proposals];
+      const prev = updated[existingIndex];
+      updated[existingIndex] = {
+        ...prev,
+        ...newClientProp,
+        draftStep: undefined,
+        draftData: undefined,
+      };
+    } else {
+      updated = [newClientProp, ...proposals];
+    }
     setProposals(updated);
     saveStoredProposalsLocal(updated);
     await saveWorkspace();
     setIsNewProposalModalOpen(false);
-    onShowToast(`Proposta ${newSolar.code} criada com sucesso!`);
+    setEditingProposal(null);
+
+    if (wasRejected) {
+      // Abre o modal de compartilhamento para que o vendedor envie no WhatsApp e mude para "Em negociação"
+      setSharingProposal(newClientProp);
+      onShowToast(
+        `Proposta ${newSolar.code} revisada com sucesso! Envie no WhatsApp para atualizar para "Em negociação".`
+      );
+    } else {
+      onShowToast(`Proposta ${newSolar.code} concluída com sucesso!`);
+    }
+  };
+
+  // Salvar rascunho de proposta
+  const handleSaveDraftProposal = async (draftProp: ClientProposal) => {
+    const existingIndex = proposals.findIndex(
+      (p) => p.id === draftProp.id || p.code === draftProp.code
+    );
+    let updated: ClientProposal[];
+    if (existingIndex !== -1) {
+      updated = [...proposals];
+      updated[existingIndex] = { ...updated[existingIndex], ...draftProp };
+    } else {
+      updated = [draftProp, ...proposals];
+    }
+    setProposals(updated);
+    saveStoredProposalsLocal(updated);
+    await saveWorkspace();
+    setIsNewProposalModalOpen(false);
+    setEditingProposal(null);
+    onShowToast(`Rascunho ${draftProp.code} salvo com sucesso!`);
+  };
+
+  // Retoma dimensionamento de onde parou para rascunhos
+  const handleContinueDraft = (p: ClientProposal) => {
+    setEditingProposal(p);
+    setIsNewProposalModalOpen(true);
+  };
+
+  // Reabre proposta recusada para edição e renegociação
+  const handleEditProposal = (p: ClientProposal) => {
+    setEditingProposal(p);
+    setIsNewProposalModalOpen(true);
+  };
+
+  // Marca proposta como enviada (ou Em negociação se já foi recusada)
+  const handleMarkAsSent = async (p: ClientProposal) => {
+    const wasRejected =
+      Boolean(p.wasRejected) ||
+      p.status.toLowerCase() === 'recusada' ||
+      p.documentSnapshot?.status?.toLowerCase() === 'recusada';
+    const targetStatus = wasRejected ? 'Em negociação' : 'Enviada';
+    try {
+      await updateProposalStatus(p.id, targetStatus);
+      setProposals((prev) =>
+        prev.map((item) =>
+          item.id === p.id || item.code === p.code
+            ? { ...item, status: targetStatus, wasRejected: wasRejected || item.wasRejected }
+            : item
+        )
+      );
+      onShowToast(
+        targetStatus === 'Em negociação'
+          ? `Proposta ${p.code} atualizada para "Em negociação"!`
+          : `Proposta ${p.code} marcada como Enviada!`
+      );
+    } catch {
+      // ignore
+    }
   };
 
   // Propostas que atendem à pesquisa de texto
@@ -175,6 +300,7 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         p.code.toLowerCase().includes(q) ||
         p.clientName.toLowerCase().includes(q) ||
         p.title.toLowerCase().includes(q) ||
+        p.status.toLowerCase().includes(q) ||
         (p.systemPowerKWp && `${p.systemPowerKWp}`.includes(q)) ||
         (p.moduleModel && p.moduleModel.toLowerCase().includes(q)) ||
         (p.inverterModel && p.inverterModel.toLowerCase().includes(q))
@@ -187,7 +313,8 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
     return {
       todos: searchMatchedProposals.length,
       Aprovada: searchMatchedProposals.filter((p) => p.status.toLowerCase() === 'aprovada').length,
-      'Em negociação': searchMatchedProposals.filter(
+      Enviada: searchMatchedProposals.filter((p) => p.status.toLowerCase() === 'enviada').length,
+      EmNegociacao: searchMatchedProposals.filter(
         (p) =>
           p.status.toLowerCase() === 'em negociação' ||
           p.status.toLowerCase() === 'em negociacao'
@@ -202,6 +329,9 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
   const filteredProposals = useMemo(() => {
     const result = searchMatchedProposals.filter((p) => {
       if (statusFilter === 'todos') return true;
+      if (statusFilter === 'Enviada') {
+        return p.status.toLowerCase() === 'enviada';
+      }
       if (statusFilter === 'Em negociação') {
         return (
           p.status.toLowerCase() === 'em negociação' ||
@@ -246,15 +376,27 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         };
       case 'Em negociação':
         return {
-          bg: 'color-mix(in srgb, var(--secondary) 18%, transparent)',
-          text: theme.secondary,
-          border: 'color-mix(in srgb, var(--secondary) 30%, transparent)',
+          bg: 'color-mix(in srgb, #0ea5e9 18%, transparent)',
+          text: '#38bdf8',
+          border: 'color-mix(in srgb, #0ea5e9 35%, transparent)',
+        };
+      case 'Enviada':
+        return {
+          bg: 'color-mix(in srgb, #6366f1 18%, transparent)',
+          text: '#818cf8',
+          border: 'color-mix(in srgb, #6366f1 30%, transparent)',
         };
       case 'Pendente':
         return {
           bg: 'color-mix(in srgb, #f59e0b 18%, transparent)',
           text: '#f59e0b',
           border: 'color-mix(in srgb, #f59e0b 30%, transparent)',
+        };
+      case 'Rascunho':
+        return {
+          bg: 'color-mix(in srgb, #64748b 18%, transparent)',
+          text: '#94a3b8',
+          border: 'color-mix(in srgb, #64748b 30%, transparent)',
         };
       case 'Recusada':
         return {
@@ -294,7 +436,10 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => setIsNewProposalModalOpen(true)}
+            onClick={() => {
+              setEditingProposal(null);
+              setIsNewProposalModalOpen(true);
+            }}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm cursor-pointer hover:brightness-110 active:scale-[0.98]"
             style={{
               backgroundColor: theme.secondary,
@@ -394,12 +539,11 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
             {[
               { id: 'todos', label: 'Todos os Status', count: statusCounts.todos },
               { id: 'Aprovada', label: 'Aprovada', count: statusCounts.Aprovada },
-              { id: 'Em negociação', label: 'Em negociação', count: statusCounts['Em negociação'] },
+              { id: 'Enviada', label: 'Enviada', count: statusCounts.Enviada },
+              { id: 'Em negociação', label: 'Em negociação', count: statusCounts.EmNegociacao },
               { id: 'Pendente', label: 'Pendente', count: statusCounts.Pendente },
               { id: 'Rascunho', label: 'Rascunho', count: statusCounts.Rascunho },
-              ...(statusCounts.Recusada > 0
-                ? [{ id: 'Recusada', label: 'Recusada', count: statusCounts.Recusada }]
-                : []),
+              { id: 'Recusada', label: 'Recusada', count: statusCounts.Recusada },
             ].map((st) => {
               const active = statusFilter.toLowerCase() === st.id.toLowerCase();
               return (
@@ -491,7 +635,10 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
           {!searchQuery && statusFilter === 'todos' && (
             <button
               type="button"
-              onClick={() => setIsNewProposalModalOpen(true)}
+              onClick={() => {
+                setEditingProposal(null);
+                setIsNewProposalModalOpen(true);
+              }}
               className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all shadow-sm hover:brightness-110 active:scale-[0.98] cursor-pointer"
               style={{ backgroundColor: theme.secondary, color: 'var(--secondary-fg)' }}
             >
@@ -641,22 +788,37 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
 
                   <div className="flex items-center gap-1.5">
                     {/* Botão de WhatsApp */}
+                    {/* Botão de WhatsApp */}
                     <button
                       type="button"
-                      onClick={() => {
-                        const text = encodeURIComponent(
-                          `Olá ${p.clientName}, segue o resumo da sua proposta comercial de energia solar (${p.code}):\n` +
-                            `• Potência: ${p.systemPowerKWp || 0} kWp (${p.systemType || 'On-Grid'})\n` +
-                            `• Investimento: ${formatCurrency(p.totalValue || 0)}\n` +
-                            (p.estimatedMonthlySavings
-                              ? `• Economia estimada: ${formatCurrency(p.estimatedMonthlySavings)}/mês\n`
-                              : '')
-                        );
-                        window.open(`https://wa.me/?text=${text}`, '_blank');
+                      onClick={async () => {
+                        await shareProposalOnWhatsApp({
+                          proposal: p,
+                          pdfSettings,
+                          theme,
+                          onStatusChange: (newStatus) => {
+                            p.status = newStatus;
+                            if (newStatus === 'Em negociação') {
+                              p.wasRejected = true;
+                            }
+                            setProposals((prev) =>
+                              prev.map((item) =>
+                                item.id === p.id || item.code === p.code
+                                  ? {
+                                      ...item,
+                                      status: newStatus,
+                                      wasRejected: newStatus === 'Em negociação' ? true : item.wasRejected,
+                                    }
+                                  : item
+                              )
+                            );
+                          },
+                          onShowToast,
+                        });
                       }}
                       className="p-2 rounded-xl border text-[var(--dim)] hover:text-emerald-500 hover:border-emerald-500 transition-colors cursor-pointer"
                       style={{ borderColor: theme.border }}
-                      title="Compartilhar resumo via WhatsApp"
+                      title="Enviar proposta com link e imagem do QR Code no WhatsApp"
                     >
                       <MessageCircle className="h-3.5 w-3.5" />
                     </button>
@@ -685,19 +847,65 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
 
-                    {/* Botão Visualizar */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenViewer(p)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer"
-                      style={{
-                        backgroundColor: theme.secondary,
-                        color: 'var(--secondary-fg)',
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      Visualizar
-                    </button>
+                    {/* Botão de Ação do Card de acordo com o status */}
+                    {p.status.toLowerCase() === 'rascunho' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleContinueDraft(p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer hover:brightness-110"
+                        style={{
+                          backgroundColor: theme.secondary,
+                          color: 'var(--secondary-fg)',
+                        }}
+                        title="Continuar dimensionamento de onde parou"
+                      >
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        Continuar
+                      </button>
+                    ) : p.status.toLowerCase() === 'recusada' ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenViewer(p)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer hover:brightness-110"
+                          style={{
+                            backgroundColor: theme.secondary,
+                            color: 'var(--secondary-fg)',
+                          }}
+                          title="Visualizar proposta recusada"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Visualizar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditProposal(p)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm border cursor-pointer hover:bg-white/10"
+                          style={{
+                            borderColor: theme.border,
+                            color: theme.text,
+                          }}
+                          title="Editar proposta recusada"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 text-amber-400" />
+                          Editar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenViewer(p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer hover:brightness-110"
+                        style={{
+                          backgroundColor: theme.secondary,
+                          color: 'var(--secondary-fg)',
+                        }}
+                        title="Visualizar proposta"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Visualizar
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -710,9 +918,14 @@ export const PropostasView: React.FC<PropostasViewProps> = ({
       {isNewProposalModalOpen && (
         <ProposalWizardModal
           isOpen={isNewProposalModalOpen}
-          onClose={() => setIsNewProposalModalOpen(false)}
+          onClose={() => {
+            setIsNewProposalModalOpen(false);
+            setEditingProposal(null);
+          }}
           theme={theme}
+          initialProposal={editingProposal}
           onSaveProposal={handleSaveNewProposal}
+          onSaveDraft={handleSaveDraftProposal}
           onShowToast={onShowToast}
         />
       )}

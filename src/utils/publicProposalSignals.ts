@@ -12,12 +12,19 @@ export function mergePublicProposalSignals(proposals: ClientProposal[], signals:
     const previousDecision = Math.max(Date.parse(details.approvedAt || '') || 0, Date.parse(details.refusedAt || '') || 0);
     if (latest && Date.parse(latest.responded_at!) > previousDecision) {
       const response = latest.response!;
-      return { ...proposal, status: response.status, approvalDetails: {
-        ...details, viewedAt: details.viewedAt || firstView || undefined,
-        ...(response.status === 'Aprovada'
-          ? { approvedBy: response.name, approvedAt: response.respondedAt, approvalDocument: response.document, approvalNotes: response.notes }
-          : { refusedAt: response.respondedAt, refusalReason: response.reason, refusalNotes: response.notes }),
-      } };
+      const isRefused = response.status === 'Recusada';
+      return {
+        ...proposal,
+        status: response.status,
+        wasRejected: isRefused ? true : proposal.wasRejected,
+        approvalDetails: {
+          ...details,
+          viewedAt: details.viewedAt || firstView || undefined,
+          ...(response.status === 'Aprovada'
+            ? { approvedBy: response.name, approvedAt: response.respondedAt, approvalDocument: response.document, approvalNotes: response.notes }
+            : { refusedAt: response.respondedAt, refusalReason: response.reason, refusalNotes: response.notes }),
+        },
+      };
     }
     if (firstView && !details.viewedAt) return { ...proposal,
       status: ['Enviada', 'Pendente'].includes(proposal.status) ? 'Visualizada' : proposal.status,

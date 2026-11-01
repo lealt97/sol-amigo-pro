@@ -26,6 +26,8 @@ export interface ClientProposal {
   systemType: 'On-Grid' | 'Híbrido' | 'Off-Grid';
   totalValue: number;
   status: 'Aprovada' | 'Em negociação' | 'Pendente' | 'Recusada' | 'Enviada' | 'Visualizada' | 'Rascunho';
+  wasRejected?: boolean;
+  renegotiated?: boolean;
   modulesCount?: number;
   moduleModel?: string;
   inverterModel?: string;
@@ -36,6 +38,8 @@ export interface ClientProposal {
   maintenancePlan?: MaintenancePlanSelection;
   notes?: string;
   documentSnapshot?: SolarProposal;
+  draftStep?: string;
+  draftData?: any;
   approvalDetails?: ProposalApprovalDetails;
   createdAt: string;
 }
@@ -199,7 +203,19 @@ export async function createQuickProposalForClient(
     createdAt: new Date().toISOString(),
   };
 
-  const updated = [newProposal, ...all];
+  const idx = all.findIndex((p) => p.id === newProposal.id || p.code === newProposal.code);
+  let updated: ClientProposal[];
+  if (idx !== -1) {
+    updated = [...all];
+    updated[idx] = {
+      ...updated[idx],
+      ...newProposal,
+      draftStep: undefined,
+      draftData: undefined,
+    };
+  } else {
+    updated = [newProposal, ...all];
+  }
   saveStoredProposalsLocal(updated);
   await saveWorkspace();
   return newProposal;
@@ -392,9 +408,19 @@ export async function updateProposalStatus(
   let updatedProposal: ClientProposal | null = null;
   if (index !== -1) {
     const current = all[index];
+    const isNowRefused = newStatus.toLowerCase() === 'recusada';
+    const wasAlreadyRefused = Boolean(current.wasRejected || current.status.toLowerCase() === 'recusada');
+
+    let targetStatus = newStatus;
+    if ((newStatus === 'Enviada' || newStatus === 'Em negociação') && wasAlreadyRefused) {
+      targetStatus = 'Em negociação';
+    }
+
     updatedProposal = {
       ...current,
-      status: newStatus,
+      status: targetStatus,
+      wasRejected: isNowRefused || wasAlreadyRefused,
+      renegotiated: targetStatus === 'Em negociação' ? true : current.renegotiated,
       approvalDetails: {
         ...current.approvalDetails,
         ...extraDetails,
@@ -410,9 +436,18 @@ export async function updateProposalStatus(
     // Se não existia no local, tenta buscar no supabase antes ou criar
     const found = await fetchProposalByCodeOrId(codeOrId);
     if (found) {
+      const isNowRefused = newStatus.toLowerCase() === 'recusada';
+      const wasAlreadyRefused = Boolean(found.wasRejected || found.status.toLowerCase() === 'recusada');
+      let targetStatus = newStatus;
+      if ((newStatus === 'Enviada' || newStatus === 'Em negociação') && wasAlreadyRefused) {
+        targetStatus = 'Em negociação';
+      }
+
       updatedProposal = {
         ...found,
-        status: newStatus,
+        status: targetStatus,
+        wasRejected: isNowRefused || wasAlreadyRefused,
+        renegotiated: targetStatus === 'Em negociação' ? true : found.renegotiated,
         approvalDetails: {
           ...found.approvalDetails,
           ...extraDetails,
@@ -425,10 +460,11 @@ export async function updateProposalStatus(
   // Tenta sincronizar com Supabase se a tabela proposals estiver disponível
   try {
     const { supabase } = await import('../lib/supabase');
+    const targetStatus = updatedProposal?.status || newStatus;
     await supabase
       .from('proposals')
       .update({
-        status: newStatus,
+        status: targetStatus,
         updated_at: new Date().toISOString(),
       })
       .or(`code.eq.${codeOrId},id.eq.${codeOrId}`);

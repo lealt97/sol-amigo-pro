@@ -18,6 +18,9 @@ export interface ProposalTargetSelection {
 }
 
 export interface WizardProposalInput {
+  id?: string;
+  code?: string;
+  status?: SolarProposal['status'];
   selectedTarget: ProposalTargetSelection;
   companyInfo?: SolarProposal['companyInfo']; clientsList: Client[];
   connectionType: SolarConnectionType; targetCoveragePercent: number; modulePowerW: number; energyTariff: number;
@@ -29,7 +32,7 @@ export interface WizardProposalInput {
   systemType: 'On-Grid' | 'Híbrido'; effectiveAverageKWh: number; installedPowerKWp: number; modulesCount: number; estimatedMonthlyGenKWh: number;
 }
 export function buildWizardProposal(input: WizardProposalInput): SolarProposal {
-  const { selectedTarget, companyInfo, clientsList, connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours, selectedKit, moduleModel, inverterModel, batteryModel, batteryCount, batteryCapacityKWh, concessionaria, hsp, performanceRatio, commercialPricing, maintenancePlan, paymentMethods, cashPaymentTerms, installmentPaymentTerms, deliveryTimeframe, warrantyTerms, commercialNotes, systemType, effectiveAverageKWh, installedPowerKWp, modulesCount, estimatedMonthlyGenKWh } = input;
+  const { id, code, status: customStatus, selectedTarget, companyInfo, clientsList, connectionType, targetCoveragePercent, modulePowerW, energyTariff, backupAutonomyHours, selectedKit, moduleModel, inverterModel, batteryModel, batteryCount, batteryCapacityKWh, concessionaria, hsp, performanceRatio, commercialPricing, maintenancePlan, paymentMethods, cashPaymentTerms, installmentPaymentTerms, deliveryTimeframe, warrantyTerms, commercialNotes, systemType, effectiveAverageKWh, installedPowerKWp, modulesCount, estimatedMonthlyGenKWh } = input;
   for (const [label, value] of Object.entries({ Consumo: effectiveAverageKWh, Potência: installedPowerKWp, Módulos: modulesCount, HSP: hsp, Rendimento: performanceRatio, Tarifa: energyTariff })) {
     if (!Number.isFinite(value) || value <= 0) throw new Error(`${label}: informe um valor válido maior que zero.`);
   }
@@ -40,8 +43,8 @@ export function buildWizardProposal(input: WizardProposalInput): SolarProposal {
   if (!commercialPricing || !Number.isFinite(commercialPricing.finalSalePrice) || commercialPricing.finalSalePrice <= 0) throw new Error('Conclua a precificação antes de gerar a proposta.');
   if (commercialPricing.validationError) throw new Error(commercialPricing.validationError);
   if (systemType === 'Híbrido' && (!batteryModel.trim() || batteryCount < 1 || batteryCapacityKWh <= 0)) throw new Error('Informe o banco de baterias do sistema híbrido.');
-    const identity = crypto.randomUUID();
-    const propCode = `PROP-${new Date().getFullYear()}-${identity.replaceAll('-', '').slice(0,12).toUpperCase()}`;
+    const identity = id || crypto.randomUUID();
+    const propCode = code || `PROP-${new Date().getFullYear()}-${identity.replaceAll('-', '').slice(0,12).toUpperCase()}`;
     const consKWh = effectiveAverageKWh;
 
     const isHybrid = systemType === 'Híbrido';
@@ -109,7 +112,7 @@ export function buildWizardProposal(input: WizardProposalInput): SolarProposal {
         warrantyTerms: warrantyTerms.trim(),
         notes: commercialNotes.trim(),
       },
-      status: 'Rascunho',
+      status: customStatus || 'Pendente',
       createdAt: new Date().toISOString(),
       systemType: systemType,
     };

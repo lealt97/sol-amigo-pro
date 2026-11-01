@@ -246,6 +246,8 @@ export interface SolarProposal {
   estimatedMonthlySavings: number;
   paybackYears: number;
   status: 'Aprovada' | 'Em negociação' | 'Pendente' | 'Recusada' | 'Enviada' | 'Visualizada' | 'Rascunho';
+  wasRejected?: boolean;
+  renegotiated?: boolean;
   createdAt: string;
   validUntil?: string;
   co2SavedTonsYear?: number;
@@ -267,6 +269,8 @@ export interface SolarProposal {
     deliveryTimeframe?: string;
     notes?: string;
   };
+  draftStep?: string;
+  draftData?: any;
 }
 
 export type ClientCrmStatus =
@@ -334,10 +338,7 @@ export interface ConsumerUnit {
 export type LeadStage =
   | 'novo'
   | 'em_contato'
-  | 'qualificado'
-  | 'em_estudo'
   | 'proposta_enviada'
-  | 'negociacao'
   | 'ganho'
   | 'perdido';
 

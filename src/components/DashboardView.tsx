@@ -39,6 +39,7 @@ import {
   getDashboardDateRange,
   getDashboardPeriodLabel,
   normalizeProposalStatus,
+  NormalizedProposalStatus,
   percentageChange,
   proposalConversionPercent,
   proposalStatusCounts,
@@ -175,20 +176,31 @@ const formatDateTime = (value: string, allDay = false) => {
   });
 };
 
-const statusLabel: Record<ReturnType<typeof normalizeProposalStatus>, string> = {
+const statusLabel: Record<NormalizedProposalStatus, string> = {
   approved: 'Aprovadas',
   negotiation: 'Em negociação',
-  sent: 'Enviadas / visualizadas',
+  sent: 'Enviadas',
+  pending: 'Pendentes',
+  draft: 'Rascunhos',
   refused: 'Recusadas',
-  pending: 'Pendentes / rascunhos',
 };
 
-const statusColor: Record<ReturnType<typeof normalizeProposalStatus>, string> = {
+const statusSingleLabel: Record<NormalizedProposalStatus, string> = {
+  approved: 'Aprovada',
+  negotiation: 'Em negociação',
+  sent: 'Enviada',
+  pending: 'Pendente',
+  draft: 'Rascunho',
+  refused: 'Recusada',
+};
+
+const statusColor: Record<NormalizedProposalStatus, string> = {
   approved: '#10b981',
-  negotiation: '#f59e0b',
-  sent: '#3b82f6',
+  negotiation: '#0ea5e9',
+  sent: '#6366f1',
+  pending: '#f59e0b',
+  draft: '#94a3b8',
   refused: '#ef4444',
-  pending: '#94a3b8',
 };
 
 const eventColor = (type: CalendarEvent['type']) => {
@@ -360,11 +372,18 @@ interface DonutDatum {
   color: string;
 }
 
-const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValue: string; size: CardSize }> = ({
+const DonutChart: React.FC<{
+  data: DonutDatum[];
+  centerLabel: string;
+  centerValue: string;
+  size: CardSize;
+  onSelectStatus?: (key: NormalizedProposalStatus) => void;
+}> = ({
   data,
   centerLabel,
   centerValue,
   size,
+  onSelectStatus,
 }) => {
   const compact = size === 'compact';
   const small = size === 'small';
@@ -374,8 +393,8 @@ const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValu
   let cumulative = 0;
 
   return (
-    <div className={`flex min-w-0 max-w-full flex-col items-center overflow-hidden ${compact ? 'gap-3' : 'gap-5'} ${size === 'large' ? 'lg:flex-row lg:items-center' : ''}`}>
-      <div className={`relative shrink-0 ${compact ? 'h-28 w-28' : small ? 'h-36 w-36' : 'h-44 w-44'}`}>
+    <div className={`flex min-w-0 max-w-full flex-col items-center overflow-hidden ${compact ? 'gap-2.5' : 'gap-4'} ${size === 'large' ? 'lg:flex-row lg:items-center' : ''}`}>
+      <div className={`relative shrink-0 ${compact ? 'h-24 w-24' : small ? 'h-32 w-32' : 'h-40 w-40'}`}>
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
           <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="24" />
           {total > 0 && data.map((item) => {
@@ -396,29 +415,45 @@ const DonutChart: React.FC<{ data: DonutDatum[]; centerLabel: string; centerValu
                 strokeLinecap="round"
                 strokeDasharray={`${length} ${circumference - length}`}
                 strokeDashoffset={offset}
-              />
+                className="cursor-pointer transition-opacity hover:opacity-80"
+                onClick={() => onSelectStatus?.(item.key as NormalizedProposalStatus)}
+              >
+                <title>{`${item.label}: ${item.value} (${(fraction * 100).toFixed(0)}%)`}</title>
+              </circle>
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <div className={`font-black text-[var(--text)] ${compact ? 'text-lg' : 'text-2xl'}`}>{centerValue}</div>
-          <div className={`mt-0.5 font-bold uppercase tracking-wider text-[var(--muted)] ${compact ? 'text-[8px]' : 'text-[9px]'}`}>{centerLabel}</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+          <div className={`font-black text-[var(--text)] ${compact ? 'text-base' : 'text-2xl'}`}>{centerValue}</div>
+          <div className={`mt-0.5 font-bold uppercase tracking-wider text-[var(--muted)] ${compact ? 'text-[7px]' : 'text-[9px]'}`}>{centerLabel}</div>
         </div>
       </div>
-      <div className={`min-w-0 w-full ${compact ? 'space-y-1.5' : 'space-y-2'}`}>
+      <div className={`min-w-0 w-full ${compact ? 'space-y-1' : 'space-y-1.5'}`}>
         {data.map((item) => {
           const percent = total > 0 ? (item.value / total) * 100 : 0;
           return (
-            <div key={item.key} className={`flex min-w-0 items-center justify-between rounded-xl border ${compact ? 'gap-2 px-2 py-1.5' : 'gap-3 px-3 py-2'}`} style={{ borderColor: 'var(--border)' }}>
+            <button
+              key={item.key}
+              type="button"
+              data-no-override-hover
+              onClick={() => onSelectStatus?.(item.key as NormalizedProposalStatus)}
+              className={`flex min-w-0 w-full items-center justify-between rounded-xl border text-left transition-all hover:border-[var(--secondary)]/60 hover:bg-[color-mix(in_srgb,var(--secondary)_5%,transparent)] cursor-pointer group ${
+                compact ? 'gap-1.5 px-2 py-1' : 'gap-3 px-3 py-1.5'
+              }`}
+              style={{ borderColor: 'var(--border)' }}
+              title={`Filtrar propostas: ${item.label}`}
+            >
               <div className="flex min-w-0 items-center gap-2">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className={`truncate font-semibold text-[var(--text)] ${compact ? 'text-[9px]' : 'text-[11px]'}`} title={item.label}>{item.label}</span>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full transition-transform group-hover:scale-125" style={{ backgroundColor: item.color }} />
+                <span className={`truncate font-semibold text-[var(--text)] group-hover:text-[var(--secondary)] transition-colors ${compact ? 'text-[9px]' : 'text-[11px]'}`} title={item.label}>
+                  {item.label}
+                </span>
               </div>
               <div className="shrink-0 text-right">
                 <span className="text-xs font-black text-[var(--text)]">{item.value}</span>
                 <span className="ml-1 text-[9px] text-[var(--muted)]">{percent.toFixed(0)}%</span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -679,10 +714,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 
   const proposalStatuses = proposalStatusCounts(periodProposals);
-  const donutData: DonutDatum[] = (Object.keys(proposalStatuses) as (keyof typeof proposalStatuses)[]).map((key) => ({
+  const orderedStatusKeys: NormalizedProposalStatus[] = [
+    'approved',
+    'negotiation',
+    'sent',
+    'pending',
+    'draft',
+    'refused',
+  ];
+  const donutData: DonutDatum[] = orderedStatusKeys.map((key) => ({
     key,
     label: statusLabel[key],
-    value: proposalStatuses[key],
+    value: proposalStatuses[key] || 0,
     color: statusColor[key],
   }));
 
@@ -849,6 +892,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             centerLabel="propostas"
             centerValue={number.format(periodProposals.length)}
             size={size}
+            onSelectStatus={(key) => {
+              const statusFilterMap: Record<NormalizedProposalStatus, string> = {
+                approved: 'Aprovada',
+                negotiation: 'Em negociação',
+                sent: 'Enviada',
+                pending: 'Pendente',
+                draft: 'Rascunho',
+                refused: 'Recusada',
+              };
+              onNavigate?.('propostas', statusFilterMap[key]);
+            }}
           />
         );
       case 'activity-chart':
@@ -959,7 +1013,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className={`max-w-full truncate font-black text-[var(--text)] ${compact ? 'text-[11px]' : 'text-xs'}`} title={money.format(proposal.totalValue)}>{money.format(proposal.totalValue)}</div>
                     <div className="mt-0.5 inline-flex max-w-full min-w-0 items-center gap-1 text-[9px] font-bold" style={{ color: statusColor[normalized] }}>
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: statusColor[normalized] }} />
-                      <span className="truncate" title={statusLabel[normalized]}>{statusLabel[normalized]}</span>
+                      <span className="truncate" title={proposal.status || statusSingleLabel[normalized]}>{proposal.status || statusSingleLabel[normalized]}</span>
                     </div>
                   </div>
                 </button>

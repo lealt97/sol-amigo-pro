@@ -68,9 +68,11 @@ test('normaliza status de proposta independentemente da capitalização', () => 
   assert.equal(normalizeProposalStatus('aprovada'), 'approved');
   assert.equal(normalizeProposalStatus('Aprovada'), 'approved');
   assert.equal(normalizeProposalStatus('Visualizada'), 'sent');
+  assert.equal(normalizeProposalStatus('Enviada'), 'sent');
   assert.equal(normalizeProposalStatus('Em negociação'), 'negotiation');
   assert.equal(normalizeProposalStatus('Recusada'), 'refused');
-  assert.equal(normalizeProposalStatus('Rascunho'), 'pending');
+  assert.equal(normalizeProposalStatus('Rascunho'), 'draft');
+  assert.equal(normalizeProposalStatus('Pendente'), 'pending');
 });
 
 test('calcula receita, potência, ticket e conversão somente com dados aprovados quando aplicável', () => {
@@ -85,8 +87,26 @@ test('distribuição de propostas por status preserva todas as categorias', () =
     approved: 2,
     negotiation: 1,
     sent: 0,
-    refused: 1,
     pending: 0,
+    draft: 0,
+    refused: 1,
+  });
+
+  const fullList: ClientProposal[] = [
+    { ...proposals[0], status: 'Aprovada' },
+    { ...proposals[1], status: 'Em negociação' },
+    { ...proposals[2], status: 'Enviada' },
+    { ...proposals[3], status: 'Pendente' },
+    { ...proposals[0], id: '5', code: 'P-5', status: 'Rascunho' },
+    { ...proposals[1], id: '6', code: 'P-6', status: 'Recusada' },
+  ];
+  assert.deepEqual(proposalStatusCounts(fullList), {
+    approved: 1,
+    negotiation: 1,
+    sent: 1,
+    pending: 1,
+    draft: 1,
+    refused: 1,
   });
 });
 

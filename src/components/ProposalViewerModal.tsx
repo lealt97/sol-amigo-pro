@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchProposalCompany } from '../services/proposalCompany';
-import { X, Printer, Link } from 'lucide-react';
+import { X, Printer, Link, MessageCircle } from 'lucide-react';
 import { publishPublicProposal, revokePublicProposalLinks } from '../services/publicProposals';
+import { updateProposalStatus } from '../services/proposals';
+import { shareProposalOnWhatsApp } from '../utils/whatsappShare';
 import { ProposalCoverPage } from './ProposalCoverPage';
 import { SolarProposalDocument } from './SolarProposalDocument';
 import { SolarProposal, PdfSettingsConfig, ThemeConfig } from '../types';
@@ -127,6 +129,29 @@ export const ProposalViewerModal: React.FC<ProposalViewerModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {!publicView && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await shareProposalOnWhatsApp({
+                      proposal,
+                      solarProposal: documentProposal,
+                      publicUrl: publicLink,
+                      pdfSettings,
+                      theme,
+                      onStatusChange: (newStatus) => {
+                        proposal.status = newStatus;
+                      },
+                      onShowToast,
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                  title="Enviar no WhatsApp com link e imagem do QR Code"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </button>
+              )}
               {!publicView && <button type="button" disabled={sharing} onClick={handlePublicLink} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs disabled:opacity-50" title="Gerar link público da proposta"><Link className="w-4 h-4" /><span>{sharing ? 'Aguarde...' : 'Link público'}</span></button>}
               <button
                 disabled={!coverReady}
