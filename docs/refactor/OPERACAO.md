@@ -2,7 +2,7 @@
 
 ## Instalação e validação
 
-Use Node 20 ou superior e `npm ci`. Execute `npm run typecheck`, `npm test`, `npm run test:db`, `npm run test:timezones`, `npm run check:crm` e `npm run build`.
+Use Node 24 (veja `.nvmrc`). Execute `npm ci` se houver `package-lock.json`; sem lockfile, use `npm install`. Execute `npm run typecheck`, `npm test`, `npm run test:db`, `npm run test:timezones`, `npm run check:crm` e `npm run build`.
 
 O comando `lint` continua sendo uma verificação TypeScript, compatível com os workflows existentes; não representa uma análise ESLint. PGlite é dependência somente de desenvolvimento e executa testes de permissões e migrations em PostgreSQL isolado, sem credenciais de produção.
 
